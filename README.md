@@ -29,26 +29,22 @@ On macOS or Linux, run `./start.sh` from the repository folder; it looks for `py
 
 ## Run the wire diagram
 
-1. Select a scenario at the top to start a run. The animated path shows probes, affected objects and defenses as the attack moves through the environment.
-2. Switch scenarios to compare the same generated infrastructure and assigned exposures. Each selection starts another run.
-3. Select **New Infra** to generate a different environment and start a run.
-4. Hover over an object for the assigned CVE and a short attack description. Click an object to reveal its connections briefly. Green connections also appear while an object is being scanned; attack and defense paths use their own colors.
-5. Watch the compact SOC ticket stream in the bottom-right corner. Tickets appear as objects are reached, with additional tickets for modeled WAF, SOAR and canary responses. The stream continues to roll after the run ends.
-
-The run status at the top summarizes compromised objects, containment and whether the data layer was reached. Generated infrastructure and the selected scenario are saved in browser storage for subsequent visits.
+1. **Comparison Demo (default):** Compare **Pre-2023 human-led** vs **ARTEX & Friends** on a fixed four-layer estate. Use **Attack example** to open a synthetic defense exercise under one of the six reference names (**LockBit**, **Conti**, **BlackCat**, **Hive**, **REvil**, or **ARTEX**). The choices reuse generic event traces for both attacker workflows. Select **Shared speed and capability exercises** to return to the four controlled comparisons. Click any matrix cell for its trace and SOC tickets. Playback uses a modeled hours, minutes, and seconds clock (`HH:MM:SS`).
+2. **Exploratory Infra:** Generate a topology with **New Infra**, cycle presets (**Mixed**, **Demo-Ready**, **Cred-in-Logs**), and compare defenses against generated activity. The modeled clock displays hours and minutes explicitly. The pace button adjusts the clock estimate for the generated run. Select **Choose Attack Example** to open the named exercises in Comparison Demo.
 
 ## Scenarios
 
-The demo has a baseline and three defense scenarios: **virtual patching**, **agentic SOAR**, and **both defenses together with a canary**.
+In **Comparison Demo**, the matrix evaluates four primary columns plus an optional **Combined** run:
 
 | Scenario | What the demo shows |
 | --- | --- |
-| **Baseline** | An attack path without the modeled defenses. |
-| **Virtual Patch** | A WAF virtual patch blocks eligible requests when the modeled rule and coverage apply. |
-| **Agentic SOAR** | An assumed detection and response can contain eligible activity inside the environment. |
-| **Defense-in-Depth** | Combines **virtual patching + agentic SOAR + a backend canary**. If the attack reaches the canary, it triggers an alert and a modeled SOAR containment response. |
+| **Baseline** | Unmitigated outcome without the three modeled controls. |
+| **Virtual Patching** | Blocks covered ingress events at the edge (`RULE MATCH · BLOCKED AT EDGE`); out-of-scope events continue (`OUTSIDE RULE COVERAGE`). |
+| **Agentic SOC** | Exposes telemetry, decision/approval, and enforcement timestamps under a fixed 60-second containment policy, showing where the same response wins at Pre-2023 pace (`+29 min`) and loses at ARTEX pace (`−10 s`). |
+| **Canaries** | Standalone decoy interaction (`DECOY TRIGGERED · ALERT ONLY`) showing detection lead time without containment. |
+| **Combined (SOC + Canary)** | Optional comparison against Agentic SOC where an early canary signal feeds the same SOC policy, shifting containment ahead of the protected read (`+15 s`). |
 
-The same infrastructure is reused across scenario selections. Defense rules, coverage, detection and response are demo assumptions; a blocked path does not establish that a real product would detect or prevent the activity.
+In **Exploratory Infra**, the four defense modes are **Baseline**, **Virtual Patch**, **Agentic SOAR**, and **Defense-in-Depth** (WAF + Agentic SOAR + Canary). Defense rules, coverage, detection and response are demo assumptions; a blocked path does not establish that a real product would detect or prevent the activity.
 
 ## Infrastructure and tickets
 
@@ -58,7 +54,7 @@ An environment may include one network-monitoring system, selected from Cacti, L
 
 The SOC tickets are illustrative, generated as activity occurs. A node can produce one or several tickets, with a title, severity and short alert description. Severity and breach detection are demonstration choices, not CVSS scores or actual SIEM findings. Remediation tickets appear when a modeled virtual patch, agentic SOAR response or canary triggers.
 
-See [wire diagram logic](docs/wire_diagram_logic.md) for the topology and scenario assumptions, and the [threat matrix](docs/cisa_kev_threat_matrix.md) for additional vulnerability background.
+See [wire diagram logic](docs/wire_diagram_logic.md) for the topology and scenario assumptions, [Pre-LLM vs. ARTEX comparison notes](docs/pre-llm-vs-artex-comparison.md) for field context and fixture limits, and the [threat matrix](docs/cisa_kev_threat_matrix.md) for additional vulnerability background.
 
 ## License
 

@@ -326,4 +326,160 @@ for (let seed = 0; seed < 20; seed++) {
   }
 }
 
-console.log(`PASS: ${groups.size} asset groups + prerequisite/credential/budget/replay/logs tests`);
+// 14. Comparison mode: fixed estate, speed timing race, covered patch, capability 45s & denied, and edge cases
+{
+  const cmpEstate = engine.createComparisonEstate();
+  assert.equal(engine.validateEstate(cmpEstate).valid, true, 'Comparison estate must be valid');
+  assert.equal(new Set(cmpEstate.assets.map(a => a.layerIdx)).size, 4, 'Comparison estate must span 4 layers');
+  assert.ok(cmpEstate.assets.some(a => a.isProtectedRecord), 'Comparison estate must designate protected record');
+  assert.ok(cmpEstate.assets.some(a => a.isDecoyAsset), 'Comparison estate must have separate decoy asset');
+
+  // Replay invariance & preserved estate/objective across matrix
+  const m1 = engine.evaluateComparisonMatrix('speed-race');
+  const m2 = engine.evaluateComparisonMatrix('speed-race');
+  assert.deepEqual(m1, m2, 'Comparison matrix evaluation must be deterministic');
+  assert.deepEqual(m1.estate, m2.estate);
+
+  // Speed timing race: identical ordered activity across both paces
+  const preIds = m1.fixture.traces.pre2023.map(e => e.id);
+  const artIds = m1.fixture.traces.artex.map(e => e.id);
+  assert.deepEqual(preIds, artIds, 'Speed comparison must use identical ordered attacker activity');
+
+  // Baseline
+  assert.equal(m1.cells.pre2023.baseline.protectedReadReached, true);
+  assert.equal(m1.cells.pre2023.baseline.protectedReadTimeSec, 7200);
+  assert.equal(m1.cells.artex.baseline.protectedReadReached, true);
+  assert.equal(m1.cells.artex.baseline.protectedReadTimeSec, 80);
+
+  // Virtual patch miss (out of scope)
+  assert.equal(m1.cells.pre2023.patch.controlReason, 'OUTSIDE RULE COVERAGE');
+  assert.equal(m1.cells.pre2023.patch.protectedReadReached, true);
+  assert.equal(m1.cells.artex.patch.controlReason, 'OUTSIDE RULE COVERAGE');
+  assert.equal(m1.cells.artex.patch.protectedReadReached, true);
+
+  // Agentic SOC: same 60s policy wins at pre2023 pace (+29 min) and loses at artex pace (-10 s)
+  const preSoc = m1.cells.pre2023.soc;
+  assert.equal(preSoc.telemetryTimeSec, 5400);
+  assert.equal(preSoc.decisionTimeSec, 5415);
+  assert.equal(preSoc.enforcementTimeSec, 5460);
+  assert.equal(preSoc.protectedReadReached, false);
+  assert.equal(preSoc.responseMarginSec, 1740); // +29 min
+  assert.equal(preSoc.detectionLeadTimeSec, 1800); // +30 min
+
+  const artSoc = m1.cells.artex.soc;
+  assert.equal(artSoc.telemetryTimeSec, 30);
+  assert.equal(artSoc.decisionTimeSec, 45);
+  assert.equal(artSoc.enforcementTimeSec, 90);
+  assert.equal(artSoc.protectedReadReached, true);
+  assert.equal(artSoc.protectedReadTimeSec, 80);
+  assert.equal(artSoc.controlReason, 'CONTAINMENT EFFECTIVE AFTER DATA ACCESS');
+  assert.equal(artSoc.responseMarginSec, -10);
+  assert.equal(artSoc.detectionLeadTimeSec, 50);
+  assert(artSoc.trace.some(e => e.kind === 'containment' && e.timeSec === 90), 'Trace must retain late containment event after objective');
+
+  // Canaries-only: alert only, protected read still occurs
+  assert.equal(m1.cells.pre2023.canaries.controlReason, 'DECOY TRIGGERED · ALERT ONLY');
+  assert.equal(m1.cells.pre2023.canaries.firstAlertTimeSec, 600);
+  assert.equal(m1.cells.pre2023.canaries.detectionLeadTimeSec, 6600);
+  assert.equal(m1.cells.pre2023.canaries.responseMarginSec, null);
+  assert.equal(m1.cells.pre2023.canaries.protectedReadReached, true);
+
+  assert.equal(m1.cells.artex.canaries.controlReason, 'DECOY TRIGGERED · ALERT ONLY');
+  assert.equal(m1.cells.artex.canaries.firstAlertTimeSec, 5);
+  assert.equal(m1.cells.artex.canaries.detectionLeadTimeSec, 75);
+  assert.equal(m1.cells.artex.canaries.responseMarginSec, null);
+  assert.equal(m1.cells.artex.canaries.protectedReadReached, true);
+
+  // Combined: early canary signal + same 60s SOC prevents protected read at both paces
+  assert.equal(m1.cells.pre2023.combined.enforcementTimeSec, 660); // 00:11:00
+  assert.equal(m1.cells.pre2023.combined.protectedReadReached, false);
+  assert.equal(m1.cells.artex.combined.enforcementTimeSec, 65); // 00:01:05
+  assert.equal(m1.cells.artex.combined.protectedReadReached, false);
+  assert.equal(m1.cells.artex.combined.signalSource, 'canary');
+  assert.equal(m1.cells.artex.combined.responseMarginSec, 15);
+
+  // Removing decoy signal in combined faster run restores late outcome
+  const noDecoyCombined = engine.evaluateComparisonRun('speed-race', 'artex', 'combined', { useDecoySignal: false });
+  assert.equal(noDecoyCombined.protectedReadReached, true);
+  assert.equal(noDecoyCombined.enforcementTimeSec, 90);
+  assert.equal(noDecoyCombined.responseMarginSec, -10);
+
+  // Covered virtual patch blocks at both paces
+  const covered = engine.evaluateComparisonMatrix('speed-covered-patch');
+  for (const p of ['pre2023', 'artex']) {
+    assert.equal(covered.cells[p].patch.protectedReadReached, false);
+    assert.equal(covered.cells[p].patch.controlReason, 'RULE MATCH · BLOCKED AT EDGE');
+    assert.equal(covered.cells[p].patch.effectiveControlTimeSec, 0);
+    assert(covered.cells[p].patch.trace.some(ev => ev.isProtectedRead && ev.outcome === 'suppressed'));
+    assert.equal(covered.cells[p].combined.firstAlertSource, 'canary');
+    assert.equal(covered.cells[p].combined.effectiveControlTimeSec, m1.cells[p].combined.effectiveControlTimeSec);
+    assert(!covered.cells[p].combined.trace.some(ev => ev.outcome === 'blocked'));
+  }
+  const coveredWithoutDecoy = engine.evaluateComparisonRun('speed-covered-patch', 'artex', 'combined', { useDecoySignal: false });
+  assert.equal(coveredWithoutDecoy.enforcementTimeSec, covered.cells.artex.soc.enforcementTimeSec);
+  assert.equal(coveredWithoutDecoy.protectedReadTimeSec, covered.cells.artex.soc.protectedReadTimeSec);
+
+  // Capability 45s comparison
+  const cap = engine.evaluateComparisonMatrix('capability-45s');
+  assert.equal(cap.cells.pre2023.baseline.opportunitiesReviewed, 1);
+  assert.equal(cap.cells.pre2023.baseline.concurrentReviews, 0);
+  assert.equal(cap.cells.pre2023.baseline.manualHandoffs, 1);
+  assert.equal(cap.cells.pre2023.baseline.protectedReadReached, false);
+
+  assert.equal(cap.cells.artex.baseline.opportunitiesReviewed, 3);
+  assert.equal(cap.cells.artex.baseline.concurrentReviews, 3);
+  assert.equal(cap.cells.artex.baseline.manualHandoffs, 1);
+  assert.equal(cap.cells.artex.baseline.protectedReadReached, true);
+  assert.equal(cap.cells.artex.baseline.protectedReadTimeSec, 30);
+
+  // Capability access-denied case: both end without protected read
+  const capDenied = engine.evaluateComparisonMatrix('capability-denied');
+  assert.equal(capDenied.cells.pre2023.baseline.protectedReadReached, false);
+  assert.equal(capDenied.cells.artex.baseline.protectedReadReached, false);
+  assert.equal(capDenied.cells.artex.baseline.opportunitiesReviewed, 3);
+  assert.equal(capDenied.cells.artex.baseline.accessDeniedObserved, true);
+
+  for (const defense of ['soc', 'combined']) {
+    const denied = capDenied.cells.artex[defense];
+    assert.equal(denied.accessDeniedObserved, true);
+    assert.equal(denied.controlReason, 'CONTAINMENT PENDING AT CUTOFF');
+    assert.equal(denied.scheduledEnforcementTimeSec, 75);
+    assert.equal(denied.enforcementTimeSec, null);
+    assert.equal(denied.effectiveControlTimeSec, null);
+    assert(!denied.trace.some(ev => ev.outcome === 'enforced'));
+
+    const readBeforeCutoff = cap.cells.artex[defense];
+    assert.equal(readBeforeCutoff.protectedReadTimeSec, 30);
+    assert.equal(readBeforeCutoff.scheduledEnforcementTimeSec, 75);
+    assert.equal(readBeforeCutoff.effectiveControlTimeSec, null);
+    assert.equal(readBeforeCutoff.responseMarginSec, null);
+  }
+
+  // Edge cases: no signal, tie-break at objective, late decoy, untouched decoy, scope mismatch
+  const noSig = engine.evaluateComparisonRun('speed-no-signal', 'artex', 'soc');
+  assert.equal(noSig.controlReason, 'NO MATCHING SIGNAL');
+  assert.equal(noSig.responseMarginSec, null);
+  assert.equal(noSig.protectedReadReached, true);
+
+  const tieObj = engine.evaluateComparisonRun('speed-at-objective', 'artex', 'soc');
+  assert.equal(tieObj.enforcementTimeSec, 80);
+  assert.equal(tieObj.protectedReadReached, true, 'Same-timestamp tie must give objective precedence by default');
+  const tieEnf = engine.evaluateComparisonRun('speed-at-objective', 'artex', 'soc', { enforcementPrecedesOnTie: true });
+  assert.equal(tieEnf.protectedReadReached, false, 'Explicit enforcementPrecedesOnTie lets containment win');
+
+  const lateDecoy = engine.evaluateComparisonRun('speed-late-decoy', 'artex', 'canaries');
+  assert.equal(lateDecoy.detectionLeadTimeSec, -20);
+  assert.equal(lateDecoy.protectedReadReached, true);
+
+  const untouchedDecoy = engine.evaluateComparisonRun('speed-untouched-decoy', 'artex', 'canaries');
+  assert.equal(untouchedDecoy.controlReason, 'DECOY UNTOUCHED · NO ALERT');
+  assert.equal(untouchedDecoy.firstAlertTimeSec, null);
+  assert.equal(untouchedDecoy.detectionLeadTimeSec, null);
+
+  const scopeMismatch = engine.evaluateComparisonRun('speed-scope-mismatch', 'pre2023', 'soc');
+  assert.equal(scopeMismatch.protectedReadReached, false);
+  const unrelated = scopeMismatch.trace.find(e => e.id === 'ev-unrelated');
+  assert.ok(unrelated && unrelated.outcome === 'succeeded', 'Scope mismatch must leave unrelated sess-secondary event in progress');
+}
+
+console.log(`PASS: ${groups.size} asset groups + prerequisite/credential/budget/replay/logs/comparison tests`);

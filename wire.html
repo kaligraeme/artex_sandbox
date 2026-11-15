@@ -547,13 +547,468 @@
   }
   #preset-btn:hover { border-color: #38bdf8; color: #e0f2fe; }
   #preset-btn.demo { border-color: rgba(245, 158, 11, 0.55); color: #fcd34d; }
+  #attack-stopwatch {
+    position: fixed;
+    top: 14px;
+    left: 14px;
+    z-index: 1001;
+    background: rgba(9, 16, 24, 0.88);
+    border: 1px solid rgba(0, 240, 255, 0.28);
+    border-radius: 6px;
+    padding: 7px 10px;
+    min-width: 132px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 0 14px rgba(0, 0, 0, 0.45);
+    font-variant-numeric: tabular-nums;
+  }
+  .sw-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 3px; }
+  .sw-label { font-size: 8px; letter-spacing: 0.12em; color: #7fa0bc; text-transform: uppercase; }
+  #sw-model-btn {
+    background: rgba(0, 240, 255, 0.1);
+    border: 1px solid rgba(0, 240, 255, 0.35);
+    color: var(--turquoise);
+    font: 700 8px/1 'JetBrains Mono', monospace;
+    letter-spacing: 0.08em;
+    padding: 2px 5px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  #sw-model-btn.artex { border-color: rgba(245, 158, 11, 0.5); color: #fcd34d; background: rgba(245, 158, 11, 0.12); }
+  #sw-clock { font-size: 20px; font-weight: 800; letter-spacing: 0.06em; color: #e2f6ff; line-height: 1.1; }
+  #sw-dwell { font-size: 9px; color: #7fa0bc; margin-top: 3px; letter-spacing: 0.04em; }
+  #attack-stopwatch.lateral #sw-clock { color: #ff6b81; text-shadow: 0 0 8px rgba(255, 34, 68, 0.45); }
+  #attack-stopwatch.lateral #sw-dwell { color: #fca5a5; }
+  #attack-stopwatch.stopped #sw-dwell { color: #6ee7b7; }
+  @media (max-width: 760px) {
+    .top-bar { padding: 72px 12px 0; }
+    #attack-stopwatch { top: 8px; left: 8px; padding: 5px 8px; }
+  }
   @media (prefers-reduced-motion: reduce) { .soc-cards { transition: none; } .soc-cards.looping { animation: none; } }
+
+  /* COMPARISON DEMO WORKBENCH */
+  body.mode-comparison {
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  body.mode-comparison #viewport.exploratory-only { display: none; }
+  body.mode-exploratory #comparison-workbench { display: none; }
+
+  #comparison-workbench {
+    position: relative;
+    min-height: 100vh;
+    padding: 14px 18px 28px;
+    background: radial-gradient(circle at 50% 15%, #10253b 0%, #071426 75%, #050f1e 100%);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .cmp-topbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+  }
+  .cmp-title-group { display: flex; flex-direction: column; gap: 3px; }
+  .cmp-title { font-size: 14px; font-weight: 800; letter-spacing: 0.08em; color: #e2f6ff; }
+  .cmp-subtitle { font-size: 11px; color: #94a3b8; max-width: 780px; line-height: 1.35; }
+  .cmp-nav-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .cmp-pill-btn {
+    background: rgba(9, 16, 24, 0.88);
+    border: 1px solid rgba(148, 163, 184, 0.32);
+    color: #cbd5e1;
+    font: 600 11px/1 'JetBrains Mono', monospace;
+    padding: 7px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.16s ease;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .cmp-pill-btn:hover { border-color: #38bdf8; color: #e0f2fe; }
+  .cmp-pill-btn.active {
+    background: rgba(0, 240, 255, 0.14);
+    border-color: var(--turquoise);
+    color: #e0f9ff;
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.22);
+  }
+  .cmp-controls-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: rgba(9, 16, 24, 0.72);
+    border: 1px solid rgba(56, 189, 248, 0.18);
+    border-radius: 8px;
+    padding: 9px 12px;
+  }
+  .cmp-exercise-controls { display: grid; gap: 8px; }
+  .cmp-example-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .cmp-example-picker label { color: #e2f6ff; font-size: 11px; font-weight: 700; }
+  #cmp-attack-example { color-scheme: dark; max-width: 100%; }
+  .cmp-fixture-group, .cmp-playback-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  #cmp-shared-exercises[hidden] { display: none; }
+  .cmp-clock-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(7, 20, 38, 0.95);
+    border: 1px solid rgba(0, 240, 255, 0.35);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-variant-numeric: tabular-nums;
+  }
+  #cmp-clock { font-size: 16px; font-weight: 800; color: #e2f6ff; letter-spacing: 0.06em; }
+  .cmp-clock-unit { font-size: 10px; color: #a9bfd2; }
+  #cmp-playback-status { font-size: 10px; color: #7dd3fc; letter-spacing: 0.05em; }
+
+  .cmp-matrix-wrap {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid rgba(56, 189, 248, 0.22);
+    border-radius: 8px;
+    background: rgba(9, 16, 24, 0.78);
+  }
+  .cmp-matrix {
+    width: 100%;
+    min-width: 780px;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  .cmp-matrix th, .cmp-matrix td {
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    padding: 8px;
+    vertical-align: top;
+    text-align: left;
+  }
+  .cmp-matrix thead th {
+    background: rgba(15, 31, 51, 0.92);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #bae6fd;
+    text-transform: uppercase;
+  }
+  .cmp-row-head {
+    background: rgba(15, 23, 42, 0.85);
+    width: 156px;
+  }
+  .cmp-row-title { font-size: 12px; font-weight: 700; color: #f8fafc; margin-bottom: 4px; }
+  .cmp-row-desc { font-size: 10px; color: #94a3b8; line-height: 1.35; }
+
+  .cmp-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 100%;
+    background: rgba(15, 23, 42, 0.55);
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 6px;
+    padding: 8px;
+    color: #e2e8f0;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease, transform 0.12s ease;
+  }
+  .cmp-cell:hover { border-color: #38bdf8; background: rgba(15, 34, 58, 0.85); }
+  .cmp-cell.selected {
+    border-color: var(--turquoise);
+    background: rgba(0, 240, 255, 0.1);
+    box-shadow: 0 0 0 1px rgba(0, 240, 255, 0.35), 0 0 14px rgba(0, 240, 255, 0.16);
+  }
+  .cmp-badge {
+    display: inline-block;
+    width: fit-content;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .cmp-badge.read { background: rgba(255, 34, 68, 0.2); color: #fda4af; border: 1px solid rgba(255, 34, 68, 0.45); }
+  .cmp-badge.prevented { background: rgba(0, 255, 119, 0.14); color: #6ee7b7; border: 1px solid rgba(0, 255, 119, 0.4); }
+  .cmp-badge.noread { background: rgba(56, 189, 248, 0.14); color: #bae6fd; border: 1px solid rgba(56, 189, 248, 0.35); }
+  .cmp-cell-line { font-size: 10px; color: #cbd5e1; line-height: 1.35; }
+  .cmp-cell-reason { font-size: 9px; font-weight: 700; color: #fde68a; letter-spacing: 0.03em; }
+  .cmp-cell-meta { font-size: 9px; color: #94a3b8; }
+
+  .cmp-lower-grid {
+    display: grid;
+    grid-template-columns: minmax(320px, 1.05fr) minmax(320px, 1fr);
+    gap: 12px;
+    align-items: start;
+  }
+  .cmp-panel {
+    background: rgba(9, 16, 24, 0.84);
+    border: 1px solid rgba(56, 189, 248, 0.22);
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .cmp-panel-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+    padding-bottom: 8px;
+  }
+  .cmp-panel-title { font-size: 12px; font-weight: 800; color: #e0f2fe; letter-spacing: 0.05em; }
+  .cmp-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+    gap: 8px;
+  }
+  .cmp-metric-box {
+    background: rgba(15, 23, 42, 0.72);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 6px;
+    padding: 7px 8px;
+  }
+  .cmp-metric-label { font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; }
+  .cmp-metric-val { font-size: 12px; font-weight: 700; color: #f8fafc; margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+  .cmp-assumptions {
+    background: rgba(15, 23, 42, 0.55);
+    border-left: 2px solid #38bdf8;
+    padding: 7px 10px;
+    font-size: 10px;
+    color: #cbd5e1;
+    line-height: 1.45;
+  }
+  .cmp-assumptions ul { margin-left: 16px; margin-top: 4px; }
+
+  .cmp-trace-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 310px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  .cmp-trace-item {
+    display: grid;
+    grid-template-columns: 74px 1fr;
+    gap: 8px;
+    padding: 7px 8px;
+    border-radius: 6px;
+    background: rgba(15, 23, 42, 0.55);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    opacity: 0.45;
+    transition: opacity 0.18s ease, border-color 0.18s ease;
+  }
+  .cmp-trace-item.reached { opacity: 1; border-color: rgba(56, 189, 248, 0.35); }
+  .cmp-trace-item.suppressed { opacity: 0.65; border-style: dashed; }
+  .cmp-trace-time { font-size: 11px; font-weight: 700; color: #7dd3fc; font-variant-numeric: tabular-nums; }
+  .cmp-trace-title { font-size: 11px; font-weight: 700; color: #f8fafc; }
+  .cmp-trace-detail { font-size: 10px; color: #94a3b8; margin-top: 2px; line-height: 1.35; }
+  .cmp-trace-reason { font-size: 9px; font-weight: 700; color: #fde68a; margin-top: 3px; }
+
+  #cmp-graph-stage {
+    position: relative;
+    width: 100%;
+    height: 310px;
+    border-radius: 6px;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    background: radial-gradient(circle at 50% 45%, #10253b 0%, #071426 85%);
+    overflow: hidden;
+  }
+  #cmp-graph-stage svg, #cmp-graph-stage .cmp-nodes-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .cmp-tickets-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 185px;
+    overflow-y: auto;
+  }
+  .cmp-ticket-card {
+    background: rgba(15, 23, 42, 0.78);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-left: 3px solid #38bdf8;
+    border-radius: 5px;
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+  .cmp-ticket-card.critical { border-left-color: #ff2244; }
+  .cmp-ticket-card.defense { border-left-color: #00ff77; }
+  .cmp-ticket-card.canary { border-left-color: #f59e0b; }
+
+  #cmp-evidence-panel {
+    display: none;
+    background: rgba(9, 16, 24, 0.92);
+    border: 1px solid rgba(56, 189, 248, 0.28);
+    border-radius: 8px;
+    padding: 12px;
+  }
+  #cmp-evidence-panel.open { display: block; }
+  .cmp-evidence-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .cmp-ev-card {
+    background: rgba(15, 23, 42, 0.72);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 6px;
+    padding: 9px;
+    font-size: 10px;
+    color: #cbd5e1;
+    line-height: 1.45;
+  }
+  .cmp-ev-card strong { color: #e0f2fe; display: block; margin-bottom: 4px; }
+  .cmp-ev-card a { color: #38bdf8; }
+
+  @media (max-width: 980px) {
+    .cmp-lower-grid { grid-template-columns: 1fr; }
+    #comparison-workbench { padding: 10px 10px 24px; }
+  }
 </style>
 </head>
-<body>
+<body class="mode-comparison">
 
-<div id="viewport">
+<div id="comparison-workbench" aria-label="Pre-2023 vs ARTEX defense comparison">
+  <div class="cmp-topbar">
+    <div class="cmp-title-group">
+      <div class="cmp-title">PRE-2023 HUMAN-LED VS ARTEX &amp; FRIENDS · DEFENSE COMPARISON</div>
+      <div id="cmp-fixture-subtitle" class="cmp-subtitle">Fixed four-layer comparison estate · Modeled synthetic scenarios</div>
+    </div>
+    <div class="cmp-nav-actions">
+      <button id="view-comparison-btn" class="cmp-pill-btn active" type="button">COMPARISON DEMO</button>
+      <button id="view-exploratory-btn" class="cmp-pill-btn" type="button">EXPLORATORY INFRA</button>
+      <button id="cmp-toggle-combined-btn" class="cmp-pill-btn active" type="button" title="Show or hide optional Combined (SOC + Canary) comparison column">COMPARE COMBINED: ON</button>
+      <button id="cmp-evidence-btn" class="cmp-pill-btn" type="button">EVIDENCE &amp; NOTES</button>
+      <a href="index.html" class="cmp-pill-btn" title="Switch back to tabular view">TABLE VIEW ↗</a>
+    </div>
+  </div>
+
+  <div id="cmp-evidence-panel" aria-label="Evidence and fixture limits">
+    <div class="cmp-panel-head">
+      <span class="cmp-panel-title">FIELD CONTEXT &amp; FIXTURE LIMITS (SEPARATELY LABELED SOURCES)</span>
+      <button id="cmp-evidence-close" class="cmp-pill-btn" type="button">CLOSE</button>
+    </div>
+    <div class="cmp-evidence-grid">
+      <div class="cmp-ev-card">
+        <strong>Pre-2023 field context (external)</strong>
+        CrowdStrike reported mean eCrime breakout times of <b>98 min</b> (2021) and <b>84 min</b> (2022) from initial host compromise to first lateral movement. Mandiant reported 2022 median dwell of <b>16 days</b> (compromise to discovery).
+        <div style="margin-top:4px;"><a href="https://www.crowdstrike.com/wp-content/uploads/2023/05/CrowdStrike2023GlobalThreatReport.pdf#page=9" target="_blank" rel="noopener">CrowdStrike 2023 GTR</a> · <a href="https://cloud.google.com/blog/transform/m-trends-2023-lessons-cyberattack-frontlines" target="_blank" rel="noopener">Mandiant M-Trends 2023</a></div>
+      </div>
+      <div class="cmp-ev-card">
+        <strong>2023 onward field context (external)</strong>
+        CrowdStrike reported a <b>62 min</b> mean eCrime breakout and a <b>2 min 7 s</b> fastest observed breakout for 2023. Anthropic's 2025 case report illustrates agentic orchestration and concurrency with human supervision at critical decisions (neither quantifies AI's share of the breakout trend).
+        <div style="margin-top:4px;"><a href="https://www.crowdstrike.com/en-us/blog/crowdstrike-2024-global-threat-report/" target="_blank" rel="noopener">CrowdStrike 2024 GTR</a> · <a href="https://www.anthropic.com/news/disrupting-AI-espionage" target="_blank" rel="noopener">Anthropic campaign report</a></div>
+      </div>
+      <div class="cmp-ev-card">
+        <strong>Local ARTEX reference (guide figure)</strong>
+        The repository's executive demo guide reports approximately <b>75 seconds</b> of ARTEX deliberation for a four-hop local lab run (guide's local figure; not a general benchmark).
+      </div>
+      <div class="cmp-ev-card">
+        <strong>Wire fixture time (modeled)</strong>
+        All Wire timestamps, containment latencies, and review counts are <b>modeled synthetic fixture values</b>. No speed ratios are calculated between external field data, lab duration, and Wire scenario time.
+      </div>
+    </div>
+  </div>
+
+  <div class="cmp-controls-bar">
+    <div class="cmp-exercise-controls">
+      <div class="cmp-example-picker">
+        <label for="cmp-attack-example">Attack example</label>
+        <select id="cmp-attack-example" class="cmp-pill-btn" aria-describedby="cmp-example-note">
+          <option value="">Shared speed and capability exercises</option>
+          <option value="speed-covered-patch" data-name="LockBit">LockBit · Covered virtual patch</option>
+          <option value="speed-scope-mismatch" data-name="Conti">Conti · Containment scope</option>
+          <option value="speed-late-decoy" data-name="BlackCat">BlackCat · Late canary alert</option>
+          <option value="speed-untouched-decoy" data-name="Hive">Hive · Untouched canary</option>
+          <option value="speed-no-signal" data-name="REvil">REvil · No matching SOC signal</option>
+          <option value="speed-race" data-name="ARTEX">ARTEX · Response timing race</option>
+        </select>
+      </div>
+      <p id="cmp-example-note" class="cmp-subtitle">Each name opens a synthetic defense exercise. Both attacker workflows use the selected exercise.</p>
+      <div id="cmp-shared-exercises" class="cmp-fixture-group" role="group" aria-label="Shared speed and capability exercises">
+        <button class="cmp-pill-btn cmp-fixture-btn active" data-fixture="speed-race" aria-pressed="true" type="button">SPEED: TIMING RACE</button>
+        <button class="cmp-pill-btn cmp-fixture-btn" data-fixture="speed-covered-patch" aria-pressed="false" type="button">SPEED: COVERED PATCH</button>
+        <button class="cmp-pill-btn cmp-fixture-btn" data-fixture="capability-45s" aria-pressed="false" type="button">CAPABILITY: 45s WINDOW</button>
+        <button class="cmp-pill-btn cmp-fixture-btn" data-fixture="capability-denied" aria-pressed="false" type="button">CAPABILITY: ACCESS DENIED</button>
+      </div>
+    </div>
+    <div class="cmp-playback-group" aria-label="Shared playback controls">
+      <button id="cmp-play-btn" class="cmp-pill-btn active" type="button">PAUSE</button>
+      <button id="cmp-skip-btn" class="cmp-pill-btn" type="button">SKIP TO RESULTS</button>
+      <button id="cmp-restart-btn" class="cmp-pill-btn" type="button">RESTART</button>
+      <div class="cmp-clock-box" aria-label="Modeled elapsed time in hours, minutes, and seconds">
+        <span id="cmp-clock">00:00:00</span>
+        <span class="cmp-clock-unit">HH:MM:SS</span>
+        <span id="cmp-playback-status">MODELED TIME</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="cmp-matrix-wrap">
+    <table class="cmp-matrix" aria-label="Comparison matrix">
+      <thead>
+        <tr id="cmp-matrix-head"></tr>
+      </thead>
+      <tbody id="cmp-matrix-body"></tbody>
+    </table>
+  </div>
+
+  <div class="cmp-lower-grid">
+    <div id="cmp-detail-panel" class="cmp-panel" aria-label="Selected cell detail and chronological trace">
+      <div class="cmp-panel-head">
+        <span id="cmp-detail-title" class="cmp-panel-title">SELECTED CELL DETAIL</span>
+        <span id="cmp-detail-badge" class="cmp-badge noread">READY</span>
+      </div>
+      <div id="cmp-metrics-grid" class="cmp-metrics-grid"></div>
+      <div id="cmp-assumptions" class="cmp-assumptions"></div>
+      <div class="cmp-panel-title" style="font-size:11px;">CHRONOLOGICAL TRACE (MODELED TIMESTAMPS)</div>
+      <div id="cmp-trace-list" class="cmp-trace-list"></div>
+    </div>
+
+    <div class="cmp-panel" aria-label="Comparison wire topology and SOC tickets">
+      <div class="cmp-panel-head">
+        <span class="cmp-panel-title">FIXED 4-LAYER ESTATE &amp; LIVE TRACE</span>
+        <span id="cmp-graph-legend" style="font-size:10px;color:#94a3b8;">Click a cell to inspect its path</span>
+      </div>
+      <div id="cmp-graph-stage">
+        <svg id="cmp-wire-svg"></svg>
+        <div id="cmp-nodes-layer" class="cmp-nodes-layer"></div>
+      </div>
+      <div class="cmp-panel-title" style="font-size:11px;">SIMULATED SOC TICKETS (SELECTED RUN)</div>
+      <div id="cmp-tickets-list" class="cmp-tickets-list"></div>
+    </div>
+  </div>
+</div>
+
+<div id="viewport" class="exploratory-only">
   <div class="circuit-grid"></div>
+
+  <div id="attack-stopwatch" aria-label="Modeled attack and dwell stopwatch">
+    <div class="sw-head">
+      <span class="sw-label">MODELED CLOCK</span>
+      <button id="sw-model-btn" type="button" title="Switch the clock's pace estimate for this generated estate">PRE-2023 PACE</button>
+    </div>
+    <div id="sw-clock">0h 00m</div>
+    <div id="sw-dwell">DWELL 0h 00m · PRE-LATERAL</div>
+  </div>
 
   <!-- Top Bar: 4 Run Scenario Mode Buttons with Details + NEW RUN + Live HUD -->
   <div class="top-bar">
@@ -584,7 +1039,8 @@
       <button id="preset-btn" title="Cycle between Mixed Estate (may have 0 complete paths), Demo-Ready (intentional CVE 4-layer path), and Credential-in-Logs">
         <span>PRESET: MIXED</span>
       </button>
-      <div id="run-hud">READY · SELECT SCENARIO & RUN SIMULATION</div>
+      <button id="back-to-comparison-btn" class="cmp-pill-btn" type="button" title="Generated estate activity. Open Comparison Demo to select a named example.">CHOOSE ATTACK EXAMPLE ↗</button>
+      <div id="run-hud">GENERATED ACTIVITY · SELECT A DEFENSE</div>
     </div>
   </div>
 
@@ -860,6 +1316,7 @@ function resetInfraVisuals() {
   renderSocTickets();
   simulationGeneration++;
   clearAllActiveTimeouts();
+  resetStopwatch();
 
   svg.querySelectorAll('.attack-entry, .attack-entry-head, .wire-packet').forEach(el => el.remove());
   nodesLayer.querySelectorAll('.impact-burst').forEach(b => b.remove());
@@ -1029,7 +1486,7 @@ function runSimulationOnCurrentInfra() {
 
   const scn = DEFENSE_SCENARIOS[currentMode] || DEFENSE_SCENARIOS.baseline;
   runHud.className = '';
-  runHud.textContent = `[${scn.tag}] RUN #${String(runCount).padStart(2, '0')} · EVALUATING PREREQUISITES...`;
+  runHud.textContent = `GENERATED ACTIVITY · [${scn.tag}] RUN #${String(runCount).padStart(2, '0')} · EVALUATING PREREQUISITES...`;
 
   const simResult = simulateEstate(currentEstate, currentMode);
   window.lastSimSummary = simResult.summary;
@@ -1065,6 +1522,10 @@ function runSimulationOnCurrentInfra() {
       return;
     }
     const batch = nonEmptyBatches[idx];
+    const batchLayer = batch[0]?.node?.layerIdx ?? 0;
+    const hasLateralSuccess = batch.some(b => b.node.layerIdx >= 1 && b.ev.outcome === 'succeeded');
+    advanceStopwatchForLayer(batchLayer, hasLateralSuccess, generation);
+
     let remaining = batch.length;
     const complete = () => {
       if (generation !== simulationGeneration) return;
@@ -1122,6 +1583,7 @@ function finalizeSimulation(simResult) {
   window.runStats = runStats;
 
   const s = simResult.summary;
+  finalizeStopwatch(s);
   const scn = DEFENSE_SCENARIOS[currentMode] || DEFENSE_SCENARIOS.baseline;
   const presetTag = s.preset === 'logs' ? 'CRED-IN-LOGS' : 'DEMO-READY';
   const prefix = s.intentionalPathNote ? `[${scn.tag} · ${presetTag}]` : `[${scn.tag}]`;
@@ -1130,7 +1592,7 @@ function finalizeSimulation(simResult) {
     : s.truncated ? 'EXPLORATION INCOMPLETE' : 'NO MODELED DATA PATH FOUND';
 
   runHud.className = s.dataReached ? 'breached' : 'contained';
-  runHud.textContent = `${prefix} RUN #${String(runCount).padStart(2, '0')} · ${runStats.hits} COMPROMISED · ${runStats.blocks} CONTAINED · ${s.ineligibleTransitions} STOPPED · ${pathStatus}`;
+  runHud.textContent = `GENERATED ACTIVITY · ${prefix} RUN #${String(runCount).padStart(2, '0')} · ${runStats.hits} COMPROMISED · ${runStats.blocks} CONTAINED · ${s.ineligibleTransitions} STOPPED · ${pathStatus}`;
   if (s.truncated) runHud.textContent += ' · BUDGET TRUNCATED';
   if (currentMode === 'combined') {
     runHud.textContent += ` · WAF ${runStats.wafBlocks} / SOAR ${runStats.soarBlocks} / CANARY ${runStats.canaryBlocks}`;
@@ -1156,6 +1618,99 @@ function finalizeSimulation(simResult) {
   }
 }
 
+// Modeled elapsed and dwell times for the exploratory estate
+const STOPWATCH_MODELS = {
+  'pre-llm': { label: 'PRE-2023 PACE', layerMinutes: [84, 1440, 2880, 2880] }, // 01:24 breakout + 5d (120:00) dwell
+  'artex': { label: 'ARTEX PACE', layerMinutes: [1, 1, 2, 2] }              // ~1m initial + 5m agentic dwell
+};
+let stopwatchModel = 'pre-llm';
+let swTotalMin = 0;
+let swDwellMin = 0;
+let swLateralStarted = false;
+let swRafId = null;
+
+const stopwatchEl = document.getElementById('attack-stopwatch');
+const swClockEl = document.getElementById('sw-clock');
+const swDwellEl = document.getElementById('sw-dwell');
+const swModelBtn = document.getElementById('sw-model-btn');
+
+function formatHoursMinutes(totalMinutes) {
+  const mins = Math.max(0, Math.round(totalMinutes));
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${h}h ${String(m).padStart(2, '0')}m`;
+}
+
+function renderStopwatch(statusText = null) {
+  swClockEl.textContent = formatHoursMinutes(swTotalMin);
+  if (statusText) {
+    swDwellEl.textContent = statusText;
+  } else if (swLateralStarted) {
+    swDwellEl.textContent = `DWELL ${formatHoursMinutes(swDwellMin)} · LATERAL ACTIVE`;
+  } else {
+    swDwellEl.textContent = 'DWELL 0h 00m · PRE-LATERAL';
+  }
+}
+
+function resetStopwatch() {
+  if (swRafId) { cancelAnimationFrame(swRafId); swRafId = null; }
+  swTotalMin = 0;
+  swDwellMin = 0;
+  swLateralStarted = false;
+  stopwatchEl.classList.remove('lateral', 'stopped');
+  renderStopwatch();
+}
+
+function advanceStopwatchForLayer(layerIdx, hasLateralSuccess, gen) {
+  const cfg = STOPWATCH_MODELS[stopwatchModel] || STOPWATCH_MODELS['pre-llm'];
+  const delta = cfg.layerMinutes[layerIdx] || 0;
+  const startTotal = swTotalMin;
+  const startDwell = swDwellMin;
+  if (layerIdx >= 1 && hasLateralSuccess && !swLateralStarted) {
+    swLateralStarted = true;
+    stopwatchEl.classList.add('lateral');
+  }
+  const targetTotal = startTotal + delta;
+  const targetDwell = swLateralStarted ? startDwell + delta : 0;
+  const duration = 520;
+  const t0 = performance.now();
+
+  if (swRafId) cancelAnimationFrame(swRafId);
+  function tick(now) {
+    if (gen !== simulationGeneration) return;
+    const p = Math.min(1, (now - t0) / duration);
+    swTotalMin = startTotal + (targetTotal - startTotal) * p;
+    swDwellMin = swLateralStarted ? startDwell + (targetDwell - startDwell) * p : 0;
+    renderStopwatch();
+    if (p < 1) {
+      swRafId = requestAnimationFrame(tick);
+    } else {
+      swRafId = null;
+    }
+  }
+  swRafId = requestAnimationFrame(tick);
+}
+
+function finalizeStopwatch(summary) {
+  if (swRafId) { cancelAnimationFrame(swRafId); swRafId = null; }
+  if (!swLateralStarted) {
+    stopwatchEl.classList.add('stopped');
+    const suffix = summary.dataReached ? 'DATA REACHED' : 'NO LATERAL MOVE';
+    renderStopwatch(`DWELL 0h 00m · ${suffix}`);
+  } else {
+    const suffix = summary.dataReached ? 'DATA REACHED' : 'STOPPED';
+    if (!summary.dataReached) stopwatchEl.classList.add('stopped');
+    renderStopwatch(`DWELL ${formatHoursMinutes(swDwellMin)} · ${suffix}`);
+  }
+}
+
+swModelBtn.addEventListener('click', () => {
+  stopwatchModel = stopwatchModel === 'pre-llm' ? 'artex' : 'pre-llm';
+  swModelBtn.textContent = STOPWATCH_MODELS[stopwatchModel].label;
+  swModelBtn.classList.toggle('artex', stopwatchModel === 'artex');
+  runSimulationOnCurrentInfra();
+});
+
 const modeButtons = document.querySelectorAll('.mode-btn');
 modeButtons.forEach(btn => {
   btn.addEventListener('click', () => {
@@ -1176,10 +1731,459 @@ presetBtn.addEventListener('click', () => {
 newRunBtn.addEventListener('click', () => generateNewInfra());
 
 window.addEventListener('resize', () => {
+  if (document.body.classList.contains('mode-comparison')) {
+    renderComparisonGraphState(cmpCurrentTimeSec);
+    return;
+  }
   if (currentEstate) {
     layoutGraph(currentEstate);
     runSimulationOnCurrentInfra();
   }
+});
+
+// ---------------------------------------------------------------------------
+// Comparison Demo Workbench Controller
+// ---------------------------------------------------------------------------
+const {
+  COMPARISON_PROFILES,
+  COMPARISON_DEFENSES,
+  createComparisonEstate,
+  formatDurationSeconds,
+  formatSignedDelta,
+  evaluateComparisonMatrix
+} = window.WireEngine;
+
+let cmpSharedFixtureId = 'speed-race';
+let cmpProfileId = 'artex';
+let cmpDefenseId = 'soc';
+let cmpShowCombined = true;
+let cmpMatrixData = null;
+
+let cmpPlaybackGen = 0;
+let cmpRafId = null;
+let cmpIsPlaying = false;
+let cmpCurrentTimeSec = 0;
+let cmpMaxTimeSec = 90;
+let cmpAnimProgress = 0; // 0..1
+const CMP_ANIM_DURATION_MS = 4200;
+
+const cmpMatrixHead = document.getElementById('cmp-matrix-head');
+const cmpMatrixBody = document.getElementById('cmp-matrix-body');
+const cmpDetailTitle = document.getElementById('cmp-detail-title');
+const cmpDetailBadge = document.getElementById('cmp-detail-badge');
+const cmpMetricsGrid = document.getElementById('cmp-metrics-grid');
+const cmpAssumptions = document.getElementById('cmp-assumptions');
+const cmpTraceList = document.getElementById('cmp-trace-list');
+const cmpTicketsList = document.getElementById('cmp-tickets-list');
+const cmpClockEl = document.getElementById('cmp-clock');
+const cmpPlaybackStatus = document.getElementById('cmp-playback-status');
+const cmpPlayBtn = document.getElementById('cmp-play-btn');
+const cmpSkipBtn = document.getElementById('cmp-skip-btn');
+const cmpRestartBtn = document.getElementById('cmp-restart-btn');
+const cmpToggleCombinedBtn = document.getElementById('cmp-toggle-combined-btn');
+const cmpEvidenceBtn = document.getElementById('cmp-evidence-btn');
+const cmpEvidencePanel = document.getElementById('cmp-evidence-panel');
+const cmpEvidenceClose = document.getElementById('cmp-evidence-close');
+const cmpFixtureSubtitle = document.getElementById('cmp-fixture-subtitle');
+const cmpAttackExample = document.getElementById('cmp-attack-example');
+const cmpSharedExercises = document.getElementById('cmp-shared-exercises');
+const cmpFixtureButtons = cmpSharedExercises.querySelectorAll('.cmp-fixture-btn');
+const cmpGraphStage = document.getElementById('cmp-graph-stage');
+const cmpWireSvg = document.getElementById('cmp-wire-svg');
+const cmpNodesLayer = document.getElementById('cmp-nodes-layer');
+
+function clearComparisonPlayback() {
+  cmpPlaybackGen += 1;
+  if (cmpRafId) {
+    cancelAnimationFrame(cmpRafId);
+    cmpRafId = null;
+  }
+  cmpIsPlaying = false;
+  cmpTicketsList.innerHTML = '';
+}
+
+function getSelectedComparisonCell() {
+  return cmpMatrixData?.cells?.[cmpProfileId]?.[cmpDefenseId] || null;
+}
+
+function formatCellOutcomeBadge(cell) {
+  if (cell.protectedReadReached) {
+    return { cls: 'read', text: `PROTECTED READ · ${formatDurationSeconds(cell.protectedReadTimeSec)}` };
+  }
+  if (cell.accessDeniedObserved) {
+    return { cls: 'noread', text: 'ACCESS DENIED' };
+  }
+  if (cell.baselineProtectedReadSec !== null && cell.effectiveControlTimeSec !== null) {
+    return { cls: 'prevented', text: 'PREVENTED' };
+  }
+  return { cls: 'noread', text: 'NO PROTECTED READ' };
+}
+
+function renderComparisonMatrix() {
+  const example = cmpAttackExample.selectedOptions[0];
+  cmpMatrixData = evaluateComparisonMatrix(example.value || cmpSharedFixtureId);
+  const fixture = cmpMatrixData.fixture;
+  cmpFixtureSubtitle.textContent = example.value
+    ? `${example.dataset.name} exercise · ${fixture.subtitle}`
+    : fixture.subtitle;
+  cmpSharedExercises.hidden = Boolean(example.value);
+  cmpFixtureButtons.forEach(button => {
+    const selected = button.dataset.fixture === cmpSharedFixtureId;
+    button.classList.toggle('active', selected);
+    button.setAttribute('aria-pressed', String(selected));
+  });
+
+  const defenses = cmpShowCombined
+    ? ['baseline', 'patch', 'soc', 'canaries', 'combined']
+    : ['baseline', 'patch', 'soc', 'canaries'];
+
+  cmpMatrixHead.innerHTML = `
+    <th class="cmp-row-head">Attacker workflow</th>
+    ${defenses.map(d => `<th>${COMPARISON_DEFENSES[d].label}</th>`).join('')}
+  `;
+
+  cmpMatrixBody.innerHTML = ['pre2023', 'artex'].map(profileId => {
+    const profile = COMPARISON_PROFILES[profileId];
+    const cellsHtml = defenses.map(defenseId => {
+      const cell = cmpMatrixData.cells[profileId][defenseId];
+      const badge = formatCellOutcomeBadge(cell);
+      const isSelected = profileId === cmpProfileId && defenseId === cmpDefenseId;
+      const alertLine = cell.firstAlertTimeSec !== null
+        ? `Alert: ${formatDurationSeconds(cell.firstAlertTimeSec)} (${cell.firstAlertSource === 'virtual_patch' ? 'WAF' : cell.firstAlertSource === 'canary' ? 'Canary' : 'SOC'})`
+        : 'Alert: None';
+      const controlLine = cell.effectiveControlTimeSec !== null
+        ? `Effective: ${formatDurationSeconds(cell.effectiveControlTimeSec)}`
+        : 'Effective: None';
+      const extraLine = cell.fixtureKind === 'capability'
+        ? `${cell.opportunitiesReviewed} reviewed · ${cell.concurrentReviews} concurrent · ${cell.manualHandoffs} handoff`
+        : `Margin: ${formatSignedDelta(cell.responseMarginSec)} · Lead: ${formatSignedDelta(cell.detectionLeadTimeSec)}`;
+
+      return `
+        <td>
+          <button class="cmp-cell ${isSelected ? 'selected' : ''}" data-profile="${profileId}" data-defense="${defenseId}" type="button">
+            <span class="cmp-badge ${badge.cls}">${badge.text}</span>
+            <span class="cmp-cell-line">${alertLine}</span>
+            <span class="cmp-cell-line">${controlLine}</span>
+            <span class="cmp-cell-reason">${cell.controlReason}</span>
+            <span class="cmp-cell-meta">${extraLine}</span>
+          </button>
+        </td>
+      `;
+    }).join('');
+
+    return `
+      <tr>
+        <th class="cmp-row-head">
+          <div class="cmp-row-title">${profile.label}</div>
+          <div class="cmp-row-desc">${profile.description}</div>
+        </th>
+        ${cellsHtml}
+      </tr>
+    `;
+  }).join('');
+
+  cmpMatrixBody.querySelectorAll('.cmp-cell').forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectComparisonCell(btn.dataset.profile, btn.dataset.defense);
+    });
+  });
+}
+
+function renderSelectedCellDetail() {
+  const cell = getSelectedComparisonCell();
+  if (!cell) return;
+
+  cmpDetailTitle.textContent = `${cell.profileLabel.toUpperCase()} × ${cell.defenseLabel.toUpperCase()}`;
+  const badge = formatCellOutcomeBadge(cell);
+  cmpDetailBadge.className = `cmp-badge ${badge.cls}`;
+  cmpDetailBadge.textContent = badge.text;
+
+  const metrics = [
+    { label: 'Protected Read', val: cell.protectedReadReached ? formatDurationSeconds(cell.protectedReadTimeSec) : 'Not reached' },
+    { label: 'First Alert', val: cell.firstAlertTimeSec !== null ? `${formatDurationSeconds(cell.firstAlertTimeSec)} (${cell.firstAlertSource})` : 'Unavailable' },
+    { label: 'Effective Control', val: cell.effectiveControlTimeSec !== null ? formatDurationSeconds(cell.effectiveControlTimeSec) : 'None' },
+    { label: 'Response Margin', val: formatSignedDelta(cell.responseMarginSec) },
+    { label: 'Detection Lead', val: formatSignedDelta(cell.detectionLeadTimeSec) },
+    { label: 'Control Reason', val: cell.controlReason }
+  ];
+
+  if (cell.telemetryTimeSec !== null || cell.defenseId === 'soc' || cell.defenseId === 'combined') {
+    metrics.push(
+      { label: 'SOC Telemetry', val: formatDurationSeconds(cell.telemetryTimeSec) },
+      { label: 'SOC Decision', val: formatDurationSeconds(cell.decisionTimeSec) },
+      { label: 'SOC Enforcement', val: formatDurationSeconds(cell.enforcementTimeSec) }
+    );
+    if (cell.enforcementTimeSec === null && cell.scheduledEnforcementTimeSec !== null) {
+      metrics.push({ label: 'SOC Scheduled Enforcement', val: formatDurationSeconds(cell.scheduledEnforcementTimeSec) });
+    }
+  }
+
+  if (cell.fixtureKind === 'capability') {
+    metrics.push(
+      { label: 'Opportunities (Scenario)', val: `${cell.opportunitiesReviewed} / 3 reviewed` },
+      { label: 'Concurrent (Scenario)', val: `${cell.concurrentReviews} parallel` },
+      { label: 'Manual Handoffs', val: `${cell.manualHandoffs}` }
+    );
+  }
+
+  cmpMetricsGrid.innerHTML = metrics.map(m => `
+    <div class="cmp-metric-box">
+      <div class="cmp-metric-label">${m.label}</div>
+      <div class="cmp-metric-val">${m.val}</div>
+    </div>
+  `).join('');
+
+  cmpAssumptions.innerHTML = `
+    <strong>Assumptions behind this cell:</strong>
+    <ul>${(cell.assumptions || []).map(a => `<li>${a}</li>`).join('')}</ul>
+  `;
+
+  cmpTraceList.innerHTML = cell.trace.map((ev, idx) => `
+    <div class="cmp-trace-item ${ev.outcome === 'suppressed' ? 'suppressed' : ''}" data-trace-idx="${idx}" data-time-sec="${ev.timeSec}">
+      <div class="cmp-trace-time">${formatDurationSeconds(ev.timeSec)}</div>
+      <div>
+        <div class="cmp-trace-title">${ev.title}</div>
+        <div class="cmp-trace-detail">${ev.detail}</div>
+        <div class="cmp-trace-reason">${ev.reason}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderComparisonGraphState(currentSec) {
+  const cell = getSelectedComparisonCell();
+  const estate = cmpMatrixData?.estate;
+  if (!cell || !estate) return;
+
+  const rect = cmpGraphStage.getBoundingClientRect();
+  const w = Math.max(300, rect.width || 520);
+  const h = Math.max(240, rect.height || 310);
+  cmpWireSvg.innerHTML = '';
+  cmpNodesLayer.innerHTML = '';
+
+  const activeEvents = cell.trace.filter(e => e.timeSec <= currentSec && e.outcome !== 'suppressed');
+  const assetOutcome = new Map();
+  const relationshipOutcomes = new Map();
+  for (const ev of activeEvents) {
+    if (ev.relationshipId) relationshipOutcomes.set(ev.relationshipId, ev.outcome);
+    if (!ev.assetId) continue;
+    if (ev.outcome === 'blocked' || ev.outcome === 'enforced' || ev.outcome === 'denied') {
+      assetOutcome.set(ev.assetId, 'defended');
+    } else if (ev.outcome === 'alert') {
+      if (assetOutcome.get(ev.assetId) !== 'defended') assetOutcome.set(ev.assetId, 'canary');
+    } else if (ev.outcome === 'succeeded') {
+      if (!assetOutcome.has(ev.assetId)) assetOutcome.set(ev.assetId, 'hit');
+    }
+  }
+
+  const nodePos = new Map();
+  estate.assets.forEach(a => {
+    nodePos.set(a.id, {
+      ...a,
+      px: 44 + a.x * (w - 88),
+      py: 34 + a.y * (h - 74)
+    });
+  });
+
+  estate.relationships.forEach(rel => {
+    const s = nodePos.get(rel.sourceId);
+    const t = nodePos.get(rel.targetId);
+    if (!s || !t) return;
+    const dx = Math.abs(t.px - s.px) * 0.5;
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', `M ${s.px} ${s.py} C ${s.px + dx} ${s.py}, ${t.px - dx} ${t.py}, ${t.px} ${t.py}`);
+    let cls = 'wire';
+    const outcome = relationshipOutcomes.get(rel.id);
+    if (outcome === 'blocked' || outcome === 'enforced' || outcome === 'denied') {
+      cls += ' defended-wire';
+    } else if (outcome === 'succeeded' || outcome === 'alert') {
+      cls += ' hit-wire';
+    }
+    path.setAttribute('class', cls);
+    cmpWireSvg.appendChild(path);
+  });
+
+  nodePos.forEach(node => {
+    const state = assetOutcome.get(node.id);
+    const el = document.createElement('div');
+    el.className = 'node' + (state === 'hit' ? ' hit' : state === 'defended' ? ' defended' : state === 'canary' ? ' canary' : node.isDecoyAsset ? ' canary' : '');
+    el.style.left = `${node.px}px`;
+    el.style.top = `${node.py}px`;
+    el.innerHTML = `
+      <div class="node-icon-wrapper">
+        <div class="node-halo"></div>
+        <div class="node-icon" style="-webkit-mask-image: url('${ICON_BASE}${node.icon}'); mask-image: url('${ICON_BASE}${node.icon}');"></div>
+      </div>
+      <div class="node-label">${node.label}</div>
+    `;
+    cmpNodesLayer.appendChild(el);
+  });
+
+  // Sync trace item highlights
+  cmpTraceList.querySelectorAll('.cmp-trace-item').forEach(el => {
+    const t = Number(el.dataset.timeSec || 0);
+    el.classList.toggle('reached', t <= currentSec);
+  });
+
+  // Sync SOC tickets up to currentSec
+  const ticketEvents = activeEvents.filter(ev =>
+    ev.outcome === 'blocked' || ev.outcome === 'enforced' || ev.outcome === 'denied' ||
+    ev.outcome === 'alert' || ev.isProtectedRead || ev.isBoundaryCrossing
+  );
+  cmpTicketsList.innerHTML = ticketEvents.length
+    ? ticketEvents.map(ev => {
+      const cls = ev.outcome === 'blocked' || ev.outcome === 'enforced' || ev.outcome === 'denied'
+        ? 'defense'
+        : ev.outcome === 'alert'
+          ? 'canary'
+          : ev.isProtectedRead ? 'critical' : '';
+      return `
+        <div class="cmp-ticket-card ${cls}">
+          <div><strong>${formatDurationSeconds(ev.timeSec)}</strong> · ${ev.title}</div>
+          <div style="color:#94a3b8;margin-top:2px;">${ev.reason}</div>
+        </div>
+      `;
+    }).join('')
+    : '<div style="font-size:10px;color:#64748b;">No alerts or tickets emitted yet at current playback timestamp.</div>';
+}
+
+function updateComparisonClockAndFrame(timeSec) {
+  cmpCurrentTimeSec = timeSec;
+  cmpClockEl.textContent = formatDurationSeconds(timeSec);
+  renderComparisonGraphState(timeSec);
+}
+
+function startComparisonPlayback(fromStart = false) {
+  const cell = getSelectedComparisonCell();
+  if (!cell) return;
+  if (fromStart) {
+    clearComparisonPlayback();
+    cmpAnimProgress = 0;
+    updateComparisonClockAndFrame(0);
+  } else if (cmpRafId) {
+    cancelAnimationFrame(cmpRafId);
+    cmpRafId = null;
+  }
+
+  const times = cell.trace.map(e => e.timeSec);
+  cmpMaxTimeSec = Math.max(cell.cutoffSec || 0, ...times, 1);
+  cmpIsPlaying = true;
+  cmpPlayBtn.textContent = 'PAUSE';
+  cmpPlayBtn.classList.add('active');
+  cmpPlaybackStatus.textContent = 'PLAYING';
+
+  const gen = cmpPlaybackGen;
+  const startProgress = cmpAnimProgress >= 1 ? 0 : cmpAnimProgress;
+  const t0 = performance.now();
+
+  function stepPlayback(now) {
+    if (gen !== cmpPlaybackGen || !cmpIsPlaying) return;
+    const elapsed = now - t0;
+    cmpAnimProgress = Math.min(1, startProgress + elapsed / CMP_ANIM_DURATION_MS);
+    const simSec = cmpAnimProgress * cmpMaxTimeSec;
+    updateComparisonClockAndFrame(simSec);
+    if (cmpAnimProgress < 1) {
+      cmpRafId = requestAnimationFrame(stepPlayback);
+    } else {
+      cmpIsPlaying = false;
+      cmpRafId = null;
+      cmpPlayBtn.textContent = 'PLAY';
+      cmpPlayBtn.classList.remove('active');
+      cmpPlaybackStatus.textContent = 'COMPLETE';
+    }
+  }
+  cmpRafId = requestAnimationFrame(stepPlayback);
+}
+
+function pauseComparisonPlayback() {
+  cmpIsPlaying = false;
+  if (cmpRafId) {
+    cancelAnimationFrame(cmpRafId);
+    cmpRafId = null;
+  }
+  cmpPlayBtn.textContent = 'PLAY';
+  cmpPlayBtn.classList.remove('active');
+  cmpPlaybackStatus.textContent = 'PAUSED';
+}
+
+function skipComparisonPlayback() {
+  const cell = getSelectedComparisonCell();
+  if (!cell) return;
+  clearComparisonPlayback();
+  const times = cell.trace.map(e => e.timeSec);
+  cmpMaxTimeSec = Math.max(cell.cutoffSec || 0, ...times, 1);
+  cmpAnimProgress = 1;
+  cmpPlayBtn.textContent = 'PLAY';
+  cmpPlayBtn.classList.remove('active');
+  cmpPlaybackStatus.textContent = 'COMPLETE';
+  updateComparisonClockAndFrame(cmpMaxTimeSec);
+}
+
+function selectComparisonCell(profileId, defenseId) {
+  cmpProfileId = profileId;
+  cmpDefenseId = defenseId;
+  renderComparisonMatrix();
+  renderSelectedCellDetail();
+  startComparisonPlayback(true);
+}
+
+function replayComparisonExercise() {
+  renderComparisonMatrix();
+  renderSelectedCellDetail();
+  startComparisonPlayback(true);
+}
+
+function setViewMode(mode) {
+  if (mode === 'exploratory') {
+    clearComparisonPlayback();
+    document.body.classList.remove('mode-comparison');
+    document.body.classList.add('mode-exploratory');
+    if (!currentEstate) {
+      generateNewInfra();
+    } else {
+      layoutGraph(currentEstate);
+      runSimulationOnCurrentInfra();
+    }
+  } else {
+    clearAllActiveTimeouts();
+    document.body.classList.remove('mode-exploratory');
+    document.body.classList.add('mode-comparison');
+    renderComparisonMatrix();
+    renderSelectedCellDetail();
+    startComparisonPlayback(true);
+  }
+}
+
+cmpAttackExample.addEventListener('change', replayComparisonExercise);
+cmpFixtureButtons.forEach(button => {
+  button.addEventListener('click', () => {
+    cmpSharedFixtureId = button.dataset.fixture;
+    replayComparisonExercise();
+  });
+});
+cmpPlayBtn.addEventListener('click', () => {
+  if (cmpIsPlaying) pauseComparisonPlayback();
+  else startComparisonPlayback(cmpAnimProgress >= 1);
+});
+cmpSkipBtn.addEventListener('click', skipComparisonPlayback);
+cmpRestartBtn.addEventListener('click', () => startComparisonPlayback(true));
+cmpToggleCombinedBtn.addEventListener('click', () => {
+  cmpShowCombined = !cmpShowCombined;
+  cmpToggleCombinedBtn.classList.toggle('active', cmpShowCombined);
+  cmpToggleCombinedBtn.textContent = `COMPARE COMBINED: ${cmpShowCombined ? 'ON' : 'OFF'}`;
+  if (!cmpShowCombined && cmpDefenseId === 'combined') {
+    selectComparisonCell(cmpProfileId, 'soc');
+    return;
+  }
+  renderComparisonMatrix();
+});
+cmpEvidenceBtn.addEventListener('click', () => cmpEvidencePanel.classList.toggle('open'));
+cmpEvidenceClose.addEventListener('click', () => cmpEvidencePanel.classList.remove('open'));
+document.getElementById('view-exploratory-btn').addEventListener('click', () => setViewMode('exploratory'));
+document.getElementById('view-comparison-btn').addEventListener('click', () => setViewMode('comparison'));
+document.getElementById('back-to-comparison-btn').addEventListener('click', () => {
+  setViewMode('comparison');
+  cmpAttackExample.focus();
 });
 
 window.addEventListener('load', () => {
@@ -1194,9 +2198,14 @@ window.addEventListener('load', () => {
     updatePresetButton();
 
     const snapshot = JSON.parse(localStorage.getItem(INFRA_STORAGE_KEY));
-    if (snapshot) { restoreInfra(snapshot); return; }
+    if (snapshot) {
+      const res = migrateSnapshot(snapshot);
+      if (res.ok) currentEstate = res.estate;
+    }
   } catch (e) { console.warn('Unable to restore infrastructure', e); }
-  generateNewInfra();
+
+  // Start in Comparison Demo mode by default
+  setViewMode('comparison');
 });
 </script>
 </body>

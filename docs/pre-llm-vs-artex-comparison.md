@@ -92,3 +92,14 @@ Across broader external evaluations (arXiv / Unit 42), LLM inference typically a
 1. **Rate-limiting alone fails on chained API attacks:** A 4-hop ARTEX traversal can complete in 4 discrete requests (~88.6 ms network time, ~75 s total deliberation), staying well below volumetric SIEM thresholds.
 2. **Human SOC triage is too slow:** Pre-2023 breaches already moved laterally in ~84 minutes; agentic hops resolve in seconds. Containment requires **virtual patching** at the ingress proxy (`< 10 ms`) and **automated behavioral/SOAR revocation** (`< 20 ms`).
 3. **Hunt for agentic artifacts & trust-boundary abuse:** Monitor for `artx-*` / `artex-probe-*` naming, anomalous User-Agents, exposed OpenAPI/source-map files, and cross-service token reuse rather than relying solely on malware/ransomware file signatures.
+
+---
+
+## 5. Evidence, Fixture Limits, and Wire Comparison
+
+The Wire diagram's **Comparison Demo** models two controlled comparisons over a fixed four-layer comparison estate (`js/wire-engine.js`, `wire.html`):
+
+* **Pre-2023 field context (external):** CrowdStrike reported mean interactive eCrime breakout times of **98 minutes** (2021) and **84 minutes** (2022) from initial host compromise to first lateral movement ([CrowdStrike 2023 Global Threat Report, p. 9](https://www.crowdstrike.com/wp-content/uploads/2023/05/CrowdStrike2023GlobalThreatReport.pdf#page=9)). Mandiant reported a 2022 median dwell of **16 days** from compromise to discovery ([Mandiant M-Trends 2023](https://cloud.google.com/blog/transform/m-trends-2023-lessons-cyberattack-frontlines)).
+* **2023 onward field context (external):** CrowdStrike reported a **62-minute** mean eCrime breakout and a **2 minutes 7 seconds** fastest observed breakout for 2023 ([CrowdStrike 2024 GTR overview](https://www.crowdstrike.com/en-us/blog/crowdstrike-2024-global-threat-report/)). Anthropic's 2025 campaign report illustrates agentic orchestration and concurrency with human supervision at critical decisions ([Anthropic campaign report](https://www.anthropic.com/news/disrupting-AI-espionage)). Neither source quantifies AI's share of the breakout trend or supplies a comparable average time to a protected read.
+* **Local ARTEX reference (guide figure):** The repository's [executive demo guide](artex_executive_demo_guide.md) reports approximately **75 seconds** of ARTEX deliberation for a four-hop lab run. Treat this as a local guide figure, not a general benchmark.
+* **Wire fixture limits (modeled):** All Wire timestamps, 60-second containment latencies, 45-second capability budgets, and review counts are **synthetic acceptance fixtures** running entirely in-browser. Historical breakout, dwell, local lab duration, and Wire scenario times are kept in separately labeled fields without computing speed ratios across sources.

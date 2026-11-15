@@ -464,7 +464,7 @@
     if (estate.schemaVersion !== SCHEMA_VERSION) {
       errors.push(`Expected schemaVersion ${SCHEMA_VERSION}, got ${estate.schemaVersion}`);
     }
-    if (!['mixed', 'demo', 'logs'].includes(estate.preset)) {
+    if (!['mixed', 'demo', 'logs', 'comparison'].includes(estate.preset)) {
       errors.push(`Invalid preset: ${estate.preset}`);
     }
     if (!Array.isArray(estate.assets)) errors.push('assets must be an array');
@@ -1572,6 +1572,1046 @@
     };
   }
 
+  // ---------------------------------------------------------------------------
+  // Fixed Comparison Mode: Pre-2023 Human-Led vs ARTEX & Friends
+  // ---------------------------------------------------------------------------
+  const COMPARISON_PROFILES = {
+    pre2023: {
+      id: 'pre2023',
+      label: 'Pre-2023 human-led',
+      shortLabel: 'PRE-2023',
+      description: 'Human-led operations using scripts, automation, valid credentials, and operator handoffs.'
+    },
+    artex: {
+      id: 'artex',
+      label: 'ARTEX & Friends',
+      shortLabel: 'ARTEX',
+      description: 'Agentic operations with faster pace, concurrent opportunity review, and context-dependent continuation.'
+    }
+  };
+
+  const COMPARISON_DEFENSES = {
+    baseline: { id: 'baseline', label: 'Baseline', shortLabel: 'BASELINE' },
+    patch: { id: 'patch', label: 'Virtual Patching', shortLabel: 'VIRTUAL PATCH' },
+    soc: { id: 'soc', label: 'Agentic SOC', shortLabel: 'AGENTIC SOC' },
+    canaries: { id: 'canaries', label: 'Canaries', shortLabel: 'CANARIES' },
+    combined: { id: 'combined', label: 'Combined (SOC + Canary)', shortLabel: 'COMBINED' }
+  };
+
+  function createComparisonEstate() {
+    const estate = {
+      schemaVersion: SCHEMA_VERSION,
+      seed: 20261115,
+      preset: 'comparison',
+      intentionalPathNote: 'FIXED COMPARISON ESTATE: identical four-layer estate, exposures, access rules, and protected record across all comparison runs.',
+      assets: [
+        {
+          id: 'cmp-edge',
+          groupId: 'f5-gateway',
+          label: 'Ingress Gateway',
+          product: 'F5 BIG-IP',
+          assumedVersion: '16.1.0',
+          layerIdx: 0,
+          trustZone: 'internet-dmz',
+          interfaces: ['https'],
+          auth: 'token',
+          isExternalEntry: true,
+          x: 0.14,
+          y: 0.48
+        },
+        {
+          id: 'cmp-api',
+          groupId: 'cust-api',
+          label: 'API Boundary',
+          product: 'WSO2 API Manager',
+          assumedVersion: '3.2.0',
+          layerIdx: 1,
+          trustZone: 'identity-edge',
+          interfaces: ['api-https', 'https'],
+          auth: 'token',
+          isExternalEntry: false,
+          x: 0.38,
+          y: 0.34
+        },
+        {
+          id: 'cmp-gw2',
+          groupId: 'wso2-api',
+          label: 'Service Gateway',
+          product: 'WSO2 Gateway',
+          assumedVersion: '3.2.0',
+          layerIdx: 1,
+          trustZone: 'identity-edge',
+          interfaces: ['api-https', 'https'],
+          auth: 'token',
+          isExternalEntry: false,
+          x: 0.38,
+          y: 0.68
+        },
+        {
+          id: 'cmp-app',
+          groupId: 'app-engine',
+          label: 'Core App Service',
+          product: 'Spring Framework',
+          assumedVersion: '5.3.17',
+          layerIdx: 2,
+          trustZone: 'internal-mesh',
+          interfaces: ['api-https', 'https'],
+          auth: 'token',
+          isExternalEntry: false,
+          x: 0.63,
+          y: 0.34
+        },
+        {
+          id: 'cmp-svc',
+          groupId: 'spring-svc',
+          label: 'Workflow Service',
+          product: 'Order Workflow',
+          assumedVersion: '5.3.17',
+          layerIdx: 2,
+          trustZone: 'internal-mesh',
+          interfaces: ['api-https', 'https'],
+          auth: 'token',
+          isExternalEntry: false,
+          x: 0.63,
+          y: 0.68
+        },
+        {
+          id: 'cmp-data',
+          groupId: 'db-rds',
+          label: 'Sensitive Record Store',
+          product: 'PostgreSQL RDS',
+          assumedVersion: '14.9',
+          layerIdx: 3,
+          trustZone: 'data-tier',
+          interfaces: ['db-pg'],
+          auth: 'db_credential',
+          isExternalEntry: false,
+          isProtectedRecord: true,
+          x: 0.86,
+          y: 0.34
+        },
+        {
+          id: 'cmp-decoy',
+          groupId: 'nosql-doc',
+          label: 'Canary Decoy Asset',
+          product: 'Decoy Document Store',
+          assumedVersion: '1.0',
+          layerIdx: 3,
+          trustZone: 'data-tier',
+          interfaces: ['api-https', 'https'],
+          auth: 'token',
+          isExternalEntry: false,
+          isDecoyAsset: true,
+          x: 0.86,
+          y: 0.68
+        }
+      ],
+      findings: [
+        {
+          id: 'cmp-f-edge',
+          assetId: 'cmp-edge',
+          kind: 'cve',
+          cveId: 'CVE-2022-1388',
+          requiredProduct: 'F5 BIG-IP',
+          affectedVersions: ['16.1.0'],
+          requiredConditions: { managementReachable: true },
+          sourceUrl: 'https://www.cisa.gov/sites/default/files/publications/AA22-138A-Threat_Actors_Exploiting_F5_BIG-IP_CVE-2022-1388_F5.pdf',
+          sourceReviewed: true,
+          requiredInterface: 'https',
+          yieldsCapability: 'app_exec'
+        },
+        {
+          id: 'cmp-f-api',
+          assetId: 'cmp-api',
+          kind: 'cve',
+          cveId: 'CVE-2022-29464',
+          requiredProduct: 'WSO2 API Manager',
+          affectedVersions: ['3.2.0'],
+          requiredConditions: { uploadEndpointReachable: true, executableUpload: true },
+          sourceUrl: 'https://www.cisa.gov/sites/default/files/2023-08/aa23-215a_joint_csa_2022_top_routinely_exploited_vulnerabilities.pdf',
+          sourceReviewed: true,
+          requiredInterface: 'api-https',
+          yieldsCapability: 'app_exec'
+        },
+        {
+          id: 'cmp-f-app',
+          assetId: 'cmp-app',
+          kind: 'cve',
+          cveId: 'CVE-2022-22965',
+          requiredProduct: 'Spring Framework',
+          affectedVersions: ['5.3.17'],
+          requiredConditions: { jdk9Plus: true, tomcatVulnerable: true, warDeployment: true, mvcDataBinding: true },
+          sourceUrl: 'https://spring.io/security/cve-2022-22965/',
+          sourceReviewed: true,
+          requiredInterface: 'api-https',
+          yieldsCapability: 'app_exec'
+        }
+      ],
+      credentials: [
+        {
+          id: 'cmp-cred-db',
+          kind: 'db_credential',
+          label: 'app-db-read',
+          scope: 'read',
+          targetGroupIds: ['db-rds'],
+          targetAssetIds: ['cmp-data'],
+          revoked: false,
+          expired: false,
+          mfaRequired: false,
+          sourceAssetId: 'cmp-app',
+          requiredSourceCapability: 'app_exec'
+        }
+      ],
+      relationships: [
+        { id: 'cmp-r-edge-api', sourceId: 'cmp-edge', targetId: 'cmp-api', protocol: 'api-https', direction: 'outbound', requiredSourceCapability: 'app_exec' },
+        { id: 'cmp-r-edge-gw2', sourceId: 'cmp-edge', targetId: 'cmp-gw2', protocol: 'api-https', direction: 'outbound', requiredSourceCapability: 'app_exec' },
+        { id: 'cmp-r-api-app', sourceId: 'cmp-api', targetId: 'cmp-app', protocol: 'api-https', direction: 'outbound', requiredSourceCapability: 'app_exec' },
+        { id: 'cmp-r-api-svc', sourceId: 'cmp-api', targetId: 'cmp-svc', protocol: 'api-https', direction: 'outbound', requiredSourceCapability: 'app_exec' },
+        { id: 'cmp-r-app-data', sourceId: 'cmp-app', targetId: 'cmp-data', protocol: 'db-pg', direction: 'outbound', requiredSourceCapability: 'app_exec' },
+        { id: 'cmp-r-svc-decoy', sourceId: 'cmp-svc', targetId: 'cmp-decoy', protocol: 'api-https', direction: 'outbound', requiredSourceCapability: 'app_exec' }
+      ],
+      actionOrder: ['cmp-edge', 'cmp-api', 'cmp-gw2', 'cmp-app', 'cmp-svc', 'cmp-data', 'cmp-decoy']
+    };
+    estate.assets.forEach(a => {
+      const td = getTargetDef(a.groupId);
+      a.icon = td?.def?.icon || 'application.png';
+    });
+    return estate;
+  }
+
+  function formatDurationSeconds(totalSeconds) {
+    if (totalSeconds === null || totalSeconds === undefined || Number.isNaN(totalSeconds)) return 'N/A';
+    const secs = Math.max(0, Math.round(totalSeconds));
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+
+  function formatSignedDelta(deltaSeconds) {
+    if (deltaSeconds === null || deltaSeconds === undefined || Number.isNaN(deltaSeconds)) return 'Unavailable';
+    const sign = deltaSeconds > 0 ? '+' : deltaSeconds < 0 ? '−' : '';
+    const abs = Math.abs(Math.round(deltaSeconds));
+    if (abs >= 60 && abs % 60 === 0) {
+      return `${sign}${abs / 60} min`;
+    }
+    if (abs >= 120) {
+      const mins = Math.floor(abs / 60);
+      const rem = abs % 60;
+      return rem === 0 ? `${sign}${mins} min` : `${sign}${mins}m ${rem}s`;
+    }
+    return `${sign}${abs} s`;
+  }
+
+  function buildSpeedEvents({
+    ingressTime = 0,
+    decoyTime = 600,
+    boundaryTime = 5400,
+    lateralTime = 6300,
+    protectedReadTime = 7200,
+    patchCovered = false,
+    socDetectable = true,
+    includeDecoy = true,
+    decoyPlacement = 'early',
+    includeSecondaryBranch = false
+  }) {
+    const events = [
+      {
+        id: 'ev-ingress',
+        timeSec: ingressTime,
+        layerIdx: 0,
+        assetId: 'cmp-edge',
+        relationshipId: null,
+        prerequisiteIds: [],
+        identityId: 'sess-primary',
+        kind: 'ingress',
+        title: 'Ingress edge request',
+        detail: patchCovered
+          ? 'Edge request matches active virtual patch rule VP-EDGE-01.'
+          : 'Edge request uses an unpatched path outside virtual patch rule coverage.',
+        ruleCoverage: patchCovered
+          ? { covered: true, ruleId: 'VP-EDGE-01', label: 'Active ingress virtual patch' }
+          : { covered: false, label: 'Outside virtual patch rule coverage' },
+        telemetry: { detectable: false },
+        isDecoy: false,
+        decoyPlacement: null,
+        isBoundaryCrossing: false,
+        isProtectedRead: false
+      }
+    ];
+
+    if (includeDecoy && decoyPlacement === 'early') {
+      events.push({
+        id: 'ev-decoy',
+        timeSec: decoyTime,
+        layerIdx: 3,
+        assetId: 'cmp-decoy',
+        relationshipId: 'cmp-r-svc-decoy',
+        prerequisiteIds: ['ev-ingress'],
+        identityId: 'sess-primary',
+        kind: 'decoy',
+        title: 'Early canary decoy interaction',
+        detail: 'Session touches instrumented canary decoy, identifying sess-primary.',
+        ruleCoverage: { covered: false },
+        telemetry: { detectable: true, signalLabel: 'Canary decoy signal (sess-primary)', containableIdentity: 'sess-primary' },
+        isDecoy: true,
+        decoyPlacement: 'early',
+        isBoundaryCrossing: false,
+        isProtectedRead: false
+      });
+    }
+
+    events.push({
+      id: 'ev-boundary',
+      timeSec: boundaryTime,
+      layerIdx: 1,
+      assetId: 'cmp-api',
+      relationshipId: 'cmp-r-edge-api',
+      prerequisiteIds: ['ev-ingress'],
+      identityId: 'sess-primary',
+      kind: 'boundary',
+      title: 'First boundary crossing',
+      detail: 'Cross-boundary session reaches internal API tier.',
+      ruleCoverage: { covered: false },
+      telemetry: socDetectable
+        ? { detectable: true, signalLabel: 'Boundary crossing telemetry (sess-primary)', containableIdentity: 'sess-primary' }
+        : { detectable: false, signalLabel: 'No matching SOC telemetry' },
+      isDecoy: false,
+      decoyPlacement: null,
+      isBoundaryCrossing: true,
+      isProtectedRead: false
+    });
+
+    events.push({
+      id: 'ev-lateral',
+      timeSec: lateralTime,
+      layerIdx: 2,
+      assetId: 'cmp-app',
+      relationshipId: 'cmp-r-api-app',
+      prerequisiteIds: ['ev-boundary'],
+      identityId: 'sess-primary',
+      kind: 'lateral',
+      title: 'Internal service pivot',
+      detail: 'Workflow pivots into core application service.',
+      ruleCoverage: { covered: false },
+      telemetry: { detectable: false },
+      isDecoy: false,
+      decoyPlacement: null,
+      isBoundaryCrossing: false,
+      isProtectedRead: false
+    });
+
+    events.push({
+      id: 'ev-protected-read',
+      timeSec: protectedReadTime,
+      layerIdx: 3,
+      assetId: 'cmp-data',
+      relationshipId: 'cmp-r-app-data',
+      prerequisiteIds: ['ev-lateral'],
+      identityId: 'sess-primary',
+      kind: 'protected_read',
+      title: 'Protected record read',
+      detail: 'First unauthorized read of the designated sensitive record.',
+      ruleCoverage: { covered: false },
+      telemetry: { detectable: false },
+      isDecoy: false,
+      decoyPlacement: null,
+      isBoundaryCrossing: false,
+      isProtectedRead: true
+    });
+
+    if (includeDecoy && decoyPlacement === 'late') {
+      events.push({
+        id: 'ev-decoy',
+        timeSec: decoyTime,
+        layerIdx: 3,
+        assetId: 'cmp-decoy',
+        relationshipId: 'cmp-r-svc-decoy',
+        prerequisiteIds: ['ev-boundary'],
+        identityId: 'sess-primary',
+        kind: 'decoy',
+        title: 'Late canary decoy interaction',
+        detail: 'Session touches backend decoy after sensitive record access.',
+        ruleCoverage: { covered: false },
+        telemetry: { detectable: true, signalLabel: 'Late canary decoy signal (sess-primary)', containableIdentity: 'sess-primary' },
+        isDecoy: true,
+        decoyPlacement: 'late',
+        isBoundaryCrossing: false,
+        isProtectedRead: false
+      });
+    }
+
+    if (includeSecondaryBranch) {
+      events.push({
+        id: 'ev-unrelated',
+        timeSec: lateralTime + 15,
+        layerIdx: 2,
+        assetId: 'cmp-svc',
+        relationshipId: 'cmp-r-api-svc',
+        prerequisiteIds: [],
+        identityId: 'sess-secondary',
+        kind: 'lateral',
+        title: 'Independent secondary session activity',
+        detail: 'Unrelated identity sess-secondary continues outside sess-primary containment scope.',
+        ruleCoverage: { covered: false },
+        telemetry: { detectable: false },
+        isDecoy: false,
+        decoyPlacement: null,
+        isBoundaryCrossing: false,
+        isProtectedRead: false
+      });
+    }
+
+    events.sort((a, b) => a.timeSec - b.timeSec);
+    return events;
+  }
+
+  function buildCapabilityEvents(profileId, accessDenied) {
+    if (profileId === 'pre2023') {
+      return [
+        {
+          id: 'cap-opp-1',
+          timeSec: 15,
+          layerIdx: 1,
+          assetId: 'cmp-api',
+          relationshipId: 'cmp-r-edge-api',
+          prerequisiteIds: [],
+          identityId: 'sess-primary',
+          kind: 'opportunity_review',
+          opportunityId: 'opp-1',
+          concurrentGroup: null,
+          requiresHumanReview: true,
+          handoffDurationSec: 45,
+          title: 'Opportunity 1 reviewed (scripted check)',
+          detail: 'Operator runs scripted check on Opportunity 1 (15 s) and hits context-dependent decision point.',
+          ruleCoverage: { covered: false },
+          telemetry: { detectable: true, signalLabel: 'Scripted check telemetry (sess-primary)', containableIdentity: 'sess-primary' },
+          isDecoy: false,
+          isBoundaryCrossing: true,
+          isProtectedRead: false
+        },
+        {
+          id: 'cap-handoff-1',
+          timeSec: 60,
+          layerIdx: 2,
+          assetId: 'cmp-app',
+          relationshipId: 'cmp-r-api-app',
+          prerequisiteIds: ['cap-opp-1'],
+          identityId: 'sess-primary',
+          kind: 'human_handoff',
+          opportunityId: 'opp-1',
+          concurrentGroup: null,
+          requiresHumanReview: true,
+          handoffDurationSec: 45,
+          title: 'Human operator handoff (45 s)',
+          detail: 'Awaits human review for context-dependent decision (15 s -> 60 s, exceeds 45 s cutoff).',
+          ruleCoverage: { covered: false },
+          telemetry: { detectable: false },
+          isDecoy: false,
+          isBoundaryCrossing: false,
+          isProtectedRead: false
+        },
+        {
+          id: 'cap-opp-2',
+          timeSec: 75,
+          layerIdx: 2,
+          assetId: 'cmp-svc',
+          relationshipId: 'cmp-r-api-svc',
+          prerequisiteIds: ['cap-handoff-1'],
+          identityId: 'sess-primary',
+          kind: 'opportunity_review',
+          opportunityId: 'opp-2',
+          concurrentGroup: null,
+          requiresHumanReview: false,
+          handoffDurationSec: null,
+          title: 'Opportunity 2 reviewed',
+          detail: 'Available only after first human handoff completes.',
+          ruleCoverage: { covered: false },
+          telemetry: { detectable: false },
+          isDecoy: false,
+          isBoundaryCrossing: false,
+          isProtectedRead: false
+        },
+        {
+          id: 'cap-read',
+          timeSec: 75,
+          layerIdx: 3,
+          assetId: 'cmp-data',
+          relationshipId: 'cmp-r-app-data',
+          prerequisiteIds: ['cap-opp-2'],
+          identityId: 'sess-primary',
+          kind: 'protected_read',
+          opportunityId: 'opp-2',
+          concurrentGroup: null,
+          requiresHumanReview: false,
+          handoffDurationSec: null,
+          accessDenied,
+          title: accessDenied ? 'Protected record access denied' : 'Protected record read',
+          detail: accessDenied ? 'Shared access rules deny read of sensitive record.' : 'Protected read on Opportunity 2.',
+          ruleCoverage: { covered: false },
+          telemetry: { detectable: false },
+          isDecoy: false,
+          isBoundaryCrossing: false,
+          isProtectedRead: true
+        }
+      ];
+    }
+
+    // ARTEX agentic capability trace
+    return [
+      {
+        id: 'cap-opp-1',
+        timeSec: 15,
+        layerIdx: 1,
+        assetId: 'cmp-api',
+        relationshipId: 'cmp-r-edge-api',
+        prerequisiteIds: [],
+        identityId: 'sess-primary',
+        kind: 'opportunity_review',
+        opportunityId: 'opp-1',
+        concurrentGroup: 'batch-0',
+        requiresHumanReview: true,
+        handoffDurationSec: 45,
+        title: 'Opportunity 1 reviewed concurrently',
+        detail: 'Reviewed in parallel (0-15 s); requires 45 s human review before continuing.',
+        ruleCoverage: { covered: false },
+        telemetry: { detectable: false },
+        isDecoy: false,
+        isBoundaryCrossing: false,
+        isProtectedRead: false
+      },
+      {
+        id: 'cap-opp-2',
+        timeSec: 15,
+        layerIdx: 1,
+        assetId: 'cmp-gw2',
+        relationshipId: 'cmp-r-edge-gw2',
+        prerequisiteIds: [],
+        identityId: 'sess-primary',
+        kind: 'opportunity_review',
+        opportunityId: 'opp-2',
+        concurrentGroup: 'batch-0',
+        requiresHumanReview: false,
+        handoffDurationSec: null,
+        title: 'Opportunity 2 reviewed concurrently',
+        detail: 'Context-dependent continuation proceeds without human gate (0-15 s).',
+        ruleCoverage: { covered: false },
+        telemetry: { detectable: true, signalLabel: 'Concurrent opportunity telemetry (sess-primary)', containableIdentity: 'sess-primary' },
+        isDecoy: false,
+        isBoundaryCrossing: true,
+        isProtectedRead: false
+      },
+      {
+        id: 'cap-opp-3',
+        timeSec: 15,
+        layerIdx: 2,
+        assetId: 'cmp-svc',
+        relationshipId: 'cmp-r-api-svc',
+        prerequisiteIds: [],
+        identityId: 'sess-primary',
+        kind: 'opportunity_review',
+        opportunityId: 'opp-3',
+        concurrentGroup: 'batch-0',
+        requiresHumanReview: false,
+        handoffDurationSec: null,
+        title: 'Opportunity 3 reviewed concurrently (decoy-adjacent)',
+        detail: 'Reviewed in parallel (0-15 s); touches instrumented decoy marker.',
+        ruleCoverage: { covered: false },
+        telemetry: { detectable: true, signalLabel: 'Canary decoy signal (sess-primary)', containableIdentity: 'sess-primary' },
+        isDecoy: true,
+        decoyPlacement: 'early',
+        isBoundaryCrossing: false,
+        isProtectedRead: false
+      },
+      {
+        id: 'cap-read',
+        timeSec: 30,
+        layerIdx: 3,
+        assetId: 'cmp-data',
+        relationshipId: 'cmp-r-app-data',
+        prerequisiteIds: ['cap-opp-2'],
+        identityId: 'sess-primary',
+        kind: 'protected_read',
+        opportunityId: 'opp-2',
+        concurrentGroup: null,
+        requiresHumanReview: false,
+        handoffDurationSec: null,
+        accessDenied,
+        title: accessDenied ? 'Protected record access denied' : 'Protected record read (30 s)',
+        detail: accessDenied
+          ? 'Shared access rules deny read of designated sensitive record at 30 s.'
+          : 'Context-dependent continuation on Opportunity 2 completes protected read at 30 s.',
+        ruleCoverage: { covered: false },
+        telemetry: { detectable: false },
+        isDecoy: false,
+        isBoundaryCrossing: false,
+        isProtectedRead: true
+      },
+      {
+        id: 'cap-handoff-1',
+        timeSec: 60,
+        layerIdx: 2,
+        assetId: 'cmp-app',
+        relationshipId: 'cmp-r-api-app',
+        prerequisiteIds: ['cap-opp-1'],
+        identityId: 'sess-primary',
+        kind: 'human_handoff',
+        opportunityId: 'opp-1',
+        concurrentGroup: null,
+        requiresHumanReview: true,
+        handoffDurationSec: 45,
+        title: 'Human review on Opportunity 1 completes (60 s)',
+        detail: 'Still awaiting human review at the 45 s cutoff.',
+        ruleCoverage: { covered: false },
+        telemetry: { detectable: false },
+        isDecoy: false,
+        isBoundaryCrossing: false,
+        isProtectedRead: false
+      }
+    ];
+  }
+
+  const COMPARISON_FIXTURES = {
+    'speed-race': {
+      id: 'speed-race',
+      kind: 'speed',
+      title: 'Speed: Timing Race (Out-of-Scope Patch)',
+      subtitle: 'Identical ordered attacker activity retimestamped at Pre-2023 vs ARTEX pace. Same 60 s SOC containment wins at Pre-2023 pace and loses at ARTEX pace.',
+      cutoffSec: null,
+      socLatencySec: 60,
+      decisionDelaySec: 15,
+      accessDenied: false,
+      assumptions: [
+        'Virtual patch has no matching rule for the ingress path (OUTSIDE RULE COVERAGE).',
+        'Regular SOC signal occurs at the first boundary crossing; containment takes 60 modeled seconds.',
+        'Early decoy identifies the same containable identity (sess-primary) as the regular SOC signal.',
+        'Same response policy, action scope, and 60 s latency across both attacker paces.'
+      ],
+      traces: {
+        pre2023: buildSpeedEvents({ ingressTime: 0, decoyTime: 600, boundaryTime: 5400, lateralTime: 6300, protectedReadTime: 7200, patchCovered: false }),
+        artex: buildSpeedEvents({ ingressTime: 0, decoyTime: 5, boundaryTime: 30, lateralTime: 55, protectedReadTime: 80, patchCovered: false })
+      }
+    },
+    'speed-covered-patch': {
+      id: 'speed-covered-patch',
+      kind: 'speed',
+      title: 'Speed: Covered Virtual Patch',
+      subtitle: 'Active ingress virtual patch rule matches the same milestone at both Pre-2023 and ARTEX paces.',
+      cutoffSec: null,
+      socLatencySec: 60,
+      decisionDelaySec: 15,
+      accessDenied: false,
+      assumptions: [
+        'Active virtual patch rule VP-EDGE-01 covers the ingress event at both paces.',
+        'Blocking at ingress suppresses all dependent downstream milestones.'
+      ],
+      traces: {
+        pre2023: buildSpeedEvents({ ingressTime: 0, decoyTime: 600, boundaryTime: 5400, lateralTime: 6300, protectedReadTime: 7200, patchCovered: true }),
+        artex: buildSpeedEvents({ ingressTime: 0, decoyTime: 5, boundaryTime: 30, lateralTime: 55, protectedReadTime: 80, patchCovered: true })
+      }
+    },
+    'capability-45s': {
+      id: 'capability-45s',
+      kind: 'capability',
+      title: 'Capability: 45s Review Window',
+      subtitle: 'Common pace and 45 s budget across 3 service opportunities (15 s/review, 45 s human handoff).',
+      cutoffSec: 45,
+      socLatencySec: 60,
+      decisionDelaySec: 15,
+      accessDenied: false,
+      assumptions: [
+        'Three abstract service opportunities available to both profiles under identical access rules.',
+        '15 s per opportunity review; 45 s duration for any required human handoff.',
+        'Human-led trace reviews sequentially and waits at Opportunity 1 handoff; ARTEX reviews all 3 concurrently.'
+      ],
+      traces: {
+        pre2023: buildCapabilityEvents('pre2023', false),
+        artex: buildCapabilityEvents('artex', false)
+      }
+    },
+    'capability-denied': {
+      id: 'capability-denied',
+      kind: 'capability',
+      title: 'Capability: Access Denied (45s)',
+      subtitle: 'Same 45 s window and workflow traces, with access to the designated sensitive record denied.',
+      cutoffSec: 45,
+      socLatencySec: 60,
+      decisionDelaySec: 15,
+      accessDenied: true,
+      assumptions: [
+        'Shared access rules deny read access to the designated sensitive record.',
+        'Both profiles end without a protected read while still differing in opportunities reviewed.'
+      ],
+      traces: {
+        pre2023: buildCapabilityEvents('pre2023', true),
+        artex: buildCapabilityEvents('artex', true)
+      }
+    },
+    'speed-no-signal': {
+      id: 'speed-no-signal',
+      kind: 'speed',
+      title: 'Edge Case: No Matching SOC Signal',
+      subtitle: 'Observable telemetry is absent, so Agentic SOC never triggers.',
+      cutoffSec: null,
+      socLatencySec: 60,
+      decisionDelaySec: 15,
+      accessDenied: false,
+      assumptions: ['No matching SOC telemetry is emitted during the trace.'],
+      traces: {
+        pre2023: buildSpeedEvents({ ingressTime: 0, decoyTime: 600, boundaryTime: 5400, lateralTime: 6300, protectedReadTime: 7200, socDetectable: false, includeDecoy: false }),
+        artex: buildSpeedEvents({ ingressTime: 0, decoyTime: 5, boundaryTime: 30, lateralTime: 55, protectedReadTime: 80, socDetectable: false, includeDecoy: false })
+      }
+    },
+    'speed-at-objective': {
+      id: 'speed-at-objective',
+      kind: 'speed',
+      title: 'Edge Case: Same-Timestamp Enforcement Tie',
+      subtitle: 'SOC enforcement becomes effective at the exact timestamp of the protected read.',
+      cutoffSec: null,
+      socLatencySec: 60,
+      decisionDelaySec: 15,
+      accessDenied: false,
+      assumptions: ['When enforcement and protected read share a timestamp, objective takes precedence unless enforcementPrecedesOnTie is set.'],
+      traces: {
+        pre2023: buildSpeedEvents({ ingressTime: 0, decoyTime: 600, boundaryTime: 7140, lateralTime: 7170, protectedReadTime: 7200 }),
+        artex: buildSpeedEvents({ ingressTime: 0, decoyTime: 5, boundaryTime: 20, lateralTime: 50, protectedReadTime: 80 })
+      }
+    },
+    'speed-late-decoy': {
+      id: 'speed-late-decoy',
+      kind: 'speed',
+      title: 'Edge Case: Late Decoy Placement',
+      subtitle: 'Decoy interaction occurs after the protected read.',
+      cutoffSec: null,
+      socLatencySec: 60,
+      decisionDelaySec: 15,
+      accessDenied: false,
+      assumptions: ['Decoy is placed behind the protected record so alert arrives after data access.'],
+      traces: {
+        pre2023: buildSpeedEvents({ ingressTime: 0, decoyTime: 7500, boundaryTime: 5400, lateralTime: 6300, protectedReadTime: 7200, decoyPlacement: 'late' }),
+        artex: buildSpeedEvents({ ingressTime: 0, decoyTime: 100, boundaryTime: 30, lateralTime: 55, protectedReadTime: 80, decoyPlacement: 'late' })
+      }
+    },
+    'speed-untouched-decoy': {
+      id: 'speed-untouched-decoy',
+      kind: 'speed',
+      title: 'Edge Case: Untouched Decoy',
+      subtitle: 'Attacker trace never interacts with the instrumented decoy.',
+      cutoffSec: null,
+      socLatencySec: 60,
+      decisionDelaySec: 15,
+      accessDenied: false,
+      assumptions: ['An untouched decoy produces no alert.'],
+      traces: {
+        pre2023: buildSpeedEvents({ ingressTime: 0, boundaryTime: 5400, lateralTime: 6300, protectedReadTime: 7200, includeDecoy: false }),
+        artex: buildSpeedEvents({ ingressTime: 0, boundaryTime: 30, lateralTime: 55, protectedReadTime: 80, includeDecoy: false })
+      }
+    },
+    'speed-scope-mismatch': {
+      id: 'speed-scope-mismatch',
+      kind: 'speed',
+      title: 'Edge Case: Containment Scope Mismatch',
+      subtitle: 'Containment of sess-primary leaves independent sess-secondary activity in progress.',
+      cutoffSec: null,
+      socLatencySec: 60,
+      decisionDelaySec: 15,
+      accessDenied: false,
+      assumptions: ['Containment is scoped to sess-primary; unrelated sess-secondary events continue.'],
+      traces: {
+        pre2023: buildSpeedEvents({ ingressTime: 0, decoyTime: 600, boundaryTime: 5400, lateralTime: 6300, protectedReadTime: 7200, includeSecondaryBranch: true }),
+        artex: buildSpeedEvents({ ingressTime: 0, decoyTime: 5, boundaryTime: 30, lateralTime: 55, protectedReadTime: 80, includeSecondaryBranch: true })
+      }
+    }
+  };
+
+  function evaluateComparisonRun(fixtureId, profileId, defenseId, options = {}) {
+    const fixture = COMPARISON_FIXTURES[fixtureId];
+    if (!fixture) throw new Error(`Unknown comparison fixture: ${fixtureId}`);
+    const profile = COMPARISON_PROFILES[profileId];
+    if (!profile) throw new Error(`Unknown comparison profile: ${profileId}`);
+    const defense = COMPARISON_DEFENSES[defenseId];
+    if (!defense) throw new Error(`Unknown comparison defense: ${defenseId}`);
+
+    const rawEvents = fixture.traces[profileId] || [];
+    const cutoffSec = fixture.cutoffSec;
+    const useVirtualPatch = defenseId === 'patch';
+    const useSoc = defenseId === 'soc' || defenseId === 'combined';
+    const useCanaries = defenseId === 'canaries' || (defenseId === 'combined' && options.useDecoySignal !== false);
+    const enforcementPrecedesOnTie = !!options.enforcementPrecedesOnTie;
+
+    const blockedEventIds = new Set();
+    const containedIdentities = new Set();
+    const trace = [];
+    const alerts = [];
+
+    let telemetryTimeSec = null;
+    let decisionTimeSec = null;
+    let enforcementTimeSec = null;
+    let signalSource = null;
+    let edgeBlockedTimeSec = null;
+    let patchMissed = false;
+    let decoyTriggeredTimeSec = null;
+    let protectedReadReached = false;
+    let protectedReadTimeSec = null;
+    let accessDeniedObserved = false;
+
+    const reviewedOpportunities = new Set();
+    const concurrentBatchSet = new Set();
+    let manualHandoffs = 0;
+
+    let pendingContainment = null;
+
+    function enforceContainment() {
+      const { timeSec, identityId, source } = pendingContainment;
+      enforcementTimeSec = timeSec;
+      containedIdentities.add(identityId);
+      trace.push({
+        id: `soc-enforce-${identityId}`,
+        timeSec,
+        layerIdx: 1,
+        assetId: 'cmp-api',
+        relationshipId: null,
+        identityId,
+        kind: 'containment',
+        outcome: 'enforced',
+        title: 'Agentic SOC containment effective',
+        detail: `Containment enforced for ${identityId} (signal: ${source}).`,
+        reason: protectedReadReached
+          ? 'CONTAINMENT EFFECTIVE AFTER DATA ACCESS'
+          : 'CONTAINMENT EFFECTIVE'
+      });
+    }
+
+    for (const ev of rawEvents) {
+      if (cutoffSec !== null && ev.timeSec > cutoffSec) {
+        continue;
+      }
+
+      if (pendingContainment && enforcementTimeSec === null) {
+        const arrivesBefore = enforcementPrecedesOnTie
+          ? pendingContainment.timeSec <= ev.timeSec
+          : pendingContainment.timeSec < ev.timeSec;
+        if (arrivesBefore) enforceContainment();
+      }
+
+      const prereqBlocked = (ev.prerequisiteIds || []).some(pid => blockedEventIds.has(pid));
+      if (prereqBlocked) {
+        blockedEventIds.add(ev.id);
+        trace.push({
+          ...ev,
+          outcome: 'suppressed',
+          reason: 'PREREQUISITE BLOCKED'
+        });
+        continue;
+      }
+
+      // Check if this event's identity is already contained
+      if (containedIdentities.has(ev.identityId)) {
+        blockedEventIds.add(ev.id);
+        trace.push({
+          ...ev,
+          outcome: 'suppressed',
+          reason: 'CONTAINMENT ACTIVE'
+        });
+        continue;
+      }
+
+      // Track capability review metrics for unblocked events within cutoff
+      if (ev.kind === 'opportunity_review' && ev.opportunityId) {
+        reviewedOpportunities.add(ev.opportunityId);
+        if (ev.concurrentGroup) concurrentBatchSet.add(ev.opportunityId);
+        if (ev.requiresHumanReview) manualHandoffs += 1;
+      }
+
+      // Virtual Patching check
+      if (useVirtualPatch && ev.kind === 'ingress') {
+        if (ev.ruleCoverage && ev.ruleCoverage.covered) {
+          blockedEventIds.add(ev.id);
+          edgeBlockedTimeSec = ev.timeSec;
+          alerts.push({ timeSec: ev.timeSec, source: 'virtual_patch', label: ev.ruleCoverage.ruleId || 'RULE MATCH' });
+          trace.push({
+            ...ev,
+            outcome: 'blocked',
+            reason: 'RULE MATCH · BLOCKED AT EDGE'
+          });
+          continue;
+        } else {
+          patchMissed = true;
+        }
+      }
+
+      // Canaries check
+      if (ev.isDecoy) {
+        if (useCanaries) {
+          decoyTriggeredTimeSec = decoyTriggeredTimeSec === null ? ev.timeSec : Math.min(decoyTriggeredTimeSec, ev.timeSec);
+          alerts.push({ timeSec: ev.timeSec, source: 'canary', label: 'DECOY TRIGGERED' });
+        } else if (defenseId === 'canaries') {
+          // shouldn't happen since useCanaries is true for canaries
+        }
+      }
+
+      // Agentic SOC telemetry check (decoy signal only counts if useCanaries is true)
+      if (useSoc && ev.telemetry && ev.telemetry.detectable) {
+        const isDecoyOnly = ev.isDecoy && !useCanaries;
+        if (!isDecoyOnly && !pendingContainment) {
+          const sigTime = ev.timeSec;
+          const decTime = sigTime + fixture.decisionDelaySec;
+          const enfTime = sigTime + fixture.socLatencySec;
+          telemetryTimeSec = sigTime;
+          decisionTimeSec = decTime;
+          signalSource = ev.isDecoy ? 'canary' : 'regular';
+          alerts.push({ timeSec: sigTime, source: signalSource, label: ev.telemetry.signalLabel });
+          pendingContainment = {
+            timeSec: enfTime,
+            identityId: ev.telemetry.containableIdentity || ev.identityId,
+            source: signalSource
+          };
+        }
+      }
+
+      // Protected read check
+      if (ev.isProtectedRead) {
+        if (ev.accessDenied) {
+          accessDeniedObserved = true;
+          trace.push({
+            ...ev,
+            outcome: 'denied',
+            reason: 'ACCESS DENIED'
+          });
+        } else {
+          protectedReadReached = true;
+          protectedReadTimeSec = ev.timeSec;
+          trace.push({
+            ...ev,
+            outcome: 'succeeded',
+            reason: 'PROTECTED RECORD READ'
+          });
+        }
+        continue;
+      }
+
+      trace.push({
+        ...ev,
+        outcome: ev.isDecoy && useCanaries ? 'alert' : 'succeeded',
+        reason: ev.isDecoy && useCanaries
+          ? (defenseId === 'canaries' ? 'DECOY TRIGGERED · ALERT ONLY' : 'DECOY TRIGGERED · SIGNAL TO SOC')
+          : (useVirtualPatch && ev.kind === 'ingress' ? 'OUTSIDE RULE COVERAGE' : 'OBSERVED')
+      });
+    }
+
+    if (pendingContainment && enforcementTimeSec === null &&
+        (cutoffSec === null || pendingContainment.timeSec <= cutoffSec)) {
+      enforceContainment();
+    }
+
+    trace.sort((a, b) => a.timeSec - b.timeSec);
+
+    // Determine baseline reference protected read time for margin / lead time calculations
+    let baselineProtectedReadSec = null;
+    if (defenseId === 'baseline') {
+      baselineProtectedReadSec = protectedReadTimeSec;
+    } else {
+      const baseRun = evaluateComparisonRun(fixtureId, profileId, 'baseline');
+      baselineProtectedReadSec = baseRun.protectedReadTimeSec;
+    }
+
+    alerts.sort((a, b) => a.timeSec - b.timeSec);
+    const firstAlert = alerts.length > 0 ? alerts[0] : null;
+    const firstAlertTimeSec = firstAlert ? firstAlert.timeSec : null;
+    const firstAlertSource = firstAlert ? firstAlert.source : null;
+
+    // Determine effective control time & reason
+    let effectiveControlTimeSec = null;
+    let controlReason = 'NO ACTIVE DEFENSES';
+
+    if (defenseId === 'baseline') {
+      controlReason = accessDeniedObserved ? 'ACCESS DENIED' : (protectedReadReached ? 'UNMITIGATED · PROTECTED READ' : 'NO PROTECTED READ BY CUTOFF');
+    } else if (defenseId === 'patch') {
+      if (edgeBlockedTimeSec !== null) {
+        effectiveControlTimeSec = edgeBlockedTimeSec;
+        controlReason = 'RULE MATCH · BLOCKED AT EDGE';
+      } else {
+        controlReason = 'OUTSIDE RULE COVERAGE';
+      }
+    } else if (defenseId === 'canaries') {
+      if (decoyTriggeredTimeSec !== null) {
+        controlReason = 'DECOY TRIGGERED · ALERT ONLY';
+      } else {
+        controlReason = 'DECOY UNTOUCHED · NO ALERT';
+      }
+    } else if (defenseId === 'soc' || defenseId === 'combined') {
+      if (!pendingContainment) {
+        controlReason = 'NO MATCHING SIGNAL';
+      } else if (enforcementTimeSec === null) {
+        controlReason = 'CONTAINMENT PENDING AT CUTOFF';
+      } else {
+        effectiveControlTimeSec = enforcementTimeSec;
+        if (protectedReadReached) {
+          controlReason = 'CONTAINMENT EFFECTIVE AFTER DATA ACCESS';
+        } else {
+          controlReason = 'CONTAINED BEFORE DATA ACCESS';
+        }
+      }
+    }
+
+    const responseMarginSec = (baselineProtectedReadSec !== null && effectiveControlTimeSec !== null)
+      ? baselineProtectedReadSec - effectiveControlTimeSec
+      : null;
+
+    const detectionLeadTimeSec = (baselineProtectedReadSec !== null && firstAlertTimeSec !== null)
+      ? baselineProtectedReadSec - firstAlertTimeSec
+      : null;
+
+    return {
+      fixtureId,
+      fixtureKind: fixture.kind,
+      fixtureTitle: fixture.title,
+      profileId,
+      profileLabel: profile.label,
+      defenseId,
+      defenseLabel: defense.label,
+      cutoffSec,
+      protectedReadReached,
+      protectedReadTimeSec,
+      accessDeniedObserved,
+      baselineProtectedReadSec,
+      firstAlertTimeSec,
+      firstAlertSource,
+      telemetryTimeSec,
+      decisionTimeSec,
+      enforcementTimeSec,
+      scheduledEnforcementTimeSec: pendingContainment?.timeSec ?? null,
+      effectiveControlTimeSec,
+      signalSource,
+      controlReason,
+      responseMarginSec,
+      detectionLeadTimeSec,
+      patchMissed,
+      opportunitiesReviewed: reviewedOpportunities.size,
+      concurrentReviews: concurrentBatchSet.size,
+      manualHandoffs,
+      assumptions: fixture.assumptions,
+      trace
+    };
+  }
+
+  function evaluateComparisonMatrix(fixtureId, options = {}) {
+    const profiles = ['pre2023', 'artex'];
+    const defenses = ['baseline', 'patch', 'soc', 'canaries', 'combined'];
+    const cells = {};
+    for (const p of profiles) {
+      cells[p] = {};
+      for (const d of defenses) {
+        cells[p][d] = evaluateComparisonRun(fixtureId, p, d, options);
+      }
+    }
+    return {
+      fixture: COMPARISON_FIXTURES[fixtureId],
+      estate: createComparisonEstate(),
+      cells
+    };
+  }
+
   return {
     SCHEMA_VERSION,
     MAX_ONWARD_PER_SOURCE,
@@ -1584,6 +2624,14 @@
     ALLOWED_CONNECTIONS,
     EXTERNAL_ENTRY_GROUPS,
     DEFENSE_SCENARIOS,
+    COMPARISON_PROFILES,
+    COMPARISON_DEFENSES,
+    COMPARISON_FIXTURES,
+    createComparisonEstate,
+    formatDurationSeconds,
+    formatSignedDelta,
+    evaluateComparisonRun,
+    evaluateComparisonMatrix,
     createRng,
     cveTooltip,
     validateEstate,

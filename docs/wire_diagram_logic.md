@@ -2,6 +2,12 @@
 
 This specification describes `wire.html`, the synthetic wire-diagram simulation. Its assets, links, vulnerabilities and defenses are scenario assumptions; they are not a discovery of a real environment or proof that a product is vulnerable. A KEV is a CVE in CISA's Known Exploited Vulnerabilities catalog.
 
+Run `node scripts/test-wire-model.cjs` after changing the model. It checks that
+asset group IDs are unique, icons exist, variant CVE mappings resolve in the
+appropriate layer, and connection and external-entry references are valid. It
+does not verify vulnerability applicability, scenario outcomes, or rendering;
+those still need source review and browser testing.
+
 ## 1. Is the object in the right layer?
 
 Each object family is declared in `LAYER_CONFIG`. Place the object according to its function in this scenario, not its icon or the consequence of an attack.

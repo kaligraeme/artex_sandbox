@@ -1,5 +1,9 @@
 # Wire diagram: object, connection and KEV logic
 
+> **Current engine note:** This document also retains historical design notes below. The current implementation is `js/wire-engine.js` (schema 3), not the former inline engine. The mixed preset permits no complete path; the demo preset intentionally constructs one using three reviewed examples. Other catalog entries are not automatically treated as exploitable. Versions, network relationships, configuration, credentials, control coverage and outcomes are synthetic assumptions. Consult [the implementation plan](four-layer-exposure-plan.md) for remaining design work. An unmodeled finding does not mean an asset is safe.
+
+The enabled CVE examples are F5 BIG-IP 16.1.0 ([CISA advisory](https://www.cisa.gov/sites/default/files/publications/AA22-138A-Threat_Actors_Exploiting_F5_BIG-IP_CVE-2022-1388_F5.pdf)), WSO2 API Manager 3.2.0 ([CISA advisory](https://www.cisa.gov/sites/default/files/2023-08/aa23-215a_joint_csa_2022_top_routinely_exploited_vulnerabilities.pdf)), and Spring Framework 5.3.17 ([Spring advisory](https://spring.io/security/cve-2022-22965/)). Sources reviewed 2026-11-15. The selected deployments and their required configurations are assumed for the demo; an advisory does not verify an asset in this simulation. CVE/technique mappings do not establish asset applicability.
+
 This specification describes `wire.html`, the synthetic wire-diagram simulation. Its assets, links, vulnerabilities and defenses are scenario assumptions; they are not a discovery of a real environment or proof that a product is vulnerable. A KEV is a CVE in CISA's Known Exploited Vulnerabilities catalog.
 
 Run `node scripts/test-wire-model.cjs` after changing the model. It checks that

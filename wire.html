@@ -563,22 +563,9 @@
   }
   .sw-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 3px; }
   .sw-label { font-size: 8px; letter-spacing: 0.12em; color: #7fa0bc; text-transform: uppercase; }
-  #sw-model-btn {
-    background: rgba(0, 240, 255, 0.1);
-    border: 1px solid rgba(0, 240, 255, 0.35);
-    color: var(--turquoise);
-    font: 700 8px/1 'JetBrains Mono', monospace;
-    letter-spacing: 0.08em;
-    padding: 2px 5px;
-    border-radius: 3px;
-    cursor: pointer;
-  }
-  #sw-model-btn.artex { border-color: rgba(245, 158, 11, 0.5); color: #fcd34d; background: rgba(245, 158, 11, 0.12); }
   #sw-clock { font-size: 20px; font-weight: 800; letter-spacing: 0.06em; color: #e2f6ff; line-height: 1.1; }
-  #sw-dwell { font-size: 9px; color: #7fa0bc; margin-top: 3px; letter-spacing: 0.04em; }
-  #attack-stopwatch.lateral #sw-clock { color: #ff6b81; text-shadow: 0 0 8px rgba(255, 34, 68, 0.45); }
-  #attack-stopwatch.lateral #sw-dwell { color: #fca5a5; }
-  #attack-stopwatch.stopped #sw-dwell { color: #6ee7b7; }
+  #sw-clock-caption { font-size: 9px; color: #7fa0bc; margin-top: 3px; letter-spacing: 0.04em; }
+  #attack-stopwatch.stopped #sw-clock-caption { color: #6ee7b7; }
   @media (max-width: 760px) {
     .top-bar { padding: 72px 12px 0; }
     #attack-stopwatch { top: 8px; left: 8px; padding: 5px 8px; }
@@ -840,6 +827,30 @@
     max-height: 185px;
     overflow-y: auto;
   }
+  #map-profile, #map-defense { color-scheme: dark; }
+  .map-control { display: flex; align-items: center; gap: 6px; color: #a9bfd2; font-size: 11px; }
+  #map-trace-controls { display: none; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px; }
+  .map-trace-mode #map-trace-controls { display: flex; }
+  .map-trace-mode .mode-strip,
+  .map-trace-mode #new-run-btn,
+  .map-trace-mode #preset-btn,
+  .map-trace-mode > .soc-ticker,
+  .map-trace-mode > #wire-svg,
+  .map-trace-mode > #nodes-layer { display: none; }
+  #viewport.map-trace-mode { display: grid; grid-template-rows: auto minmax(0, 1fr); }
+  .map-trace-mode .top-bar { position: relative; top: 0; padding-top: 14px; }
+  #map-trace-surface { position: relative; margin: 10px 12px 120px; z-index: 20; }
+  #map-trace-surface #cmp-graph-stage { height: 100%; border: 0; background: transparent; }
+  #map-trace-surface #cmp-tickets-list {
+    position: absolute;
+    right: 0;
+    bottom: -110px;
+    width: min(320px, 100%);
+    max-height: 104px;
+  }
+  @media (max-width: 760px) {
+    .map-trace-mode .top-bar { padding-top: 72px; }
+  }
   .cmp-ticket-card {
     background: rgba(15, 23, 42, 0.78);
     border: 1px solid rgba(148, 163, 184, 0.2);
@@ -992,7 +1003,7 @@
         <svg id="cmp-wire-svg"></svg>
         <div id="cmp-nodes-layer" class="cmp-nodes-layer"></div>
       </div>
-      <div class="cmp-panel-title" style="font-size:11px;">SIMULATED SOC TICKETS (SELECTED RUN)</div>
+      <div id="cmp-tickets-heading" class="cmp-panel-title" style="font-size:11px;">SIMULATED SOC TICKETS (SELECTED RUN)</div>
       <div id="cmp-tickets-list" class="cmp-tickets-list"></div>
     </div>
   </div>
@@ -1001,13 +1012,10 @@
 <div id="viewport" class="exploratory-only">
   <div class="circuit-grid"></div>
 
-  <div id="attack-stopwatch" aria-label="Modeled attack and dwell stopwatch">
-    <div class="sw-head">
-      <span class="sw-label">MODELED CLOCK</span>
-      <button id="sw-model-btn" type="button" title="Switch the clock's pace estimate for this generated estate">PRE-2023 PACE</button>
-    </div>
-    <div id="sw-clock">0h 00m</div>
-    <div id="sw-dwell">DWELL 0h 00m · PRE-LATERAL</div>
+  <div id="attack-stopwatch" aria-labelledby="sw-clock-label sw-clock-caption">
+    <div class="sw-head"><span id="sw-clock-label" class="sw-label">PLAYBACK CLOCK</span></div>
+    <div id="sw-clock">00:00:00</div>
+    <div id="sw-clock-caption">HH:MM:SS · ELAPSED</div>
   </div>
 
   <!-- Top Bar: 4 Run Scenario Mode Buttons with Details + NEW RUN + Live HUD -->
@@ -1039,9 +1047,31 @@
       <button id="preset-btn" title="Cycle between Mixed Estate (may have 0 complete paths), Demo-Ready (intentional CVE 4-layer path), and Credential-in-Logs">
         <span>PRESET: MIXED</span>
       </button>
-      <button id="back-to-comparison-btn" class="cmp-pill-btn" type="button" title="Generated estate activity. Open Comparison Demo to select a named example.">CHOOSE ATTACK EXAMPLE ↗</button>
-      <div id="run-hud">GENERATED ACTIVITY · SELECT A DEFENSE</div>
+      <label class="map-control">
+        Attacker
+        <select id="map-profile" class="cmp-pill-btn">
+          <option value="generated">Generated activity</option>
+          <option value="pre2023">Pre-2023 human-led</option>
+          <option value="artex">ARTEX &amp; Friends</option>
+        </select>
+      </label>
+      <div id="map-trace-controls">
+        <label class="map-control">
+          Defense
+          <select id="map-defense" class="cmp-pill-btn">
+            <option value="baseline">Baseline</option>
+            <option value="patch">Virtual Patching</option>
+            <option value="soc">Agentic SOC</option>
+            <option value="canaries">Canaries</option>
+            <option value="combined">SOC + Canary</option>
+          </select>
+        </label>
+        <button id="map-replay-btn" class="cmp-pill-btn" type="button">REPLAY</button>
+        <button id="map-results-btn" class="cmp-pill-btn" type="button">RESULTS</button>
+      </div>
+      <button id="back-to-comparison-btn" class="cmp-pill-btn" type="button">COMPARISON MATRIX</button>
     </div>
+    <div id="run-hud" role="status">GENERATED ACTIVITY · SELECT A DEFENSE</div>
   </div>
 
   <a href="index.html" class="back-link" title="Switch back to tabular view">TABLE VIEW ↗ <span style="opacity:0.6;font-size:9px;margin-left:5px;border-left:1px solid rgba(255,255,255,0.2);padding-left:7px;">v2.4.0</span></a>
@@ -1049,6 +1079,8 @@
   <div class="soc-ticker" aria-label="Simulated SOC tickets">
     <div id="soc-cards" class="soc-cards" aria-live="off"></div>
   </div>
+
+  <div id="map-trace-surface" aria-label="Modeled wire trace and SOC tickets" hidden></div>
 
   <!-- Fullscreen SVG for wires & pulses -->
   <svg id="wire-svg"></svg>
@@ -1108,6 +1140,10 @@ function recordSocTicket(node, ev) {
     detail = ev.reason;
   } else if (finding?.kind === 'anonymous_access') {
     detail = succeeded ? `Anonymous access observed on ${node.label}` : `Anonymous access request to ${node.label}`;
+  } else if (ev.finding?.kind === 'diagnostic_access') {
+    detail = `${ev.finding.title} · ${ev.reason}`;
+  } else if (node.groupId === 'staging-status') {
+    detail = ev.reason;
   } else if (ev.credentialUsed) {
     detail = `Credential ${ev.credentialUsed.label} used on ${node.label}`;
   } else if (finding?.kind === 'password_spray') {
@@ -1182,6 +1218,9 @@ function getDefaultNodeBadge(asset, findings) {
   if (f.kind === 'cve') {
     return { code: `${f.cveId}${f.inKev ? ' · KEV' : ''}`, title: f.title };
   }
+  if (f.kind === 'diagnostic_access') {
+    return { code: f.title.toUpperCase(), title: 'Signed-in diagnostics viewer' };
+  }
   if (f.kind === 'anonymous_access') {
     return { code: `${f.technique} · PUBLIC`, title: f.title };
   }
@@ -1206,7 +1245,9 @@ function formatAssetTooltip(asset, findings, credentials) {
   }
   if (credentials.length) {
     credentials.forEach(c => {
-      lines.push(`Stored credential: ${c.label} (requires ${c.requiredSourceCapability})`);
+      lines.push(c.startingAccess
+        ? `Starting access: ${c.label} · ${c.scope}`
+        : `Stored credential: ${c.label} (requires ${c.requiredSourceCapability})`);
     });
   }
   return lines.join('\n');
@@ -1367,7 +1408,9 @@ function triggerNodeHit(node, ev) {
       runStats.lakesBreached++;
     }
     const kevEl = node.el.querySelector('.node-kev');
-    const code = ev.finding?.cveId || (ev.credentialUsed ? 'T1078 · CREDENTIAL' : ev.technique || 'EXPLOITED');
+    const code = ev.finding?.kind === 'diagnostic_access'
+      ? ev.finding.title.toUpperCase()
+      : ev.finding?.cveId || (ev.credentialUsed ? 'T1078 · CREDENTIAL' : ev.technique || 'EXPLOITED');
     const capText = node.capabilities.length ? node.capabilities.join(' + ') : (ev.grantedCapability || 'access');
     const detail = `${capText} · ${ev.reason}`;
     const stepLine = `SIMULATED REACH (${ev.reachability})\nAccess: ${ev.requiredAccess}\nCapability: ${ev.grantedCapability}\n${ev.reason}${ev.finding?.sourceUrl ? `\nSource: ${ev.finding.sourceUrl}` : ''}`;
@@ -1479,6 +1522,7 @@ function restoreInfra(snapshot) {
 function runSimulationOnCurrentInfra() {
   if (!currentEstate) return;
   resetInfraVisuals();
+  startGeneratedClock();
   isSimulating = true;
   window.isSimulating = true;
   runCount++;
@@ -1522,10 +1566,6 @@ function runSimulationOnCurrentInfra() {
       return;
     }
     const batch = nonEmptyBatches[idx];
-    const batchLayer = batch[0]?.node?.layerIdx ?? 0;
-    const hasLateralSuccess = batch.some(b => b.node.layerIdx >= 1 && b.ev.outcome === 'succeeded');
-    advanceStopwatchForLayer(batchLayer, hasLateralSuccess, generation);
-
     let remaining = batch.length;
     const complete = () => {
       if (generation !== simulationGeneration) return;
@@ -1583,7 +1623,7 @@ function finalizeSimulation(simResult) {
   window.runStats = runStats;
 
   const s = simResult.summary;
-  finalizeStopwatch(s);
+  finishGeneratedClock();
   const scn = DEFENSE_SCENARIOS[currentMode] || DEFENSE_SCENARIOS.baseline;
   const presetTag = s.preset === 'logs' ? 'CRED-IN-LOGS' : 'DEMO-READY';
   const prefix = s.intentionalPathNote ? `[${scn.tag} · ${presetTag}]` : `[${scn.tag}]`;
@@ -1593,6 +1633,9 @@ function finalizeSimulation(simResult) {
 
   runHud.className = s.dataReached ? 'breached' : 'contained';
   runHud.textContent = `GENERATED ACTIVITY · ${prefix} RUN #${String(runCount).padStart(2, '0')} · ${runStats.hits} COMPROMISED · ${runStats.blocks} CONTAINED · ${s.ineligibleTransitions} STOPPED · ${pathStatus}`;
+  if (s.preset === 'mixed' && currentNodes.some(node => node.groupId === 'staging-status' && node.hit)) {
+    runHud.textContent += ' · STAGING CREDENTIAL · PRODUCTION AUTHORIZATION REQUIRED';
+  }
   if (s.truncated) runHud.textContent += ' · BUDGET TRUNCATED';
   if (currentMode === 'combined') {
     runHud.textContent += ` · WAF ${runStats.wafBlocks} / SOAR ${runStats.soarBlocks} / CANARY ${runStats.canaryBlocks}`;
@@ -1618,98 +1661,45 @@ function finalizeSimulation(simResult) {
   }
 }
 
-// Modeled elapsed and dwell times for the exploratory estate
-const STOPWATCH_MODELS = {
-  'pre-llm': { label: 'PRE-2023 PACE', layerMinutes: [84, 1440, 2880, 2880] }, // 01:24 breakout + 5d (120:00) dwell
-  'artex': { label: 'ARTEX PACE', layerMinutes: [1, 1, 2, 2] }              // ~1m initial + 5m agentic dwell
-};
-let stopwatchModel = 'pre-llm';
-let swTotalMin = 0;
-let swDwellMin = 0;
-let swLateralStarted = false;
-let swRafId = null;
-
+// The generated estate replays access outcomes without modeled attack timestamps.
+let generatedClockStart = null;
+let generatedClockFrame = null;
 const stopwatchEl = document.getElementById('attack-stopwatch');
 const swClockEl = document.getElementById('sw-clock');
-const swDwellEl = document.getElementById('sw-dwell');
-const swModelBtn = document.getElementById('sw-model-btn');
-
-function formatHoursMinutes(totalMinutes) {
-  const mins = Math.max(0, Math.round(totalMinutes));
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return `${h}h ${String(m).padStart(2, '0')}m`;
-}
-
-function renderStopwatch(statusText = null) {
-  swClockEl.textContent = formatHoursMinutes(swTotalMin);
-  if (statusText) {
-    swDwellEl.textContent = statusText;
-  } else if (swLateralStarted) {
-    swDwellEl.textContent = `DWELL ${formatHoursMinutes(swDwellMin)} · LATERAL ACTIVE`;
-  } else {
-    swDwellEl.textContent = 'DWELL 0h 00m · PRE-LATERAL';
-  }
-}
+const swClockLabel = document.getElementById('sw-clock-label');
+const swClockCaption = document.getElementById('sw-clock-caption');
 
 function resetStopwatch() {
-  if (swRafId) { cancelAnimationFrame(swRafId); swRafId = null; }
-  swTotalMin = 0;
-  swDwellMin = 0;
-  swLateralStarted = false;
-  stopwatchEl.classList.remove('lateral', 'stopped');
-  renderStopwatch();
+  cancelAnimationFrame(generatedClockFrame);
+  generatedClockFrame = null;
+  generatedClockStart = null;
+  stopwatchEl.classList.remove('stopped');
+  swClockLabel.textContent = 'PLAYBACK CLOCK';
+  swClockEl.textContent = '00:00:00';
+  swClockCaption.textContent = 'HH:MM:SS · ELAPSED';
 }
 
-function advanceStopwatchForLayer(layerIdx, hasLateralSuccess, gen) {
-  const cfg = STOPWATCH_MODELS[stopwatchModel] || STOPWATCH_MODELS['pre-llm'];
-  const delta = cfg.layerMinutes[layerIdx] || 0;
-  const startTotal = swTotalMin;
-  const startDwell = swDwellMin;
-  if (layerIdx >= 1 && hasLateralSuccess && !swLateralStarted) {
-    swLateralStarted = true;
-    stopwatchEl.classList.add('lateral');
-  }
-  const targetTotal = startTotal + delta;
-  const targetDwell = swLateralStarted ? startDwell + delta : 0;
-  const duration = 520;
-  const t0 = performance.now();
+function renderGeneratedClock(now) {
+  swClockEl.textContent = formatDurationSeconds(Math.floor((now - generatedClockStart) / 1000));
+}
 
-  if (swRafId) cancelAnimationFrame(swRafId);
+function startGeneratedClock() {
+  generatedClockStart = performance.now();
   function tick(now) {
-    if (gen !== simulationGeneration) return;
-    const p = Math.min(1, (now - t0) / duration);
-    swTotalMin = startTotal + (targetTotal - startTotal) * p;
-    swDwellMin = swLateralStarted ? startDwell + (targetDwell - startDwell) * p : 0;
-    renderStopwatch();
-    if (p < 1) {
-      swRafId = requestAnimationFrame(tick);
-    } else {
-      swRafId = null;
-    }
+    renderGeneratedClock(now);
+    generatedClockFrame = requestAnimationFrame(tick);
   }
-  swRafId = requestAnimationFrame(tick);
+  generatedClockFrame = requestAnimationFrame(tick);
 }
 
-function finalizeStopwatch(summary) {
-  if (swRafId) { cancelAnimationFrame(swRafId); swRafId = null; }
-  if (!swLateralStarted) {
-    stopwatchEl.classList.add('stopped');
-    const suffix = summary.dataReached ? 'DATA REACHED' : 'NO LATERAL MOVE';
-    renderStopwatch(`DWELL 0h 00m · ${suffix}`);
-  } else {
-    const suffix = summary.dataReached ? 'DATA REACHED' : 'STOPPED';
-    if (!summary.dataReached) stopwatchEl.classList.add('stopped');
-    renderStopwatch(`DWELL ${formatHoursMinutes(swDwellMin)} · ${suffix}`);
-  }
+function finishGeneratedClock() {
+  cancelAnimationFrame(generatedClockFrame);
+  renderGeneratedClock(performance.now());
+  generatedClockFrame = null;
+  generatedClockStart = null;
+  stopwatchEl.classList.add('stopped');
+  swClockCaption.textContent = 'HH:MM:SS · COMPLETE';
 }
-
-swModelBtn.addEventListener('click', () => {
-  stopwatchModel = stopwatchModel === 'pre-llm' ? 'artex' : 'pre-llm';
-  swModelBtn.textContent = STOPWATCH_MODELS[stopwatchModel].label;
-  swModelBtn.classList.toggle('artex', stopwatchModel === 'artex');
-  runSimulationOnCurrentInfra();
-});
 
 const modeButtons = document.querySelectorAll('.mode-btn');
 modeButtons.forEach(btn => {
@@ -1731,7 +1721,7 @@ presetBtn.addEventListener('click', () => {
 newRunBtn.addEventListener('click', () => generateNewInfra());
 
 window.addEventListener('resize', () => {
-  if (document.body.classList.contains('mode-comparison')) {
+  if (mapTraceRun || document.body.classList.contains('mode-comparison')) {
     renderComparisonGraphState(cmpCurrentTimeSec);
     return;
   }
@@ -1750,6 +1740,7 @@ const {
   createComparisonEstate,
   formatDurationSeconds,
   formatSignedDelta,
+  evaluateComparisonRun,
   evaluateComparisonMatrix
 } = window.WireEngine;
 
@@ -1758,6 +1749,8 @@ let cmpProfileId = 'artex';
 let cmpDefenseId = 'soc';
 let cmpShowCombined = true;
 let cmpMatrixData = null;
+let mapTraceRun = null;
+const mapTraceEstate = createComparisonEstate();
 
 let cmpPlaybackGen = 0;
 let cmpRafId = null;
@@ -1791,6 +1784,11 @@ const cmpFixtureButtons = cmpSharedExercises.querySelectorAll('.cmp-fixture-btn'
 const cmpGraphStage = document.getElementById('cmp-graph-stage');
 const cmpWireSvg = document.getElementById('cmp-wire-svg');
 const cmpNodesLayer = document.getElementById('cmp-nodes-layer');
+const cmpTicketsHeading = document.getElementById('cmp-tickets-heading');
+const mapViewport = document.getElementById('viewport');
+const mapProfile = document.getElementById('map-profile');
+const mapDefense = document.getElementById('map-defense');
+const mapTraceSurface = document.getElementById('map-trace-surface');
 
 function clearComparisonPlayback() {
   cmpPlaybackGen += 1;
@@ -1951,8 +1949,8 @@ function renderSelectedCellDetail() {
 }
 
 function renderComparisonGraphState(currentSec) {
-  const cell = getSelectedComparisonCell();
-  const estate = cmpMatrixData?.estate;
+  const cell = getPlaybackRun();
+  const estate = mapTraceRun ? mapTraceEstate : cmpMatrixData?.estate;
   if (!cell || !estate) return;
 
   const rect = cmpGraphStage.getBoundingClientRect();
@@ -2020,10 +2018,12 @@ function renderComparisonGraphState(currentSec) {
   });
 
   // Sync trace item highlights
-  cmpTraceList.querySelectorAll('.cmp-trace-item').forEach(el => {
-    const t = Number(el.dataset.timeSec || 0);
-    el.classList.toggle('reached', t <= currentSec);
-  });
+  if (!mapTraceRun) {
+    cmpTraceList.querySelectorAll('.cmp-trace-item').forEach(el => {
+      const t = Number(el.dataset.timeSec || 0);
+      el.classList.toggle('reached', t <= currentSec);
+    });
+  }
 
   // Sync SOC tickets up to currentSec
   const ticketEvents = activeEvents.filter(ev =>
@@ -2047,14 +2047,35 @@ function renderComparisonGraphState(currentSec) {
     : '<div style="font-size:10px;color:#64748b;">No alerts or tickets emitted yet at current playback timestamp.</div>';
 }
 
+function getPlaybackRun() {
+  return mapTraceRun || getSelectedComparisonCell();
+}
+
 function updateComparisonClockAndFrame(timeSec) {
   cmpCurrentTimeSec = timeSec;
-  cmpClockEl.textContent = formatDurationSeconds(timeSec);
+  const clock = mapTraceRun ? swClockEl : cmpClockEl;
+  clock.textContent = formatDurationSeconds(Math.floor(timeSec));
   renderComparisonGraphState(timeSec);
 }
 
+function setComparisonPlaybackStatus(status) {
+  if (mapTraceRun) {
+    runHud.className = '';
+    if (status === 'COMPLETE') {
+      const badge = formatCellOutcomeBadge(mapTraceRun);
+      runHud.textContent = `TIMING RACE · ${badge.text} · ${mapTraceRun.controlReason}`;
+      if (badge.cls === 'read') runHud.classList.add('breached');
+      if (badge.cls === 'prevented') runHud.classList.add('contained');
+    } else {
+      runHud.textContent = `FIXED ESTATE · TIMING RACE · ${status}`;
+    }
+  } else {
+    cmpPlaybackStatus.textContent = status;
+  }
+}
+
 function startComparisonPlayback(fromStart = false) {
-  const cell = getSelectedComparisonCell();
+  const cell = getPlaybackRun();
   if (!cell) return;
   if (fromStart) {
     clearComparisonPlayback();
@@ -2070,7 +2091,7 @@ function startComparisonPlayback(fromStart = false) {
   cmpIsPlaying = true;
   cmpPlayBtn.textContent = 'PAUSE';
   cmpPlayBtn.classList.add('active');
-  cmpPlaybackStatus.textContent = 'PLAYING';
+  setComparisonPlaybackStatus('PLAYING');
 
   const gen = cmpPlaybackGen;
   const startProgress = cmpAnimProgress >= 1 ? 0 : cmpAnimProgress;
@@ -2089,7 +2110,7 @@ function startComparisonPlayback(fromStart = false) {
       cmpRafId = null;
       cmpPlayBtn.textContent = 'PLAY';
       cmpPlayBtn.classList.remove('active');
-      cmpPlaybackStatus.textContent = 'COMPLETE';
+      setComparisonPlaybackStatus('COMPLETE');
     }
   }
   cmpRafId = requestAnimationFrame(stepPlayback);
@@ -2103,11 +2124,11 @@ function pauseComparisonPlayback() {
   }
   cmpPlayBtn.textContent = 'PLAY';
   cmpPlayBtn.classList.remove('active');
-  cmpPlaybackStatus.textContent = 'PAUSED';
+  setComparisonPlaybackStatus('PAUSED');
 }
 
 function skipComparisonPlayback() {
-  const cell = getSelectedComparisonCell();
+  const cell = getPlaybackRun();
   if (!cell) return;
   clearComparisonPlayback();
   const times = cell.trace.map(e => e.timeSec);
@@ -2115,7 +2136,7 @@ function skipComparisonPlayback() {
   cmpAnimProgress = 1;
   cmpPlayBtn.textContent = 'PLAY';
   cmpPlayBtn.classList.remove('active');
-  cmpPlaybackStatus.textContent = 'COMPLETE';
+  setComparisonPlaybackStatus('COMPLETE');
   updateComparisonClockAndFrame(cmpMaxTimeSec);
 }
 
@@ -2133,24 +2154,63 @@ function replayComparisonExercise() {
   startComparisonPlayback(true);
 }
 
+function mountTraceSurface(onMap) {
+  mapViewport.classList.toggle('map-trace-mode', onMap);
+  mapTraceSurface.hidden = !onMap;
+  if (onMap) {
+    mapTraceSurface.append(cmpGraphStage, cmpTicketsList);
+  } else {
+    cmpTicketsHeading.before(cmpGraphStage);
+    cmpTicketsHeading.after(cmpTicketsList);
+  }
+}
+
+function stopGeneratedPlayback() {
+  simulationGeneration++;
+  clearAllActiveTimeouts();
+  resetStopwatch();
+  isSimulating = false;
+  window.isSimulating = false;
+}
+
+function runMapTrace() {
+  mapTraceRun = evaluateComparisonRun('speed-race', mapProfile.value, mapDefense.value);
+  startComparisonPlayback(true);
+}
+
+function refreshMapRun() {
+  if (mapProfile.value !== 'generated') {
+    stopGeneratedPlayback();
+    mountTraceSurface(true);
+    swClockLabel.textContent = 'MODELED CLOCK';
+    swClockCaption.textContent = 'HH:MM:SS · SCENARIO TIME';
+    runMapTrace();
+    return;
+  }
+
+  clearComparisonPlayback();
+  mapTraceRun = null;
+  mountTraceSurface(false);
+  if (!currentEstate) {
+    generateNewInfra();
+  } else {
+    layoutGraph(currentEstate);
+    runSimulationOnCurrentInfra();
+  }
+}
+
 function setViewMode(mode) {
   if (mode === 'exploratory') {
-    clearComparisonPlayback();
     document.body.classList.remove('mode-comparison');
     document.body.classList.add('mode-exploratory');
-    if (!currentEstate) {
-      generateNewInfra();
-    } else {
-      layoutGraph(currentEstate);
-      runSimulationOnCurrentInfra();
-    }
+    refreshMapRun();
   } else {
-    clearAllActiveTimeouts();
+    stopGeneratedPlayback();
+    mapTraceRun = null;
+    mountTraceSurface(false);
     document.body.classList.remove('mode-exploratory');
     document.body.classList.add('mode-comparison');
-    renderComparisonMatrix();
-    renderSelectedCellDetail();
-    startComparisonPlayback(true);
+    replayComparisonExercise();
   }
 }
 
@@ -2181,10 +2241,11 @@ cmpEvidenceBtn.addEventListener('click', () => cmpEvidencePanel.classList.toggle
 cmpEvidenceClose.addEventListener('click', () => cmpEvidencePanel.classList.remove('open'));
 document.getElementById('view-exploratory-btn').addEventListener('click', () => setViewMode('exploratory'));
 document.getElementById('view-comparison-btn').addEventListener('click', () => setViewMode('comparison'));
-document.getElementById('back-to-comparison-btn').addEventListener('click', () => {
-  setViewMode('comparison');
-  cmpAttackExample.focus();
-});
+document.getElementById('back-to-comparison-btn').addEventListener('click', () => setViewMode('comparison'));
+mapProfile.addEventListener('change', refreshMapRun);
+mapDefense.addEventListener('change', runMapTrace);
+document.getElementById('map-replay-btn').addEventListener('click', () => startComparisonPlayback(true));
+document.getElementById('map-results-btn').addEventListener('click', skipComparisonPlayback);
 
 window.addEventListener('load', () => {
   try {
@@ -2200,7 +2261,10 @@ window.addEventListener('load', () => {
     const snapshot = JSON.parse(localStorage.getItem(INFRA_STORAGE_KEY));
     if (snapshot) {
       const res = migrateSnapshot(snapshot);
-      if (res.ok) currentEstate = res.estate;
+      if (res.ok) {
+        currentEstate = res.estate;
+        if (currentEstate !== snapshot) localStorage.setItem(INFRA_STORAGE_KEY, JSON.stringify(currentEstate));
+      }
     }
   } catch (e) { console.warn('Unable to restore infrastructure', e); }
 

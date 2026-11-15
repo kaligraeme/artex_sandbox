@@ -15,6 +15,28 @@
 
   const TRUST_ZONES = ['internet-dmz', 'identity-edge', 'internal-mesh', 'data-tier'];
 
+  // Equal demo coverage across seeds; public incident reports do not establish rates for these categories.
+  const MIXED_DIAGNOSTIC_OPENINGS = [
+    {
+      openingType: 'low_exposure',
+      title: 'Low exposure',
+      requiredCondition: 'unredactedSupportCapture',
+      description: 'An approved support capture retains a synthetic staging status credential visible to the signed-in diagnostics viewer.'
+    },
+    {
+      openingType: 'misconfiguration',
+      title: 'Misconfiguration',
+      requiredCondition: 'overbroadDiagnosticsSharing',
+      description: 'An overly broad sharing policy lets the signed-in diagnostics viewer see a restricted staging build log containing a synthetic status credential.'
+    },
+    {
+      openingType: 'low_vulnerability',
+      title: 'Low vulnerability',
+      requiredCondition: 'limitedDiagnosticReadDefect',
+      description: 'A modeled, read-only defect exposes a synthetic staging status credential to the signed-in diagnostics viewer.'
+    }
+  ];
+
   // Demo-design budgets per layer (starting targets for exploitable findings, not risk rates)
   const LAYER_FINDING_BUDGETS = [
     { min: 1, max: 2 },
@@ -249,7 +271,8 @@
             { id: 'public-gitlab', icon: 'code.png', interfaces: ['repo-http', 'https'], attackTechnique: 'T1593.003', attackDescription: 'Search public code repositories', publicExposure: 'Simulated GitLab project is publicly readable contrary to its intended access policy.', variants: ['GitLab · Project'] },
             { id: 'public-bitbucket', icon: 'code.png', interfaces: ['repo-http', 'https'], attackTechnique: 'T1593.003', attackDescription: 'Search public code repositories', publicExposure: 'Simulated Bitbucket repository is publicly readable contrary to its intended access policy.', variants: ['Bitbucket · Repository'] },
             { id: 'citrix-adc', icon: 'server-infrastructure.png', interfaces: ['https'], kevByVariant: ['CVE-2023-3519'], variants: ['Citrix NetScaler ADC Gateway'] },
-            { id: 'apache-edge', icon: 'server-infrastructure.png', interfaces: ['https'], kevByVariant: ['CVE-2021-42013'], variants: ['Apache HTTP Server 2.4.50 Edge'] }
+            { id: 'apache-edge', icon: 'server-infrastructure.png', interfaces: ['https'], kevByVariant: ['CVE-2021-42013'], variants: ['Apache HTTP Server 2.4.50 Edge'] },
+            { id: 'support-diagnostics', preset: 'mixed', icon: 'configuration.png', interfaces: ['https'], variants: ['Support Diagnostics Portal'] }
           ]
         }
       ]
@@ -265,7 +288,8 @@
             { id: 'partner-api', icon: 'api.png', interfaces: ['api-https', 'https'], kevByVariant: ['CVE-2022-29464', 'CVE-2022-29464', 'CVE-2022-29464'], variants: ['WSO2 Partner API Gateway', 'WSO2 B2B Webhook Gateway', 'WSO2 Partner Sync Gateway'] },
             { id: 'waf-proxy', icon: 'server-infrastructure.png', interfaces: ['https'], isSecurity: true, productPool: true, vulnerabilityChance: 0.25, kevByVariant: ['CVE-2023-46747', 'CVE-2025-64446', 'CVE-2023-3519', 'CVE-2018-5412'], variants: ['F5 BIG-IP Advanced WAF', 'Fortinet FortiWeb WAF', 'Citrix NetScaler WAF + Gateway', 'Imperva SecureSphere WAF'] },
             { id: 'wso2-api', icon: 'api.png', interfaces: ['api-https', 'https'], kevByVariant: ['CVE-2022-29464'], variants: ['WSO2 API Manager'] },
-            { id: 'exchange', icon: 'server-infrastructure.png', interfaces: ['https'], kevByVariant: ['CVE-2021-26855'], variants: ['Microsoft Exchange Server'] }
+            { id: 'exchange', icon: 'server-infrastructure.png', interfaces: ['https'], kevByVariant: ['CVE-2021-26855'], variants: ['Microsoft Exchange Server'] },
+            { id: 'staging-status', preset: 'mixed', icon: 'api.png', interfaces: ['api-https'], variants: ['Staging Status API'] }
           ]
         },
         {
@@ -348,6 +372,7 @@
   ];
 
   const ALLOWED_CONNECTIONS = {
+    'support-diagnostics': ['staging-status'],
     'public-gitlab': ['iam-idp'],
     'ivanti-connect': ['cust-api', 'iam-idp'],
     'f5-gateway': ['cust-api', 'partner-api', 'waf-proxy', 'wso2-api'],
@@ -381,7 +406,7 @@
   const EXTERNAL_ENTRY_GROUPS = new Set([
     'ivanti-connect', 'pan-globalprotect', 'citrix-adc', 'f5-gateway',
     'forti-vpn', 'pulse-vpn', 'apache-edge', 'public-s3', 'public-blob',
-    'public-gitlab', 'public-bitbucket'
+    'public-gitlab', 'public-bitbucket', 'support-diagnostics'
   ]);
 
   const DEFENSE_SCENARIOS = {
@@ -555,6 +580,28 @@
 
     // 2. Check findings on targetAsset independently
     for (const f of targetFindings) {
+      if (f.kind === 'diagnostic_access') {
+        const diagnosticLogin = diagnoseCredentialForTarget(state, targetAsset, 'read_diagnostics');
+        if (!diagnosticLogin.usable) {
+          return [{ eligible: false, finding: f, reason: 'Reading diagnostics requires an authorized diagnostics viewer.' }];
+        }
+        if (targetAsset.conditions?.[f.requiredCondition] !== true) {
+          return [{ eligible: false, finding: f, reason: 'The modeled diagnostic exposure is absent.' }];
+        }
+        const action = {
+          eligible: true,
+          actionKind: 'diagnostic_access',
+          finding: f,
+          credentialUsed: diagnosticLogin.credential,
+          requiredAccess: 'Signed-in diagnostics viewer',
+          reachability,
+          yieldsCapability: 'diagnostic_read',
+          reason: f.description
+        };
+        if (options.firstOnly) return [action];
+        actions.push(action);
+        continue;
+      }
       if (f.kind === 'anonymous_access') {
         const action = {
           eligible: true,
@@ -669,7 +716,9 @@
         reachability,
         yieldsCapability: targetAsset.layerIdx === 3 ? 'data_read' : 'account_session',
         exposesCredentialId: null,
-        reason: `Authenticated to ${targetAsset.label} using ${credCheck.credential.label} (no CVE needed).`
+        reason: targetAsset.groupId === 'staging-status'
+          ? 'Staging status access established. Production access requires a separate authorization.'
+          : `Authenticated to ${targetAsset.label} using ${credCheck.credential.label} (no CVE needed).`
       };
       if (options.firstOnly) return [action];
       actions.push(action);
@@ -742,6 +791,10 @@
         reason: 'Access to the decoy generated an alert; the simulated SOAR playbook contained the attacker session.'
       };
     }
+    if (action.actionKind === 'diagnostic_access') {
+      return { addressed: false, badge: 'SCOPED CREDENTIAL EXPOSED', reason: action.reason };
+    }
+
     if (mode === 'baseline') {
       return { addressed: false, badge: 'EXPLOITED', reason: 'Baseline scenario unmitigated: zero active defenses applied.' };
     }
@@ -858,7 +911,7 @@
 
     const state = {
       reachedAssets: new Map(),
-      acquiredCredentials: new Map(),
+      acquiredCredentials: new Map(estate.credentials.filter(cred => cred.startingAccess).map(cred => [cred.id, cred])),
       revokedCredentials: new Set()
     };
 
@@ -1116,8 +1169,9 @@
     LAYER_CONFIG.forEach((layer, layerIdx) => {
       const numClusters = layer.clusters.length;
       layer.clusters.forEach((cluster, clusterIdx) => {
-        const numTargets = cluster.targets.length;
-        cluster.targets.forEach((targetDef, targetIdx) => {
+        const targets = cluster.targets.filter(target => !target.preset || target.preset === preset);
+        const numTargets = targets.length;
+        targets.forEach((targetDef, targetIdx) => {
           if (targetDef.includeChance != null && rng() >= targetDef.includeChance) return;
           const maxVariants = targetDef.variants.length;
           const instanceCount = maxVariants > 1 ? randInt(1, Math.min(targetDef.maxInstances ?? 3, maxVariants)) : 1;
@@ -1198,6 +1252,14 @@
       const source = candidates.reduce((a, b) => Math.abs(a.y - target.y) < Math.abs(b.y - target.y) ? a : b);
       addRel(source, target);
     });
+
+    const diagnostics = assets.find(a => a.groupId === 'support-diagnostics');
+    const statusApi = assets.find(a => a.groupId === 'staging-status');
+    if (diagnostics) {
+      const statusRoute = relationships.find(r => r.sourceId === diagnostics.id);
+      statusRoute.requiredSourceCapability = 'diagnostic_read';
+      statusRoute.purpose = 'Staging status access with a viewer credential';
+    }
 
     if (preset === 'demo') {
       const edge = assets.find(a => a.groupId === 'f5-gateway');
@@ -1473,12 +1535,44 @@
         requiredSourceCapability: 'account_session'
       });
     } else {
-      // Mixed-Estate (default): apply small demo-design budgets per layer, allow 0 complete paths
+      const opening = MIXED_DIAGNOSTIC_OPENINGS[seed % MIXED_DIAGNOSTIC_OPENINGS.length];
+      diagnostics.conditions[opening.requiredCondition] = true;
+      findings.push({
+        id: `finding-${diagnostics.id}`,
+        assetId: diagnostics.id,
+        kind: 'diagnostic_access',
+        inKev: false,
+        provenance: 'synthetic_assumption',
+        ...opening
+      });
+      credentials.push({
+        id: 'mixed-diagnostics-viewer',
+        kind: 'service_account',
+        label: 'Synthetic diagnostics viewer',
+        scope: 'read diagnostics',
+        permissions: ['read_diagnostics'],
+        targetAssetIds: [diagnostics.id],
+        audience: diagnostics.id,
+        sourceAssetId: diagnostics.id,
+        startingAccess: true
+      }, {
+        id: 'mixed-staging-status',
+        kind: 'api_token',
+        label: 'Synthetic staging status credential',
+        scope: 'staging status only',
+        permissions: ['authenticate'],
+        targetAssetIds: [statusApi.id],
+        audience: statusApi.id,
+        sourceAssetId: diagnostics.id,
+        requiredSourceCapability: 'diagnostic_read'
+      });
+
+      // The diagnostic finding consumes one of the mixed estate's ingress slots.
       for (let layerIdx = 0; layerIdx < 4; layerIdx++) {
         const budget = LAYER_FINDING_BUDGETS[layerIdx];
         const targetCount = randInt(budget.min, budget.max);
         const candidates = shuffleWithRng(keptAssets.filter(a => a.layerIdx === layerIdx), rng);
-        let assigned = 0;
+        let assigned = layerIdx === 0 ? 1 : 0;
 
         for (const asset of candidates) {
           if (assigned >= targetCount) break;
@@ -1516,24 +1610,13 @@
           }
         }
       }
-      // Illustrative leak: a public repository contains one synthetic credential
-      // for an assumed internet-reachable identity endpoint. No real secret exists.
-      const repo = keptAssets.find(a => a.groupId === 'public-gitlab');
-      const identityLink = repo && keptRels.find(r => r.sourceId === repo.id);
-      const identity = identityLink && keptAssets.find(a => a.id === identityLink.targetId);
-      if (repo && identity && rng() < 0.35) {
-        if (!findings.some(f => f.assetId === repo.id)) addPublicFindingForAsset(repo);
-        credentials.push({
-          id: `cred-${repo.id}-to-${identity.id}`, kind: 'service_account',
-          label: 'Synthetic repository-exposed identity credential', scope: 'authenticate',
-          targetAssetIds: [identity.id], targetGroupIds: [], audience: identity.id,
-          revoked: false, mfaRequired: false, sourceAssetId: repo.id, requiredSourceCapability: 'code_read'
-        });
-        identityLink.purpose = 'Assumed internet access to identity endpoint using credential exposed in public repository';
-      }
     }
 
     const actionOrder = shuffleWithRng(keptAssets.map(a => a.id), rng);
+    if (diagnostics) {
+      actionOrder.splice(actionOrder.indexOf(diagnostics.id), 1);
+      actionOrder.unshift(diagnostics.id);
+    }
     const estate = {
       schemaVersion: SCHEMA_VERSION,
       seed,
@@ -1563,7 +1646,12 @@
     }
     if (snapshot.schemaVersion === SCHEMA_VERSION) {
       const validation = validateEstate(snapshot);
-      return validation.valid ? { ok: true, estate: snapshot } : { ok: false, reason: validation.errors.join('; ') };
+      if (!validation.valid) return { ok: false, reason: validation.errors.join('; ') };
+      if (snapshot.preset === 'mixed' && Number.isInteger(snapshot.seed) &&
+          !snapshot.findings.some(finding => finding.kind === 'diagnostic_access' && finding.openingType)) {
+        return { ok: true, estate: generateEstate({ seed: snapshot.seed, preset: 'mixed' }) };
+      }
+      return { ok: true, estate: snapshot };
     }
     return {
       ok: false,

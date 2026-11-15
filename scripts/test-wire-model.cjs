@@ -226,6 +226,75 @@ function makeAsset(id, groupId, layerIdx, extra = {}) {
   }
 }
 
+// Mixed estates open with an authenticated, staging-only credential exposure.
+{
+  const openingKinds = new Set();
+  for (const seed of [0, 1, 2]) {
+    const estate = engine.generateEstate({ seed, preset: 'mixed' });
+    const diagnostics = estate.assets.find(asset => asset.groupId === 'support-diagnostics');
+    const status = estate.assets.find(asset => asset.groupId === 'staging-status');
+    assert.equal(status.isExternalEntry, false);
+    assert(!estate.relationships.some(relationship => relationship.sourceId === status.id));
+
+    const { events } = engine.simulateEstate(estate, 'baseline');
+    const opening = events[0];
+    openingKinds.add(opening.finding.openingType);
+    assert.equal(opening.targetId, diagnostics.id);
+    assert.equal(opening.finding.kind, 'diagnostic_access');
+    assert.equal(opening.credentialUsed.startingAccess, true);
+    assert.equal(opening.grantedCapability, 'diagnostic_read');
+    assert.equal(opening.acquiredCredentials.length, 1);
+    const [credential] = opening.acquiredCredentials;
+    assert.equal(credential.scope, 'staging status only');
+    assert.deepEqual(credential.targetAssetIds, [status.id]);
+    assert.deepEqual(credential.permissions, ['authenticate']);
+    assert.equal(events.find(event => event.targetId === status.id).credentialUsed?.id, credential.id);
+
+    const unauthorizedEstate = { ...estate, credentials: estate.credentials.filter(cred => !cred.startingAccess) };
+    const unauthorized = engine.simulateEstate(unauthorizedEstate, 'baseline').events[0];
+    assert.equal(unauthorized.outcome, 'ineligible');
+    assert.match(unauthorized.reason, /authorized diagnostics viewer/);
+
+    const correctedDiagnostics = { ...diagnostics, conditions: {} };
+    const correctedEstate = {
+      ...estate,
+      assets: estate.assets.map(asset => asset.id === diagnostics.id ? correctedDiagnostics : asset)
+    };
+    const corrected = engine.simulateEstate(correctedEstate, 'baseline').events;
+    assert.equal(corrected[0].outcome, 'ineligible');
+    assert.match(corrected[0].reason, /diagnostic exposure is absent/);
+    assert(!corrected.some(event => event.targetId === status.id && event.outcome === 'succeeded'));
+  }
+  assert.deepEqual(openingKinds, new Set(['low_exposure', 'misconfiguration', 'low_vulnerability']));
+
+  const counts = new Map();
+  for (let seed = 0; seed < 300; seed++) {
+    const estate = engine.generateEstate({ seed, preset: 'mixed' });
+    const { openingType } = estate.findings.find(finding => finding.kind === 'diagnostic_access');
+    counts.set(openingType, (counts.get(openingType) || 0) + 1);
+  }
+  assert.deepEqual([...counts.values()], [100, 100, 100]);
+
+  const newMixed = engine.generateEstate({ seed: 42 });
+  const legacyMixed = makeEstate({ seed: 42 });
+  assert.deepEqual(engine.migrateSnapshot(legacyMixed).estate, newMixed);
+  assert.equal(engine.migrateSnapshot(newMixed).estate, newMixed);
+  const oldDiagnostics = {
+    ...newMixed,
+    findings: newMixed.findings.map(finding => {
+      if (finding.kind !== 'diagnostic_access') return finding;
+      const { openingType, ...previousFinding } = finding;
+      return previousFinding;
+    })
+  };
+  assert.deepEqual(engine.migrateSnapshot(oldDiagnostics).estate, newMixed);
+  for (const preset of ['demo', 'logs']) {
+    const estate = engine.generateEstate({ seed: 42, preset });
+    assert(!estate.credentials.some(cred => cred.startingAccess));
+    assert(!estate.assets.some(asset => asset.groupId === 'support-diagnostics'));
+  }
+}
+
 // 9. A source must actually possess the capability required by its connection.
 {
   const source = makeAsset('read-only', 'edge', 0);

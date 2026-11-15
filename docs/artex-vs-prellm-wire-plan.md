@@ -6,6 +6,8 @@
 
 **Implementation:** `js/wire-engine.js`, `wire.html`, `scripts/test-wire-model.cjs`, [comparison notes](pre-llm-vs-artex-comparison.md), [Wire model documentation](wire_diagram_logic.md), and `README.md`.
 
+The [current demo](wire_diagram_logic.md#wire-diagram-timing-exercise) puts six attacker examples, Baseline, and three defenses on a single generated wire diagram. The fixed-estate matrix and numeric examples below describe the original comparison design.
+
 ## 1. Demo outcome
 
 Show how **Virtual Patching**, **Agentic SOC**, and **Canaries** change the same security outcome as adversary workflows shift from **pre-2023 human-led operations** to **ARTEX-era agentic operations**. Compare what each workflow can cover in a fixed window, how much time defenders have to act on the same activity, and when each technology prevents access, detects a problem, or contains it.

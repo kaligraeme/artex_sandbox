@@ -64,7 +64,7 @@
     flex-direction: column;
     align-items: center;
     gap: 5px;
-    padding: 0 150px;
+    padding: 0 12px;
     z-index: 1000;
     pointer-events: none;
   }
@@ -142,49 +142,17 @@
     pointer-events: auto;
   }
 
-  #new-run-btn {
-    pointer-events: auto;
-    background: rgba(0, 30, 36, 0.85);
-    border: 1.5px solid var(--turquoise);
-    color: var(--turquoise);
-    padding: 5px 14px;
+  #catalog-example {
+    color: #a5d8ff;
+    background: rgba(4, 18, 32, 0.88);
+    border: 1px solid rgba(110, 193, 255, 0.35);
+    border-radius: 3px;
+    padding: 3px 8px;
     font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    border-radius: 4px;
-    cursor: pointer;
-    box-shadow: 0 0 16px var(--turquoise-glow), inset 0 0 10px rgba(0, 240, 255, 0.2);
-    backdrop-filter: blur(10px);
-    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-    outline: none;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    text-align: center;
+    pointer-events: auto;
   }
 
-  #new-run-btn:hover {
-    background: var(--turquoise);
-    color: #001015;
-    box-shadow: 0 0 30px rgba(0, 240, 255, 0.85), inset 0 0 15px rgba(255, 255, 255, 0.7);
-    transform: scale(1.04);
-  }
-
-  #new-run-btn:active {
-    transform: scale(0.98);
-  }
-
-  #new-run-btn .run-icon {
-    font-size: 12px;
-    display: inline-block;
-    transition: transform 0.4s ease;
-  }
-
-  #new-run-btn:hover .run-icon {
-    transform: rotate(180deg);
-  }
-
-  /* Live Outcome HUD under NEW RUN button */
   #run-hud {
     font-size: 9.5px;
     letter-spacing: 0.12em;
@@ -197,6 +165,7 @@
     backdrop-filter: blur(6px);
     text-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
     transition: all 0.3s ease;
+    text-align: center;
   }
   #run-hud.breached {
     color: #ff9ba8;
@@ -226,35 +195,54 @@
     stroke: var(--green-wire);
     stroke-width: 1.25;
     stroke-linecap: round;
-    opacity: 0;
+    opacity: 0.22;
     transition: opacity 0.8s ease, stroke 0.4s ease, stroke-width 0.3s ease, filter 0.3s ease, stroke-opacity 0.4s ease;
   }
 
-  .wire.revealed, .wire.active-wire, .wire.hit-wire, .wire.defended-wire { opacity: 1; }
-
-  .attack-entry {
+  .wire.revealed, .wire.hit-wire, .wire.defended-wire { opacity: 1; }
+  .node.catalog-focus .node-label {
+    outline: 1px solid rgba(121, 189, 255, 0.75);
+    outline-offset: 2px;
+  }
+  .illustrative-wire {
     fill: none;
-    stroke: #ff304f;
-    stroke-width: 2.5;
-    stroke-linecap: round;
-    stroke-dasharray: 3 7;
-    animation: probeFade 0.75s ease-out forwards;
-    filter: drop-shadow(0 0 5px rgba(255, 34, 68, 0.75));
+    stroke: #c2a2fa;
+    stroke-width: 1.5;
+    stroke-dasharray: 4 5;
+    opacity: 0.4;
   }
-
-  @keyframes probeFade { 0%, 45% { opacity: 1; } 100% { opacity: 0; } }
-
-  .attack-entry-head {
-    fill: #ff304f;
-    filter: drop-shadow(0 0 5px rgba(255, 34, 68, 0.75));
+  .illustrative-step {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    width: 15vw;
+    max-width: 142px;
+    padding: 5px 3px;
+    border: 1px dashed #9174bd;
+    border-radius: 4px;
+    background: #18142b;
+    color: #e2d2ff;
+    font-size: 10px;
+    text-align: center;
+    pointer-events: auto;
+    opacity: 0.65;
   }
+  .illustration-active .illustrative-step,
+  .illustration-active .illustrative-wire { opacity: 1; }
 
-  .wire.active-wire {
-    stroke: #ff304f;
-    stroke-opacity: 0.95;
+  .probe-wire {
+    fill: none;
+    stroke: #ff637b;
     stroke-width: 2;
-    stroke-dasharray: 3 7;
-    filter: drop-shadow(0 0 4px rgba(255, 34, 68, 0.75));
+    stroke-linecap: round;
+    stroke-dasharray: 2 6;
+    animation: probeSweep linear both;
+  }
+  .probe-wire[data-lane="2"] { stroke: #ffac7b; }
+  .probe-wire[data-lane="3"] { stroke: #d3a0ff; }
+  @keyframes probeSweep {
+    0% { opacity: 0; }
+    15%, 70% { opacity: 1; }
+    100% { opacity: 0; stroke-dashoffset: -24; }
   }
 
   .wire.hit-wire {
@@ -396,10 +384,19 @@
     font-weight: 600;
   }
 
-  /* A deployed decoy remains visibly distinct before and after a trigger. */
-  .node.canary .node-icon { background-color: #ffd83d; filter: drop-shadow(0 0 9px #ffd83d); }
-  .node.canary .node-halo { border-color: #ffd83d; opacity: 0.85; box-shadow: 0 0 10px rgba(255,216,61,.5); }
-  .node.canary .node-label { color: #ffe45c; }
+  .canary-marker {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 2px 4px;
+    color: #ffe45c;
+    background: #221a0a;
+    border: 1px solid #ad8333;
+    border-radius: 3px;
+    font-size: 8px;
+    white-space: nowrap;
+  }
 
   /* HIT STATE: Lit in RED */
   .node.hit .node-icon {
@@ -484,21 +481,6 @@
     100% { transform: scale(1.22); opacity: 0.3; }
   }
 
-  /* Flash impact burst when hit */
-  .impact-burst {
-    position: absolute;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    border: 2px solid var(--red);
-    pointer-events: none;
-    animation: burstExpand 0.65s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
-  }
-
-  @keyframes burstExpand {
-    0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
-    100% { transform: translate(-50%, -50%) scale(5.5); opacity: 0; }
-  }
   /* Small incident-ticket drum in the bottom-right corner. */
   .soc-ticker { position: fixed; z-index: 30; right: 8px; bottom: 8px; width: clamp(170px, 14vw, 225px); height: 108px; overflow: hidden; pointer-events: none; font: 10px Arial, sans-serif; }
   .soc-cards { display: flex; flex-direction: column; gap: 0; }
@@ -511,573 +493,106 @@
   .soc-detail { margin-top: 2px; color: #284967; font-size: 9px; }
   .soc-severity { flex: none; font-size: 9px; color: #a12e24; }
   .soc-empty { color: #58728c; }
-  #preset-btn {
-    background: rgba(16, 26, 40, 0.85);
-    border: 1px solid rgba(56, 189, 248, 0.35);
-    color: #93c5fd;
-    font: 600 11px/1 'JetBrains Mono', monospace;
-    letter-spacing: 0.06em;
-    padding: 7px 11px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.18s ease;
+  .elapsed-clock {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    color: #a9bfd2;
+    font-size: 10px;
     white-space: nowrap;
   }
-  #preset-btn:hover { border-color: #38bdf8; color: #e0f2fe; }
-  #preset-btn.demo { border-color: rgba(245, 158, 11, 0.55); color: #fcd34d; }
-  #attack-stopwatch {
-    position: fixed;
-    top: 14px;
-    left: 14px;
-    z-index: 1001;
-    background: rgba(9, 16, 24, 0.88);
-    border: 1px solid rgba(0, 240, 255, 0.28);
-    border-radius: 6px;
-    padding: 7px 10px;
-    min-width: 132px;
-    backdrop-filter: blur(8px);
-    box-shadow: 0 0 14px rgba(0, 0, 0, 0.45);
-    font-variant-numeric: tabular-nums;
-  }
-  .sw-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 3px; }
-  .sw-label { font-size: 8px; letter-spacing: 0.12em; color: #7fa0bc; text-transform: uppercase; }
-  #sw-clock { font-size: 20px; font-weight: 800; letter-spacing: 0.06em; color: #e2f6ff; line-height: 1.1; }
-  #sw-clock-caption { font-size: 9px; color: #7fa0bc; margin-top: 3px; letter-spacing: 0.04em; }
-  #attack-stopwatch.stopped #sw-clock-caption { color: #6ee7b7; }
-  @media (max-width: 760px) {
-    .top-bar { padding: 72px 12px 0; }
-    #attack-stopwatch { top: 8px; left: 8px; padding: 5px 8px; }
-  }
+  #model-clock { min-width: 12ch; color: #e2f6ff; font-size: 12px; font-variant-numeric: tabular-nums; }
   @media (prefers-reduced-motion: reduce) { .soc-cards { transition: none; } .soc-cards.looping { animation: none; } }
 
-  /* COMPARISON DEMO WORKBENCH */
-  body.mode-comparison {
-    height: auto;
-    min-height: 100vh;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-  body.mode-comparison #viewport.exploratory-only { display: none; }
-  body.mode-exploratory #comparison-workbench { display: none; }
-
-  #comparison-workbench {
-    position: relative;
-    min-height: 100vh;
-    padding: 14px 18px 28px;
-    background: radial-gradient(circle at 50% 15%, #10253b 0%, #071426 75%, #050f1e 100%);
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .cmp-topbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid rgba(56, 189, 248, 0.2);
-  }
-  .cmp-title-group { display: flex; flex-direction: column; gap: 3px; }
-  .cmp-title { font-size: 14px; font-weight: 800; letter-spacing: 0.08em; color: #e2f6ff; }
-  .cmp-subtitle { font-size: 11px; color: #94a3b8; max-width: 780px; line-height: 1.35; }
-  .cmp-nav-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-  .cmp-pill-btn {
-    background: rgba(9, 16, 24, 0.88);
-    border: 1px solid rgba(148, 163, 184, 0.32);
-    color: #cbd5e1;
-    font: 600 11px/1 'JetBrains Mono', monospace;
-    padding: 7px 10px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.16s ease;
-    text-decoration: none;
-    white-space: nowrap;
-  }
-  .cmp-pill-btn:hover { border-color: #38bdf8; color: #e0f2fe; }
-  .cmp-pill-btn.active {
-    background: rgba(0, 240, 255, 0.14);
-    border-color: var(--turquoise);
-    color: #e0f9ff;
-    box-shadow: 0 0 10px rgba(0, 240, 255, 0.22);
-  }
-  .cmp-controls-bar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    background: rgba(9, 16, 24, 0.72);
-    border: 1px solid rgba(56, 189, 248, 0.18);
-    border-radius: 8px;
-    padding: 9px 12px;
-  }
-  .cmp-exercise-controls { display: grid; gap: 8px; }
-  .cmp-example-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-  .cmp-example-picker label { color: #e2f6ff; font-size: 11px; font-weight: 700; }
-  #cmp-attack-example { color-scheme: dark; max-width: 100%; }
-  .cmp-fixture-group, .cmp-playback-group {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px;
-  }
-  #cmp-shared-exercises[hidden] { display: none; }
-  .cmp-clock-box {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(7, 20, 38, 0.95);
-    border: 1px solid rgba(0, 240, 255, 0.35);
-    border-radius: 6px;
-    padding: 5px 10px;
-    font-variant-numeric: tabular-nums;
-  }
-  #cmp-clock { font-size: 16px; font-weight: 800; color: #e2f6ff; letter-spacing: 0.06em; }
-  .cmp-clock-unit { font-size: 10px; color: #a9bfd2; }
-  #cmp-playback-status { font-size: 10px; color: #7dd3fc; letter-spacing: 0.05em; }
-
-  .cmp-matrix-wrap {
-    width: 100%;
-    overflow-x: auto;
-    border: 1px solid rgba(56, 189, 248, 0.22);
-    border-radius: 8px;
-    background: rgba(9, 16, 24, 0.78);
-  }
-  .cmp-matrix {
-    width: 100%;
-    min-width: 780px;
-    border-collapse: collapse;
-    table-layout: fixed;
-  }
-  .cmp-matrix th, .cmp-matrix td {
-    border: 1px solid rgba(148, 163, 184, 0.16);
-    padding: 8px;
-    vertical-align: top;
-    text-align: left;
-  }
-  .cmp-matrix thead th {
-    background: rgba(15, 31, 51, 0.92);
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    color: #bae6fd;
-    text-transform: uppercase;
-  }
-  .cmp-row-head {
-    background: rgba(15, 23, 42, 0.85);
-    width: 156px;
-  }
-  .cmp-row-title { font-size: 12px; font-weight: 700; color: #f8fafc; margin-bottom: 4px; }
-  .cmp-row-desc { font-size: 10px; color: #94a3b8; line-height: 1.35; }
-
-  .cmp-cell {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    width: 100%;
-    background: rgba(15, 23, 42, 0.55);
-    border: 1px solid rgba(148, 163, 184, 0.22);
-    border-radius: 6px;
-    padding: 8px;
-    color: #e2e8f0;
-    font-family: inherit;
-    text-align: left;
-    cursor: pointer;
-    transition: border-color 0.15s ease, background 0.15s ease, transform 0.12s ease;
-  }
-  .cmp-cell:hover { border-color: #38bdf8; background: rgba(15, 34, 58, 0.85); }
-  .cmp-cell.selected {
-    border-color: var(--turquoise);
-    background: rgba(0, 240, 255, 0.1);
-    box-shadow: 0 0 0 1px rgba(0, 240, 255, 0.35), 0 0 14px rgba(0, 240, 255, 0.16);
-  }
-  .cmp-badge {
-    display: inline-block;
-    width: fit-content;
-    font-size: 9px;
-    font-weight: 800;
-    letter-spacing: 0.06em;
-    padding: 2px 6px;
-    border-radius: 4px;
-  }
-  .cmp-badge.read { background: rgba(255, 34, 68, 0.2); color: #fda4af; border: 1px solid rgba(255, 34, 68, 0.45); }
-  .cmp-badge.prevented { background: rgba(0, 255, 119, 0.14); color: #6ee7b7; border: 1px solid rgba(0, 255, 119, 0.4); }
-  .cmp-badge.noread { background: rgba(56, 189, 248, 0.14); color: #bae6fd; border: 1px solid rgba(56, 189, 248, 0.35); }
-  .cmp-cell-line { font-size: 10px; color: #cbd5e1; line-height: 1.35; }
-  .cmp-cell-reason { font-size: 9px; font-weight: 700; color: #fde68a; letter-spacing: 0.03em; }
-  .cmp-cell-meta { font-size: 9px; color: #94a3b8; }
-
-  .cmp-lower-grid {
-    display: grid;
-    grid-template-columns: minmax(320px, 1.05fr) minmax(320px, 1fr);
-    gap: 12px;
-    align-items: start;
-  }
-  .cmp-panel {
-    background: rgba(9, 16, 24, 0.84);
-    border: 1px solid rgba(56, 189, 248, 0.22);
-    border-radius: 8px;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .cmp-panel-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.16);
-    padding-bottom: 8px;
-  }
-  .cmp-panel-title { font-size: 12px; font-weight: 800; color: #e0f2fe; letter-spacing: 0.05em; }
-  .cmp-metrics-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
-    gap: 8px;
-  }
-  .cmp-metric-box {
-    background: rgba(15, 23, 42, 0.72);
-    border: 1px solid rgba(148, 163, 184, 0.18);
-    border-radius: 6px;
-    padding: 7px 8px;
-  }
-  .cmp-metric-label { font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; }
-  .cmp-metric-val { font-size: 12px; font-weight: 700; color: #f8fafc; margin-top: 2px; font-variant-numeric: tabular-nums; }
-
-  .cmp-assumptions {
-    background: rgba(15, 23, 42, 0.55);
-    border-left: 2px solid #38bdf8;
-    padding: 7px 10px;
-    font-size: 10px;
-    color: #cbd5e1;
-    line-height: 1.45;
-  }
-  .cmp-assumptions ul { margin-left: 16px; margin-top: 4px; }
-
-  .cmp-trace-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    max-height: 310px;
-    overflow-y: auto;
-    padding-right: 4px;
-  }
-  .cmp-trace-item {
-    display: grid;
-    grid-template-columns: 74px 1fr;
-    gap: 8px;
-    padding: 7px 8px;
-    border-radius: 6px;
-    background: rgba(15, 23, 42, 0.55);
-    border: 1px solid rgba(148, 163, 184, 0.16);
-    opacity: 0.45;
-    transition: opacity 0.18s ease, border-color 0.18s ease;
-  }
-  .cmp-trace-item.reached { opacity: 1; border-color: rgba(56, 189, 248, 0.35); }
-  .cmp-trace-item.suppressed { opacity: 0.65; border-style: dashed; }
-  .cmp-trace-time { font-size: 11px; font-weight: 700; color: #7dd3fc; font-variant-numeric: tabular-nums; }
-  .cmp-trace-title { font-size: 11px; font-weight: 700; color: #f8fafc; }
-  .cmp-trace-detail { font-size: 10px; color: #94a3b8; margin-top: 2px; line-height: 1.35; }
-  .cmp-trace-reason { font-size: 9px; font-weight: 700; color: #fde68a; margin-top: 3px; }
-
-  #cmp-graph-stage {
-    position: relative;
-    width: 100%;
-    height: 310px;
-    border-radius: 6px;
-    border: 1px solid rgba(56, 189, 248, 0.2);
-    background: radial-gradient(circle at 50% 45%, #10253b 0%, #071426 85%);
-    overflow: hidden;
-  }
-  #cmp-graph-stage svg, #cmp-graph-stage .cmp-nodes-layer {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-  }
-  .cmp-tickets-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    max-height: 185px;
-    overflow-y: auto;
-  }
-  #map-profile, #map-defense { color-scheme: dark; }
-  .map-control { display: flex; align-items: center; gap: 6px; color: #a9bfd2; font-size: 11px; }
-  #map-trace-controls { display: none; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px; }
-  .map-trace-mode #map-trace-controls { display: flex; }
-  .map-trace-mode .mode-strip,
-  .map-trace-mode #new-run-btn,
-  .map-trace-mode #preset-btn,
-  .map-trace-mode > .soc-ticker,
-  .map-trace-mode > #wire-svg,
-  .map-trace-mode > #nodes-layer { display: none; }
-  #viewport.map-trace-mode { display: grid; grid-template-rows: auto minmax(0, 1fr); }
-  .map-trace-mode .top-bar { position: relative; top: 0; padding-top: 14px; }
-  #map-trace-surface { position: relative; margin: 10px 12px 120px; z-index: 20; }
-  #map-trace-surface #cmp-graph-stage { height: 100%; border: 0; background: transparent; }
-  #map-trace-surface #cmp-tickets-list {
-    position: absolute;
-    right: 0;
-    bottom: -110px;
-    width: min(320px, 100%);
-    max-height: 104px;
-  }
-  @media (max-width: 760px) {
-    .map-trace-mode .top-bar { padding-top: 72px; }
-  }
-  .cmp-ticket-card {
-    background: rgba(15, 23, 42, 0.78);
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    border-left: 3px solid #38bdf8;
-    border-radius: 5px;
+  .run-row label { display: flex; align-items: center; gap: 6px; color: #a9bfd2; font-size: 11px; }
+  .run-row select, .run-row button.trace-control {
     padding: 6px 8px;
-    font-size: 10px;
+    border: 1px solid rgba(88, 217, 219, 0.3);
+    border-radius: 4px;
+    background: #0c1928;
+    color: #d0e4f2;
+    color-scheme: dark;
+    font: inherit;
+    cursor: pointer;
   }
-  .cmp-ticket-card.critical { border-left-color: #ff2244; }
-  .cmp-ticket-card.defense { border-left-color: #00ff77; }
-  .cmp-ticket-card.canary { border-left-color: #f59e0b; }
+  .run-row select:focus-visible, .run-row button.trace-control:focus-visible { outline: 2px solid var(--turquoise); }
 
-  #cmp-evidence-panel {
-    display: none;
-    background: rgba(9, 16, 24, 0.92);
-    border: 1px solid rgba(56, 189, 248, 0.28);
-    border-radius: 8px;
-    padding: 12px;
-  }
-  #cmp-evidence-panel.open { display: block; }
-  .cmp-evidence-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 10px;
-    margin-top: 8px;
-  }
-  .cmp-ev-card {
-    background: rgba(15, 23, 42, 0.72);
-    border: 1px solid rgba(148, 163, 184, 0.18);
-    border-radius: 6px;
-    padding: 9px;
-    font-size: 10px;
-    color: #cbd5e1;
-    line-height: 1.45;
-  }
-  .cmp-ev-card strong { color: #e0f2fe; display: block; margin-bottom: 4px; }
-  .cmp-ev-card a { color: #38bdf8; }
-
-  @media (max-width: 980px) {
-    .cmp-lower-grid { grid-template-columns: 1fr; }
-    #comparison-workbench { padding: 10px 10px 24px; }
-  }
 </style>
 </head>
-<body class="mode-comparison">
+<body>
 
-<div id="comparison-workbench" aria-label="Pre-2023 vs ARTEX defense comparison">
-  <div class="cmp-topbar">
-    <div class="cmp-title-group">
-      <div class="cmp-title">PRE-2023 HUMAN-LED VS ARTEX &amp; FRIENDS · DEFENSE COMPARISON</div>
-      <div id="cmp-fixture-subtitle" class="cmp-subtitle">Fixed four-layer comparison estate · Modeled synthetic scenarios</div>
-    </div>
-    <div class="cmp-nav-actions">
-      <button id="view-comparison-btn" class="cmp-pill-btn active" type="button">COMPARISON DEMO</button>
-      <button id="view-exploratory-btn" class="cmp-pill-btn" type="button">EXPLORATORY INFRA</button>
-      <button id="cmp-toggle-combined-btn" class="cmp-pill-btn active" type="button" aria-pressed="true" title="Show or hide the Defense in Depth (SOC + Canary) column">DEFENSE IN DEPTH: ON</button>
-      <button id="cmp-evidence-btn" class="cmp-pill-btn" type="button">EVIDENCE &amp; NOTES</button>
-    </div>
-  </div>
-
-  <div id="cmp-evidence-panel" aria-label="Evidence and fixture limits">
-    <div class="cmp-panel-head">
-      <span class="cmp-panel-title">FIELD CONTEXT &amp; FIXTURE LIMITS (SEPARATELY LABELED SOURCES)</span>
-      <button id="cmp-evidence-close" class="cmp-pill-btn" type="button">CLOSE</button>
-    </div>
-    <div class="cmp-evidence-grid">
-      <div class="cmp-ev-card">
-        <strong>Pre-2023 field context (external)</strong>
-        CrowdStrike reported mean eCrime breakout times of <b>98 min</b> (2021) and <b>84 min</b> (2022) from initial host compromise to first lateral movement. Mandiant reported 2022 median dwell of <b>16 days</b> (compromise to discovery).
-        <div style="margin-top:4px;"><a href="https://www.crowdstrike.com/wp-content/uploads/2023/05/CrowdStrike2023GlobalThreatReport.pdf#page=9" target="_blank" rel="noopener">CrowdStrike 2023 GTR</a> · <a href="https://cloud.google.com/blog/transform/m-trends-2023-lessons-cyberattack-frontlines" target="_blank" rel="noopener">Mandiant M-Trends 2023</a></div>
-      </div>
-      <div class="cmp-ev-card">
-        <strong>2023 onward field context (external)</strong>
-        CrowdStrike reported a <b>62 min</b> mean eCrime breakout and a <b>2 min 7 s</b> fastest observed breakout for 2023. Anthropic's 2025 case report illustrates agentic orchestration and concurrency with human supervision at critical decisions (neither quantifies AI's share of the breakout trend).
-        <div style="margin-top:4px;"><a href="https://www.crowdstrike.com/en-us/blog/crowdstrike-2024-global-threat-report/" target="_blank" rel="noopener">CrowdStrike 2024 GTR</a> · <a href="https://www.anthropic.com/news/disrupting-AI-espionage" target="_blank" rel="noopener">Anthropic campaign report</a></div>
-      </div>
-      <div class="cmp-ev-card">
-        <strong>Local ARTEX reference (guide figure)</strong>
-        The repository's executive demo guide reports approximately <b>75 seconds</b> of ARTEX deliberation for a four-hop local lab run (guide's local figure; not a general benchmark).
-      </div>
-      <div class="cmp-ev-card">
-        <strong>Wire fixture time (modeled)</strong>
-        All Wire timestamps, containment latencies, and review counts are <b>modeled synthetic fixture values</b>. No speed ratios are calculated between external field data, lab duration, and Wire scenario time.
-      </div>
-    </div>
-  </div>
-
-  <div class="cmp-controls-bar">
-    <div class="cmp-exercise-controls">
-      <div class="cmp-example-picker">
-        <label for="cmp-attack-example">Attack example</label>
-        <select id="cmp-attack-example" class="cmp-pill-btn" aria-describedby="cmp-example-note">
-          <option value="">Shared speed and capability exercises</option>
-          <option value="speed-covered-patch" data-name="LockBit">LockBit · Covered virtual patch</option>
-          <option value="speed-scope-mismatch" data-name="Conti">Conti · Containment scope</option>
-          <option value="speed-late-decoy" data-name="BlackCat">BlackCat · Late canary alert</option>
-          <option value="speed-untouched-decoy" data-name="Hive">Hive · Untouched canary</option>
-          <option value="speed-no-signal" data-name="REvil">REvil · No matching SOC signal</option>
-          <option value="speed-race" data-name="ARTEX">ARTEX · Response timing race</option>
-        </select>
-      </div>
-      <p id="cmp-example-note" class="cmp-subtitle">Each name opens a synthetic defense exercise. Both attacker workflows use the selected exercise.</p>
-      <div id="cmp-shared-exercises" class="cmp-fixture-group" role="group" aria-label="Shared speed and capability exercises">
-        <button class="cmp-pill-btn cmp-fixture-btn active" data-fixture="speed-race" aria-pressed="true" type="button">SPEED: TIMING RACE</button>
-        <button class="cmp-pill-btn cmp-fixture-btn" data-fixture="speed-covered-patch" aria-pressed="false" type="button">SPEED: COVERED PATCH</button>
-        <button class="cmp-pill-btn cmp-fixture-btn" data-fixture="capability-45s" aria-pressed="false" type="button">CAPABILITY: 45s WINDOW</button>
-        <button class="cmp-pill-btn cmp-fixture-btn" data-fixture="capability-denied" aria-pressed="false" type="button">CAPABILITY: ACCESS DENIED</button>
-      </div>
-    </div>
-    <div class="cmp-playback-group" aria-label="Shared playback controls">
-      <button id="cmp-play-btn" class="cmp-pill-btn active" type="button">PAUSE</button>
-      <button id="cmp-skip-btn" class="cmp-pill-btn" type="button">SKIP TO RESULTS</button>
-      <button id="cmp-restart-btn" class="cmp-pill-btn" type="button">RESTART</button>
-      <div class="cmp-clock-box" aria-label="Modeled elapsed time in hours, minutes, and seconds">
-        <span id="cmp-clock">00:00:00</span>
-        <span class="cmp-clock-unit">HH:MM:SS</span>
-        <span id="cmp-playback-status">MODELED TIME</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="cmp-matrix-wrap">
-    <table class="cmp-matrix" aria-label="Comparison matrix">
-      <thead>
-        <tr id="cmp-matrix-head"></tr>
-      </thead>
-      <tbody id="cmp-matrix-body"></tbody>
-    </table>
-  </div>
-
-  <div class="cmp-lower-grid">
-    <div id="cmp-detail-panel" class="cmp-panel" aria-label="Selected cell detail and chronological trace">
-      <div class="cmp-panel-head">
-        <span id="cmp-detail-title" class="cmp-panel-title">SELECTED CELL DETAIL</span>
-        <span id="cmp-detail-badge" class="cmp-badge noread">READY</span>
-      </div>
-      <div id="cmp-metrics-grid" class="cmp-metrics-grid"></div>
-      <div id="cmp-assumptions" class="cmp-assumptions"></div>
-      <div class="cmp-panel-title" style="font-size:11px;">CHRONOLOGICAL TRACE (MODELED TIMESTAMPS)</div>
-      <div id="cmp-trace-list" class="cmp-trace-list"></div>
-    </div>
-
-    <div class="cmp-panel" aria-label="Comparison wire topology and SOC tickets">
-      <div class="cmp-panel-head">
-        <span class="cmp-panel-title">FIXED 4-LAYER ESTATE &amp; LIVE TRACE</span>
-        <span id="cmp-graph-legend" style="font-size:10px;color:#94a3b8;">Click a cell to inspect its path</span>
-      </div>
-      <div id="cmp-graph-stage">
-        <svg id="cmp-wire-svg"></svg>
-        <div id="cmp-nodes-layer" class="cmp-nodes-layer"></div>
-      </div>
-      <div id="cmp-tickets-heading" class="cmp-panel-title" style="font-size:11px;">SIMULATED SOC TICKETS (SELECTED RUN)</div>
-      <div id="cmp-tickets-list" class="cmp-tickets-list"></div>
-    </div>
-  </div>
-</div>
-
-<div id="viewport" class="exploratory-only">
+<main id="viewport" aria-label="ARTEX Wire Diagram">
   <div class="circuit-grid"></div>
 
-  <div id="attack-stopwatch" aria-labelledby="sw-clock-label sw-clock-caption">
-    <div class="sw-head"><span id="sw-clock-label" class="sw-label">PLAYBACK CLOCK</span></div>
-    <div id="sw-clock">00:00:00</div>
-    <div id="sw-clock-caption">HH:MM:SS · ELAPSED</div>
-  </div>
-
-  <!-- Top Bar: 4 Run Scenario Mode Buttons with Details + NEW RUN + Live HUD -->
   <div class="top-bar">
     <div class="mode-strip" role="group" aria-label="Defense scenario run types">
-      <button class="mode-btn selected" data-mode="baseline" title="Baseline scenario without mitigation">
+      <button class="mode-btn selected" data-mode="baseline" aria-pressed="true">
         <span class="mode-title">01 / BASELINE</span>
-        <span class="mode-desc">Unmitigated · 0% Defended · Full Chain Breach</span>
+        <span class="mode-desc">No active controls</span>
       </button>
-      <button class="mode-btn" data-mode="patch" title="Perimeter virtual patching via Edge WAF">
+      <button class="mode-btn" data-mode="patch" aria-pressed="false">
         <span class="mode-title">02 / VIRTUAL PATCH</span>
-        <span class="mode-desc">Edge WAF · HTTP virtual patches [SI-2]</span>
+        <span class="mode-desc">Edge WAF</span>
       </button>
-      <button class="mode-btn" data-mode="defender" title="Agentic SOAR zero-trust token containment">
+      <button class="mode-btn" data-mode="soc" aria-pressed="false">
         <span class="mode-title">03 / AGENTIC SOAR</span>
-        <span class="mode-desc">Agentic response · Mesh isolation [SI-4]</span>
+        <span class="mode-desc">Detect and contain</span>
       </button>
-      <button class="mode-btn" data-mode="combined" title="Multi-layered defense-in-depth posture">
-        <span class="mode-title">04 / DEFENSE IN DEPTH</span>
-        <span class="mode-desc">WAF + Agentic SOAR + Canary trigger</span>
+      <button class="mode-btn" data-mode="soc-canary" aria-pressed="false">
+        <span class="mode-title">04 / AGENTIC SOAR + CANARY</span>
+        <span class="mode-desc">Containment with a decoy signal</span>
       </button>
     </div>
 
     <div class="run-row">
-      <button id="new-run-btn" title="Generate a new randomized infrastructure topology">
-        <span class="run-icon">↻</span>
-        <span>NEW INFRA</span>
-      </button>
-      <button id="preset-btn" title="Cycle between Mixed Estate (may have 0 complete paths), Demo-Ready (intentional CVE 4-layer path), and Credential-in-Logs">
-        <span>PRESET: MIXED</span>
-      </button>
-      <label class="map-control">
+      <button id="new-run-btn" class="trace-control" type="button" title="Generate a fresh topology">New Infra</button>
+      <label>
         Attacker
-        <select id="map-profile" class="cmp-pill-btn">
-          <option value="generated">Generated activity</option>
-          <option value="pre2023">Pre-2023 human-led</option>
-          <option value="artex">ARTEX &amp; Friends</option>
+        <select id="map-profile">
+          <option value="pre2023">Pre-2023</option>
+          <option value="artex" selected>ARTEX-like</option>
         </select>
       </label>
-      <div id="map-trace-controls">
-        <label class="map-control">
-          Defense
-          <select id="map-defense" class="cmp-pill-btn">
-            <option value="baseline">Baseline</option>
-            <option value="patch">Virtual Patching</option>
-            <option value="soc">Agentic SOC</option>
-            <option value="canaries">Canaries</option>
-            <option value="combined">Defense in Depth</option>
-          </select>
-        </label>
-        <button id="map-replay-btn" class="cmp-pill-btn" type="button">REPLAY</button>
-        <button id="map-results-btn" class="cmp-pill-btn" type="button">RESULTS</button>
+      <button id="map-replay-btn" class="trace-control" type="button">Replay</button>
+      <button id="map-results-btn" class="trace-control" type="button">Results</button>
+      <div class="elapsed-clock" role="timer" aria-label="Modeled elapsed time">
+        <span>Elapsed</span><strong id="model-clock">0 min</strong>
       </div>
-      <button id="back-to-comparison-btn" class="cmp-pill-btn" type="button">COMPARISON MATRIX</button>
     </div>
-    <div id="run-hud" role="status">GENERATED ACTIVITY · SELECT A DEFENSE</div>
+    <div id="catalog-example" hidden></div>
+    <div id="run-hud" role="status"></div>
   </div>
 
   <div class="soc-ticker" aria-label="Simulated SOC tickets">
     <div id="soc-cards" class="soc-cards" aria-live="off"></div>
   </div>
 
-  <div id="map-trace-surface" aria-label="Modeled wire trace and SOC tickets" hidden></div>
-
   <!-- Fullscreen SVG for wires & pulses -->
   <svg id="wire-svg"></svg>
 
   <!-- HTML nodes layer for GPU accelerated icon masking and text -->
   <div id="nodes-layer"></div>
-</div>
+</main>
 
 <script src="js/wire-engine.js"></script>
 <script>
 const {
-  LAYER_CONFIG,
-  DEFENSE_SCENARIOS,
   cveTooltip,
   generateEstate,
-  simulateEstate,
-  migrateSnapshot
+  referenceServiceFlow,
+  simulateWireRun
 } = window.WireEngine;
 
 const ICON_BASE = 'assets/diagram-icons/transparent/';
-const INFRA_STORAGE_KEY = 'artex-wire-infrastructure-v6';
-const PRESET_STORAGE_KEY = 'artex-wire-preset';
+const svg = document.getElementById('wire-svg');
+const nodesLayer = document.getElementById('nodes-layer');
+const catalogLabel = document.getElementById('catalog-example');
+const runHud = document.getElementById('run-hud');
+const mapProfile = document.getElementById('map-profile');
+const modeButtons = document.querySelectorAll('.mode-btn');
+const clock = document.getElementById('model-clock');
+let currentNodes = new Map();
+let currentWires = new Map();
 
 // Tickets are illustrative scenario events; severity is estimated, not a CVSS score.
 const socTickets = new Map();
@@ -1103,99 +618,21 @@ function renderSocTickets() {
   });
 }
 
-function recordSocTicket(node, ev) {
-  if (ev.outcome === 'revisit' || ev.outcome === 'truncated') return;
-  const mitigation = ev.mitigation || {};
-  const succeeded = ev.outcome === 'succeeded';
-  const finding = ev.finding;
-  let detail;
-  if (mitigation.badge?.includes('CANARY')) {
-    detail = `Decoy access detected on ${node.label}`;
-  } else if (ev.outcome === 'ineligible') {
-    detail = ev.reason;
-  } else if (finding?.kind === 'anonymous_access') {
-    detail = succeeded ? `Anonymous access observed on ${node.label}` : `Anonymous access request to ${node.label}`;
-  } else if (ev.finding?.kind === 'diagnostic_access') {
-    detail = `${ev.finding.title} · ${ev.reason}`;
-  } else if (node.groupId === 'staging-status') {
-    detail = ev.reason;
-  } else if (ev.credentialUsed) {
-    detail = `Credential ${ev.credentialUsed.label} used on ${node.label}`;
-  } else if (finding?.kind === 'password_spray') {
-    detail = `Password spray activity on ${node.label}`;
-  } else if (mitigation.badge?.includes('WAF')) {
-    detail = `WAF rule match on ${node.label} · ${finding?.cveId || 'HTTP'}`;
-  } else if (finding?.cveId) {
-    detail = succeeded ? `Suspicious activity on ${node.label} · ${finding.cveId}` : `Suspected ${finding.title} · ${finding.cveId}`;
-  } else {
-    detail = ev.reason || `Access event on ${node.label}`;
-  }
-
-  const severity = ev.outcome === 'ineligible'
-    ? 'LOW'
-    : succeeded && node.layerIdx >= 2
-      ? 'CRITICAL'
-      : succeeded
-        ? 'HIGH'
-        : 'MEDIUM';
-
-  socTickets.set(`${node.id}-${ev.outcome}`, { title: `[SIM] ${node.label}`, severity, detail });
-  if (mitigation.badge?.includes('WAF VIRTUAL PATCH')) {
-    socTickets.set(`${node.id}-waf-response`, { title: '[SIM] Virtual patch block', severity: 'MEDIUM', detail: `WAF blocked request to ${node.label}` });
-  } else if (mitigation.badge?.includes('AGENTIC SOAR')) {
-    socTickets.set(`${node.id}-soar-response`, { title: '[SIM] SOAR containment', severity: 'HIGH', detail: mitigation.reason });
-  } else if (mitigation.badge?.includes('CANARY')) {
-    socTickets.set(`${node.id}-canary-response`, { title: '[SIM] Canary alert', severity: 'HIGH', detail: `Decoy access detected at ${node.label}` });
-    socTickets.set(`${node.id}-soar-response`, { title: '[SIM] SOAR containment', severity: 'HIGH', detail: `Playbook contained session at ${node.label}` });
-  }
-  renderSocTickets();
-}
-
-let currentEstate = null;
-let currentNodes = [];
-let currentWires = [];
-let simulationGeneration = 0;
-let activeTimeouts = [];
-let isSimulating = false;
-let runCount = 0;
-let runStats = { hits: 0, blocks: 0, ineligible: 0, truncated: 0, lakesBreached: 0, publicExposures: 0, wafBlocks: 0, soarBlocks: 0, canaryBlocks: 0 };
-let currentMode = 'baseline';
-let currentPreset = 'mixed';
-
-window.currentNodes = currentNodes;
-window.currentWires = currentWires;
-window.runStats = runStats;
-window.isSimulating = false;
-window.runCount = 0;
-
-const svg = document.getElementById('wire-svg');
-const nodesLayer = document.getElementById('nodes-layer');
-const newRunBtn = document.getElementById('new-run-btn');
-const presetBtn = document.getElementById('preset-btn');
-const runHud = document.getElementById('run-hud');
-
-function safeTimeout(fn, delay) {
-  const t = setTimeout(fn, delay);
-  activeTimeouts.push(t);
-  return t;
-}
-
-function clearAllActiveTimeouts() {
-  activeTimeouts.forEach(t => clearTimeout(t));
-  activeTimeouts = [];
-}
-
 function getDefaultNodeBadge(asset, findings) {
   if (!findings.length) {
     return { code: 'NO FINDING', title: 'No finding modeled; security status is unknown' };
   }
   const f = findings[0];
+  if (f.category === 'external_misconfiguration') {
+    return { code: 'EXTERNAL MISCONFIGURATION', title: f.title };
+  }
   if (f.kind === 'cve') {
     return { code: `${f.cveId}${f.inKev ? ' · KEV' : ''}`, title: f.title };
   }
   if (f.kind === 'diagnostic_access') {
     return { code: f.title.toUpperCase(), title: 'Signed-in diagnostics viewer' };
   }
+  if (f.kind === 'exercise') return { code: f.technique || 'SIMULATED FINDING', title: f.title };
   if (f.kind === 'anonymous_access') {
     return { code: `${f.technique} · PUBLIC`, title: f.title };
   }
@@ -1212,9 +649,11 @@ function formatAssetTooltip(asset, findings, credentials) {
   ];
   if (!findings.length) {
     lines.push('No finding modeled; security status is unknown.');
+    if (asset.referenceCve) lines.push(`Product advisory reference: ${asset.referenceCve}`);
   } else {
     findings.forEach(f => {
       lines.push(`Finding [${f.provenance}]: ${f.cveId ? f.cveId + ' · ' : ''}${f.title}`);
+      if (f.historicalReference) lines.push(`Reference: ${f.historicalReference}`);
       if (f.sourceUrl) lines.push(`Source: ${f.sourceUrl} (reviewed ${f.sourceReviewed}); deployment and outcome are synthetic.`);
     });
   }
@@ -1231,19 +670,20 @@ function formatAssetTooltip(asset, findings, credentials) {
 function layoutGraph(estate) {
   const w = window.innerWidth;
   const h = window.innerHeight;
+  const gitExample = estate.findings.find(finding => finding.illustration === 'git-to-idp');
   const graphTop = Math.min(h * 0.4, document.querySelector('.top-bar').getBoundingClientRect().bottom + 65);
-  const graphBottom = Math.max(graphTop + 1, h - 65);
+  const graphBottom = Math.max(graphTop + 1, h - (gitExample ? 155 : 65));
   const graphHeight = graphBottom - graphTop;
 
-  currentNodes = [];
-  currentWires = [];
+  currentWires.clear();
   nodesLayer.innerHTML = '';
   svg.innerHTML = '';
+  document.getElementById('viewport').classList.remove('illustration-active');
 
   const overlappingControls = new Set(['waf-proxy', 'iam-idp', 'threat-det']);
   const controlCounts = new Map();
 
-  currentNodes = estate.assets.map(asset => {
+  const nodes = estate.assets.map(asset => {
     let displayLabel = asset.label.replace(/ · (?:Decommissioned|P\.o\.C)$/, '');
     if (overlappingControls.has(asset.groupId)) {
       const position = (controlCounts.get(asset.groupId) || 0) + 1;
@@ -1267,19 +707,20 @@ function layoutGraph(estate) {
     };
   });
 
-  const nodesById = new Map(currentNodes.map(n => [n.id, n]));
+  currentNodes = new Map(nodes.map(node => [node.id, node]));
   estate.relationships.forEach(rel => {
-    const source = nodesById.get(rel.sourceId);
-    const target = nodesById.get(rel.targetId);
+    const source = currentNodes.get(rel.sourceId);
+    const target = currentNodes.get(rel.targetId);
     if (!source || !target) return;
     source.downstream.push(target.id);
     createWire(source, target, rel);
   });
 
-  currentNodes.forEach(node => {
+  nodes.forEach(node => {
     const el = document.createElement('div');
     el.className = 'node';
     el.id = 'node-' + node.id;
+    if (node.referenceCve) el.dataset.appliance = node.groupId;
     el.title = formatAssetTooltip(node, node.findings, node.creds);
     el.style.left = `${node.x}px`;
     el.style.top = `${node.y}px`;
@@ -1301,952 +742,357 @@ function layoutGraph(estate) {
     node.el = el;
   });
 
-  window.currentNodes = currentNodes;
-  window.currentWires = currentWires;
-  renderSocTickets();
+  if (gitExample) drawGitIllustration(currentNodes.get(gitExample.assetId), w, h - 127);
+  if (referenceCase) markReferenceFlow(estate, referenceCase);
+}
+
+function markReferenceFlow(estate, { context }) {
+  const flow = referenceServiceFlow(estate, context.groups);
+  if (!flow) return;
+
+  flow.assets.forEach((id, index) => {
+    const el = currentNodes.get(id).el;
+    el.title += `\nReference infrastructure · ${context.roles[index]}`;
+    if (index === context.focus) {
+      el.classList.add('catalog-focus');
+      el.title += `\n${context.defensiveFocus}`;
+    }
+  });
+}
+
+function drawGitIllustration(proxy, width, y) {
+  const steps = ['Git repository access', 'CI runner access', 'Higher-privilege runner', 'IdP admin access'];
+  let previous = proxy;
+  for (const [index, label] of steps.entries()) {
+    const x = width * (0.29 + index * 0.18);
+    const wire = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    wire.setAttribute('class', 'illustrative-wire');
+    wire.setAttribute('d', `M ${previous.x} ${previous.y} L ${x} ${y}`);
+    svg.appendChild(wire);
+
+    const node = document.createElement('div');
+    node.className = 'illustrative-step';
+    node.style.left = `${x}px`;
+    node.style.top = `${y}px`;
+    node.title = `Illustrative branch · ${label}`;
+    node.textContent = label;
+    nodesLayer.appendChild(node);
+    previous = { x, y };
+  }
 }
 
 function createWire(source, target, relationship) {
   const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
   path.setAttribute('class', 'wire');
   svg.appendChild(path);
-  const wire = { source, target, relationship, path, hit: false, defended: false };
+  const wire = { source, target, path };
   path.setAttribute('d', `M ${source.x} ${source.y} L ${target.x} ${target.y}`);
-  currentWires.push(wire);
+  currentWires.set(relationship.id, wire);
 }
 
 function revealNodeWires(node, duration = 1200) {
-  currentWires.filter(wire => wire.source.id === node.id || wire.target.id === node.id).forEach(wire => {
+  for (const wire of currentWires.values()) {
+    if (wire.source.id !== node.id && wire.target.id !== node.id) continue;
     const revealId = (wire.revealId || 0) + 1;
     wire.revealId = revealId;
     wire.path.classList.add('revealed');
-    safeTimeout(() => {
+    setTimeout(() => {
       if (wire.revealId === revealId) wire.path.classList.remove('revealed');
     }, duration);
+  }
+}
+
+let estate = generateEstate({ seedExercise: true });
+let catalog;
+let catalogDeck = [];
+let referenceCase = null;
+const pre2023Groups = { lockbit: 'LockBit', conti: 'Conti', blackcat: 'BlackCat', hive: 'Hive', revil: 'REvil' };
+let pre2023Deck = [];
+let pre2023Group;
+let defense = 'baseline';
+let run;
+let phases = [];
+let phaseIndex = 0;
+let modeledTime = 0;
+let frame;
+
+const PROBE_MS = 340;
+
+function formatEstimate(seconds) {
+  if (seconds === 0) return 'At start';
+  if (seconds < 60) return '<1 min';
+  const minutes = Math.round(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  if (!hours) return `~${minutes} min`;
+  return `~${hours} hr${remainder ? ` ${remainder} min` : ''}`;
+}
+
+function animatePulse(wire) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const ns = 'http://www.w3.org/2000/svg';
+  const pulse = document.createElementNS(ns, 'circle');
+  pulse.setAttribute('class', 'wire-packet');
+  pulse.setAttribute('r', '3.5');
+  const motion = document.createElementNS(ns, 'animateMotion');
+  motion.setAttribute('path', wire.path.getAttribute('d'));
+  motion.setAttribute('dur', '420ms');
+  motion.setAttribute('begin', 'indefinite');
+  motion.addEventListener('endEvent', () => pulse.remove(), { once: true });
+  pulse.appendChild(motion);
+  svg.appendChild(pulse);
+  motion.beginElement();
+}
+
+function showProbes(events, laneCount) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return 0;
+  const candidates = new Map(events.filter(event => !event.control)
+    .map(event => [event.relationshipId ?? event.targetId, event]));
+  let index = 0;
+  for (const event of candidates.values()) {
+    const target = currentNodes.get(event.targetId);
+    const wire = currentWires.get(event.relationshipId);
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('class', 'probe-wire');
+    path.setAttribute('d', wire
+      ? wire.path.getAttribute('d')
+      : `M 0 ${target.y} L ${target.x} ${target.y}`);
+
+    path.dataset.lane = String(index % laneCount + 1);
+    path.style.animationDelay = `${Math.floor(index++ / laneCount) * PROBE_MS}ms`;
+    path.style.animationDuration = `${PROBE_MS}ms`;
+    path.addEventListener('animationend', () => path.remove(), { once: true });
+    svg.appendChild(path);
+  }
+  return Math.ceil(candidates.size / laneCount) * PROBE_MS;
+}
+
+function renderEvent(event, time, animate) {
+  const node = currentNodes.get(event.targetId);
+  const wire = currentWires.get(event.relationshipId);
+  const success = event.outcome === 'succeeded';
+  const blocked = event.outcome === 'blocked';
+  const read = event.grantedCapability === 'data_read';
+  const staging = node.groupId === 'staging-status';
+  const finding = event.finding;
+  const diagnostic = finding?.kind === 'diagnostic_access';
+  const reference = finding?.cveId || event.technique;
+  const action = finding?.title || (event.credentialUsed ? 'Valid Accounts' : 'Access check');
+  const summary = reference ? `${action} · ${reference}` : action;
+  node.el.title += `\n${formatEstimate(time)} · ${summary} · ${event.reason}`;
+  if (!success && !blocked) return;
+
+  let result = 'ACCESS ESTABLISHED';
+  if (blocked) result = event.mitigation.badge;
+  else if (read) result = 'PROTECTED RECORD READ';
+  else if (diagnostic) result = 'STAGING CREDENTIAL EXPOSED';
+  else if (finding?.illustration === 'git-to-idp') {
+    result = 'GIT TOKEN IN EXPOSED LOGS';
+    document.getElementById('viewport').classList.add('illustration-active');
+  }
+  else if (staging) result = 'STAGING STATUS ONLY';
+  else if (finding?.category === 'external_misconfiguration') result = 'EDGE ACCESS ONLY';
+  else if (finding?.kind === 'anonymous_access') result = 'PUBLIC ACCESS CONFIRMED';
+  else if (event.grantedCapability === 'file_read') result = 'FILE READ ONLY';
+
+  if (success || !node.el.classList.contains('hit')) {
+    node.el.classList.toggle('hit', success);
+    node.el.classList.toggle('defended', blocked);
+    if (read) node.el.classList.add('breach-target');
+    node.el.querySelector('.cve').textContent = result;
+    node.el.querySelector('.vuln-title').textContent = summary;
+  }
+  if (wire) {
+    wire.path.classList.add(blocked ? 'defended-wire' : 'hit-wire');
+    if (animate && success) animatePulse(wire);
+  }
+  socTickets.set(`${node.id}-${event.outcome}`, {
+    title: summary,
+    severity: read ? 'CRITICAL' : blocked ? 'HIGH' : 'INFO',
+    detail: `${formatEstimate(time)} · ${result}`
   });
 }
 
-function resetInfraVisuals() {
-  socLooping = false;
+function renderControl(event) {
+  const node = currentNodes.get(event.targetId);
+  const title = event.control === 'enforced' ? 'SOAR containment effective'
+    : event.control === 'decision' ? 'SOAR containment approved'
+    : event.source === 'canary' ? 'Canary alerted' : 'Boundary telemetry';
+  if (event.control === 'signal' && event.source === 'canary') {
+    const marker = document.createElement('span');
+    marker.className = 'canary-marker';
+    marker.textContent = 'Canary alert';
+    node.el.append(marker);
+  }
+  const entry = currentNodes.get(event.scope);
+  const detail = `${formatEstimate(event.timeSec)} · Session via ${entry.label}`;
+  node.el.title += `\n${title} · ${detail}`;
+  socTickets.set(`${event.scope}-${event.control}-${event.source}`, { title, severity: 'HIGH', detail });
+}
+
+function showTime(time) {
+  modeledTime = time;
+  const elapsed = time === 0 ? '0 min' : formatEstimate(time);
+  if (clock.textContent !== elapsed) clock.textContent = elapsed;
+}
+
+function renderPhase(phase, animate = false) {
+  for (const event of phase.events) {
+    if (event.control) renderControl(event);
+    else renderEvent(event, phase.time, animate);
+  }
+  renderSocTickets();
+}
+
+function resetGraph() {
+  layoutGraph(estate);
   socTickets.clear();
   renderSocTickets();
-  simulationGeneration++;
-  clearAllActiveTimeouts();
-  resetStopwatch();
-
-  svg.querySelectorAll('.attack-entry, .attack-entry-head, .wire-packet').forEach(el => el.remove());
-  nodesLayer.querySelectorAll('.impact-burst').forEach(b => b.remove());
-
-  currentNodes.forEach(node => {
-    node.hit = false;
-    node.defended = false;
-    node.capabilities = [];
-    if (node.el) {
-      node.el.className = 'node';
-      node.el.querySelector('.node-label').textContent = node.label;
-      node.el.title = formatAssetTooltip(node, node.findings, node.creds);
-      const badge = getDefaultNodeBadge(node, node.findings);
-      const kevEl = node.el.querySelector('.node-kev');
-      if (kevEl) {
-        kevEl.innerHTML = `<span class="cve">${badge.code}</span><span class="vuln-title">${badge.title}</span>`;
-      }
-    }
-  });
-
-  currentWires.forEach(wire => {
-    wire.hit = false;
-    wire.defended = false;
-    wire.path.setAttribute('class', 'wire');
-  });
-
-  runStats = { hits: 0, blocks: 0, ineligible: 0, truncated: 0, lakesBreached: 0, publicExposures: 0, wafBlocks: 0, soarBlocks: 0, canaryBlocks: 0 };
-  isSimulating = false;
 }
 
-function triggerNodeHit(node, ev) {
-  if (node.defended) return;
-  if (!node.capabilities) node.capabilities = [];
-  if (ev.grantedCapability && !node.capabilities.includes(ev.grantedCapability)) {
-    node.capabilities.push(ev.grantedCapability);
-  }
-  const firstHit = !node.hit;
-  node.hit = true;
-  if (firstHit) {
-    if (ev.finding?.kind === 'anonymous_access') runStats.publicExposures++;
-    else runStats.hits++;
-  }
-
-  if (node.el) {
-    node.el.classList.add('hit');
-    if (firstHit && (node.layerIdx === 3 || node.isLake || node.isDb)) {
-      node.el.classList.add('breach-target');
-      runStats.lakesBreached++;
-    }
-    const kevEl = node.el.querySelector('.node-kev');
-    const code = ev.finding?.kind === 'diagnostic_access'
-      ? ev.finding.title.toUpperCase()
-      : ev.finding?.cveId || (ev.credentialUsed ? 'T1078 · CREDENTIAL' : ev.technique || 'EXPLOITED');
-    const capText = node.capabilities.length ? node.capabilities.join(' + ') : (ev.grantedCapability || 'access');
-    const detail = `${capText} · ${ev.reason}`;
-    const stepLine = `SIMULATED REACH (${ev.reachability})\nAccess: ${ev.requiredAccess}\nCapability: ${ev.grantedCapability}\n${ev.reason}${ev.finding?.sourceUrl ? `\nSource: ${ev.finding.sourceUrl}` : ''}`;
-    node.el.title = firstHit ? stepLine : `${node.el.title}\n---\n${stepLine}`;
-    if (kevEl) {
-      kevEl.innerHTML = `<span class="cve">${code}</span><span class="vuln-title">${detail}</span>`;
-    }
-
-    if (firstHit) {
-      const burst = document.createElement('div');
-      burst.className = 'impact-burst';
-      burst.style.left = `${node.x}px`;
-      burst.style.top = `${node.y}px`;
-      nodesLayer.appendChild(burst);
-      safeTimeout(() => burst.remove(), 700);
-    }
-  }
+function finishRun() {
+  cancelAnimationFrame(frame);
+  svg.querySelectorAll('.probe-wire').forEach(path => path.remove());
+  for (; phaseIndex < phases.length; phaseIndex++) renderPhase(phases[phaseIndex]);
+  showTime(phases.at(-1)?.time ?? 0);
+  socLooping = true;
+  renderSocTickets();
+  const { dataReached, truncated, layerSuccessCounts, blockedTransitions } = run.summary;
+  const successes = run.events.filter(event => event.outcome === 'succeeded');
+  const read = successes.find(event => event.grantedCapability === 'data_read');
+  const milestone = read ?? successes.at(-1);
+  const asset = milestone && currentNodes.get(milestone.targetId);
+  const evidence = milestone?.finding?.cveId || milestone?.technique;
+  const sampleLogs = successes.find(event => event.finding?.kind === 'exercise' && event.finding.technique === 'T1552.001');
+  const result = read ? `Protected record read at ${asset.label} (${formatEstimate(read.timeSec)})`
+    : asset ? `Reached ${asset.label} (${formatEstimate(milestone.timeSec)})`
+    : 'No access established';
+  const limit = dataReached ? '' : truncated ? 'Exploration limit reached' : 'No protected record read';
+  const count = layerSuccessCounts[0];
+  const containments = run.controls.filter(event => event.control === 'enforced');
+  const late = read && containments.some(event => event.scope === read.scope && event.timeSec >= read.timeSec);
+  const response = late ? 'SOAR contained after the read'
+    : containments.length ? `${containments.length} ${containments.length === 1 ? 'session' : 'sessions'} contained`
+    : defense.startsWith('soc') ? 'No matching signal' : '';
+  runHud.className = dataReached ? 'breached' : 'contained';
+  const illustration = run.events.some(event => event.outcome === 'succeeded' && event.finding?.illustration === 'git-to-idp')
+    ? 'Illustrative branch ends at IdP admin' : '';
+  const group = run.lanes === 1 ? pre2023Groups[pre2023Group] : '';
+  runHud.textContent = [group, result, evidence, limit, sampleLogs?.finding.title, `${count} external ${count === 1 ? 'entry' : 'entries'} reached`,
+    blockedTransitions ? `${blockedTransitions} blocked` : '', response, illustration].filter(Boolean).join(' · ');
 }
 
-function triggerNodeDefense(node, wire, ev) {
-  if (node.hit || node.defended) return;
-  node.defended = true;
-  const mitigation = ev.mitigation;
-  runStats.blocks++;
-  if (mitigation.badge?.includes('WAF VIRTUAL PATCH')) runStats.wafBlocks++;
-  else if (mitigation.badge?.includes('AGENTIC SOAR')) runStats.soarBlocks++;
-  else if (mitigation.badge?.includes('CANARY')) runStats.canaryBlocks++;
-
-  if (node.el) {
-    node.el.classList.add('defended');
-    const badgeText = mitigation.badge || 'CONTAINED';
-    const subText = mitigation.control ? `${ev.finding?.cveId || ev.technique} · [${mitigation.control}]` : mitigation.reason;
-    node.el.title = `${badgeText}\n${ev.reachability || ''}\n${mitigation.reason || ''}`;
-    const kevEl = node.el.querySelector('.node-kev');
-    if (kevEl) {
-      kevEl.innerHTML = `<span class="cve">${badgeText}</span><span class="vuln-title">${subText}</span>`;
-    }
+function playRun() {
+  cancelAnimationFrame(frame);
+  const attackerId = mapProfile.value === 'pre2023' ? (pre2023Group ??= drawPre2023Group()) : 'artex';
+  run = simulateWireRun(estate, defense, attackerId);
+  const grouped = new Map();
+  for (const event of [...run.events, ...run.controls]) {
+    if (!grouped.has(event.timeSec)) grouped.set(event.timeSec, []);
+    grouped.get(event.timeSec).push(event);
   }
-
-  if (wire) {
-    wire.defended = true;
-    wire.path.classList.add('defended-wire');
-  }
-}
-
-function animateWirePulse(wire, onComplete) {
-  const generation = simulationGeneration;
-  const pulse = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-  pulse.setAttribute('r', '3.5');
-  pulse.setAttribute('class', 'wire-packet');
-  svg.appendChild(pulse);
-  wire.path.classList.add('active-wire');
-
-  const pathEl = wire.path;
-  const duration = 420;
-  const startTime = performance.now();
-
-  function step(time) {
-    if (generation !== simulationGeneration) return;
-    const progress = Math.min(1, (time - startTime) / duration);
-    const point = pathEl.getPointAtLength(progress * pathEl.getTotalLength());
-    pulse.setAttribute('cx', point.x);
-    pulse.setAttribute('cy', point.y);
-    if (progress < 1) {
-      requestAnimationFrame(step);
-    } else {
-      pulse.remove();
-      wire.path.classList.remove('active-wire');
-      if (onComplete) onComplete();
-    }
-  }
-  requestAnimationFrame(step);
-}
-
-function updatePresetButton() {
-  presetBtn.classList.toggle('demo', currentPreset === 'demo' || currentPreset === 'logs');
-  presetBtn.querySelector('span').textContent =
-    currentPreset === 'demo'
-      ? 'PRESET: DEMO-READY'
-      : currentPreset === 'logs'
-        ? 'PRESET: CRED-IN-LOGS'
-        : 'PRESET: MIXED';
-}
-
-function generateNewInfra() {
-  clearAllActiveTimeouts();
-  const seed = Math.floor(Math.random() * 4294967296);
-  currentEstate = generateEstate({ seed, preset: currentPreset });
-  try { localStorage.setItem(INFRA_STORAGE_KEY, JSON.stringify(currentEstate)); } catch (e) { console.warn('Unable to save estate', e); }
-  layoutGraph(currentEstate);
-  runSimulationOnCurrentInfra();
-}
-
-function restoreInfra(snapshot) {
-  const res = migrateSnapshot(snapshot);
-  if (!res.ok) {
-    console.warn(res.reason);
-    generateNewInfra();
-    return;
-  }
-  clearAllActiveTimeouts();
-  currentEstate = res.estate;
-  currentPreset = currentEstate.preset;
-  updatePresetButton();
-  layoutGraph(currentEstate);
-  runSimulationOnCurrentInfra();
-}
-
-function runSimulationOnCurrentInfra() {
-  if (!currentEstate) return;
-  resetInfraVisuals();
-  startGeneratedClock();
-  isSimulating = true;
-  window.isSimulating = true;
-  runCount++;
-  window.runCount = runCount;
-
-  const scn = DEFENSE_SCENARIOS[currentMode] || DEFENSE_SCENARIOS.baseline;
+  phases = [...grouped].sort(([a], [b]) => a - b)
+    .map(([time, events]) => ({ time, events }));
+  phaseIndex = 0;
+  socLooping = false;
+  resetGraph();
   runHud.className = '';
-  runHud.textContent = `GENERATED ACTIVITY · [${scn.tag}] RUN #${String(runCount).padStart(2, '0')} · EVALUATING PREREQUISITES...`;
+  runHud.textContent = run.lanes === 3 ? '3 SIMULATED PROBE LANES' : `${pre2023Groups[attackerId]} · 1 SIMULATED PROBE LANE`;
+  showTime(0);
 
-  const simResult = simulateEstate(currentEstate, currentMode);
-  window.lastSimSummary = simResult.summary;
-
-  const nodesById = new Map(currentNodes.map(n => [n.id, n]));
-  const wiresByRelId = new Map(currentWires.map(w => [w.relationship?.id, w]));
-
-  if (simResult.canaryAssetId) {
-    const canaryNode = nodesById.get(simResult.canaryAssetId);
-    if (canaryNode?.el) {
-      canaryNode.el.classList.add('canary');
-      canaryNode.el.querySelector('.node-label').textContent = 'CANARY · Decoy backend';
-      canaryNode.el.title = 'Canary decoy: access generates an alert and triggers simulated automated containment.';
-    }
-  }
-
-  // Group events by target layer for clean visual progression
-  const batches = [[], [], [], []];
-  simResult.events.forEach(ev => {
-    const targetNode = nodesById.get(ev.targetId);
-    if (!targetNode) return;
-    const wire = ev.relationshipId ? wiresByRelId.get(ev.relationshipId) : null;
-    batches[targetNode.layerIdx].push({ ev, node: targetNode, wire });
-  });
-
-  const nonEmptyBatches = batches.filter(b => b.length > 0);
-  const generation = simulationGeneration;
-
-  function playBatch(idx) {
-    if (generation !== simulationGeneration) return;
-    if (idx >= nonEmptyBatches.length) {
-      finalizeSimulation(simResult);
+  let startedAt = null;
+  let duration;
+  let fromTime;
+  function tick(now) {
+    const phase = phases[phaseIndex];
+    if (!phase) {
+      finishRun();
       return;
     }
-    const batch = nonEmptyBatches[idx];
-    let remaining = batch.length;
-    const complete = () => {
-      if (generation !== simulationGeneration) return;
-      if (--remaining === 0) safeTimeout(() => playBatch(idx + 1), 160);
-    };
-
-    batch.forEach(({ ev, node, wire }) => {
-      revealNodeWires(node);
-      const apply = () => {
-        if (generation !== simulationGeneration) return;
-        recordSocTicket(node, ev);
-        if (ev.outcome === 'ineligible') {
-          runStats.ineligible++;
-          if (node.el && !node.hit && !node.defended) {
-            node.el.title += `\nBlocked prerequisite: ${ev.reason}`;
-          }
-        } else if (ev.outcome === 'truncated') {
-          runStats.truncated++;
-        } else if (ev.outcome === 'blocked') {
-          triggerNodeDefense(node, wire, ev);
-        } else if (ev.outcome === 'succeeded') {
-          if (wire) { wire.hit = true; wire.path.classList.add('hit-wire'); }
-          triggerNodeHit(node, ev);
-        } else if (ev.outcome === 'revisit' && wire && node.defended) {
-          wire.defended = true; wire.path.classList.add('defended-wire');
-        }
-        complete();
-      };
-
-      if (wire && (ev.outcome === 'succeeded' || ev.outcome === 'blocked')) {
-        animateWirePulse(wire, apply);
-      } else if (!wire && (ev.outcome === 'succeeded' || ev.outcome === 'blocked')) {
-        const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        line.setAttribute('class', 'attack-entry');
-        line.setAttribute('d', `M -20 ${node.y} L ${Math.max(8, node.x - 24)} ${node.y}`);
-        svg.appendChild(line);
-        safeTimeout(() => line.remove(), 650);
-        safeTimeout(apply, 500);
-      } else {
-        safeTimeout(apply, 120);
-      }
-    });
-  }
-
-  playBatch(0);
-}
-
-function finalizeSimulation(simResult) {
-  if (!socLooping) {
-    socLooping = true;
-    renderSocTickets();
-  }
-  isSimulating = false;
-  window.isSimulating = false;
-  window.runStats = runStats;
-
-  const s = simResult.summary;
-  finishGeneratedClock();
-  const scn = DEFENSE_SCENARIOS[currentMode] || DEFENSE_SCENARIOS.baseline;
-  const presetTag = s.preset === 'logs' ? 'CRED-IN-LOGS' : 'DEMO-READY';
-  const prefix = s.intentionalPathNote ? `[${scn.tag} · ${presetTag}]` : `[${scn.tag}]`;
-  const pathStatus = s.dataReached
-    ? 'DATA TARGET REACHED'
-    : s.truncated ? 'EXPLORATION INCOMPLETE' : 'NO MODELED DATA PATH FOUND';
-
-  runHud.className = s.dataReached ? 'breached' : 'contained';
-  runHud.textContent = `GENERATED ACTIVITY · ${prefix} RUN #${String(runCount).padStart(2, '0')} · ${runStats.hits} COMPROMISED · ${runStats.blocks} CONTAINED · ${s.ineligibleTransitions} STOPPED · ${pathStatus}`;
-  if (s.preset === 'mixed' && currentNodes.some(node => node.groupId === 'staging-status' && node.hit)) {
-    runHud.textContent += ' · STAGING CREDENTIAL · PRODUCTION AUTHORIZATION REQUIRED';
-  }
-  if (s.truncated) runHud.textContent += ' · BUDGET TRUNCATED';
-  if (currentMode === 'combined') {
-    runHud.textContent += ` · WAF ${runStats.wafBlocks} / SOAR ${runStats.soarBlocks} / CANARY ${runStats.canaryBlocks}`;
-  }
-
-  if (window._onSimulationDone) {
-    window._onSimulationDone({
-      run: runCount,
-      scenario: currentMode,
-      preset: s.preset,
-      hits: runStats.hits,
-      blocks: runStats.blocks,
-      ineligible: s.ineligibleTransitions,
-      truncated: s.truncated,
-      publicExposures: runStats.publicExposures,
-      wafBlocks: runStats.wafBlocks,
-      soarBlocks: runStats.soarBlocks,
-      canaryBlocks: runStats.canaryBlocks,
-      lakesBreached: runStats.lakesBreached,
-      completeFourLayerPath: s.completeFourLayerPath,
-      status: s.dataReached ? 'DATA REACHED' : s.truncated ? 'INCOMPLETE' : 'NO MODELED PATH FOUND'
-    });
-  }
-}
-
-// The generated estate replays access outcomes without modeled attack timestamps.
-let generatedClockStart = null;
-let generatedClockFrame = null;
-const stopwatchEl = document.getElementById('attack-stopwatch');
-const swClockEl = document.getElementById('sw-clock');
-const swClockLabel = document.getElementById('sw-clock-label');
-const swClockCaption = document.getElementById('sw-clock-caption');
-
-function resetStopwatch() {
-  cancelAnimationFrame(generatedClockFrame);
-  generatedClockFrame = null;
-  generatedClockStart = null;
-  stopwatchEl.classList.remove('stopped');
-  swClockLabel.textContent = 'PLAYBACK CLOCK';
-  swClockEl.textContent = '00:00:00';
-  swClockCaption.textContent = 'HH:MM:SS · ELAPSED';
-}
-
-function renderGeneratedClock(now) {
-  swClockEl.textContent = formatDurationSeconds(Math.floor((now - generatedClockStart) / 1000));
-}
-
-function startGeneratedClock() {
-  generatedClockStart = performance.now();
-  function tick(now) {
-    renderGeneratedClock(now);
-    generatedClockFrame = requestAnimationFrame(tick);
-  }
-  generatedClockFrame = requestAnimationFrame(tick);
-}
-
-function finishGeneratedClock() {
-  cancelAnimationFrame(generatedClockFrame);
-  renderGeneratedClock(performance.now());
-  generatedClockFrame = null;
-  generatedClockStart = null;
-  stopwatchEl.classList.add('stopped');
-  swClockCaption.textContent = 'HH:MM:SS · COMPLETE';
-}
-
-const modeButtons = document.querySelectorAll('.mode-btn');
-modeButtons.forEach(btn => {
-  btn.addEventListener('click', () => {
-    currentMode = btn.dataset.mode;
-    try { localStorage.setItem('artex-wire-mode', currentMode); } catch (e) {}
-    modeButtons.forEach(b => b.classList.toggle('selected', b === btn));
-    runSimulationOnCurrentInfra();
-  });
-});
-
-presetBtn.addEventListener('click', () => {
-  currentPreset = currentPreset === 'mixed' ? 'demo' : currentPreset === 'demo' ? 'logs' : 'mixed';
-  try { localStorage.setItem(PRESET_STORAGE_KEY, currentPreset); } catch (e) {}
-  updatePresetButton();
-  generateNewInfra();
-});
-
-newRunBtn.addEventListener('click', () => generateNewInfra());
-
-window.addEventListener('resize', () => {
-  if (mapTraceRun || document.body.classList.contains('mode-comparison')) {
-    renderComparisonGraphState(cmpCurrentTimeSec);
-    return;
-  }
-  if (currentEstate) {
-    layoutGraph(currentEstate);
-    runSimulationOnCurrentInfra();
-  }
-});
-
-// ---------------------------------------------------------------------------
-// Comparison Demo Workbench Controller
-// ---------------------------------------------------------------------------
-const {
-  COMPARISON_PROFILES,
-  COMPARISON_DEFENSES,
-  createComparisonEstate,
-  formatDurationSeconds,
-  formatSignedDelta,
-  evaluateComparisonRun,
-  evaluateComparisonMatrix
-} = window.WireEngine;
-
-let cmpSharedFixtureId = 'speed-race';
-let cmpProfileId = 'artex';
-let cmpDefenseId = 'soc';
-let cmpShowCombined = true;
-let cmpMatrixData = null;
-let mapTraceRun = null;
-const mapTraceEstate = createComparisonEstate();
-
-let cmpPlaybackGen = 0;
-let cmpRafId = null;
-let cmpIsPlaying = false;
-let cmpCurrentTimeSec = 0;
-let cmpMaxTimeSec = 90;
-let cmpAnimProgress = 0; // 0..1
-const CMP_ANIM_DURATION_MS = 4200;
-
-const cmpMatrixHead = document.getElementById('cmp-matrix-head');
-const cmpMatrixBody = document.getElementById('cmp-matrix-body');
-const cmpDetailTitle = document.getElementById('cmp-detail-title');
-const cmpDetailBadge = document.getElementById('cmp-detail-badge');
-const cmpMetricsGrid = document.getElementById('cmp-metrics-grid');
-const cmpAssumptions = document.getElementById('cmp-assumptions');
-const cmpTraceList = document.getElementById('cmp-trace-list');
-const cmpTicketsList = document.getElementById('cmp-tickets-list');
-const cmpClockEl = document.getElementById('cmp-clock');
-const cmpPlaybackStatus = document.getElementById('cmp-playback-status');
-const cmpPlayBtn = document.getElementById('cmp-play-btn');
-const cmpSkipBtn = document.getElementById('cmp-skip-btn');
-const cmpRestartBtn = document.getElementById('cmp-restart-btn');
-const cmpToggleCombinedBtn = document.getElementById('cmp-toggle-combined-btn');
-const cmpEvidenceBtn = document.getElementById('cmp-evidence-btn');
-const cmpEvidencePanel = document.getElementById('cmp-evidence-panel');
-const cmpEvidenceClose = document.getElementById('cmp-evidence-close');
-const cmpFixtureSubtitle = document.getElementById('cmp-fixture-subtitle');
-const cmpAttackExample = document.getElementById('cmp-attack-example');
-const cmpSharedExercises = document.getElementById('cmp-shared-exercises');
-const cmpFixtureButtons = cmpSharedExercises.querySelectorAll('.cmp-fixture-btn');
-const cmpGraphStage = document.getElementById('cmp-graph-stage');
-const cmpWireSvg = document.getElementById('cmp-wire-svg');
-const cmpNodesLayer = document.getElementById('cmp-nodes-layer');
-const cmpTicketsHeading = document.getElementById('cmp-tickets-heading');
-const mapViewport = document.getElementById('viewport');
-const mapProfile = document.getElementById('map-profile');
-const mapDefense = document.getElementById('map-defense');
-const mapTraceSurface = document.getElementById('map-trace-surface');
-
-function clearComparisonPlayback() {
-  cmpPlaybackGen += 1;
-  if (cmpRafId) {
-    cancelAnimationFrame(cmpRafId);
-    cmpRafId = null;
-  }
-  cmpIsPlaying = false;
-  cmpTicketsList.innerHTML = '';
-}
-
-function getSelectedComparisonCell() {
-  return cmpMatrixData?.cells?.[cmpProfileId]?.[cmpDefenseId] || null;
-}
-
-function formatCellOutcomeBadge(cell) {
-  if (cell.protectedReadReached) {
-    return { cls: 'read', text: `PROTECTED READ · ${formatDurationSeconds(cell.protectedReadTimeSec)}` };
-  }
-  if (cell.accessDeniedObserved) {
-    return { cls: 'noread', text: 'ACCESS DENIED' };
-  }
-  if (cell.baselineProtectedReadSec !== null && cell.effectiveControlTimeSec !== null) {
-    return { cls: 'prevented', text: 'PREVENTED' };
-  }
-  return { cls: 'noread', text: 'NO PROTECTED READ' };
-}
-
-function renderComparisonMatrix() {
-  const example = cmpAttackExample.selectedOptions[0];
-  cmpMatrixData = evaluateComparisonMatrix(example.value || cmpSharedFixtureId);
-  const fixture = cmpMatrixData.fixture;
-  cmpFixtureSubtitle.textContent = example.value
-    ? `${example.dataset.name} exercise · ${fixture.subtitle}`
-    : fixture.subtitle;
-  cmpSharedExercises.hidden = Boolean(example.value);
-  cmpFixtureButtons.forEach(button => {
-    const selected = button.dataset.fixture === cmpSharedFixtureId;
-    button.classList.toggle('active', selected);
-    button.setAttribute('aria-pressed', String(selected));
-  });
-
-  const defenses = cmpShowCombined
-    ? ['baseline', 'patch', 'soc', 'canaries', 'combined']
-    : ['baseline', 'patch', 'soc', 'canaries'];
-
-  cmpMatrixHead.innerHTML = `
-    <th class="cmp-row-head">Attacker workflow</th>
-    ${defenses.map(d => `<th>${COMPARISON_DEFENSES[d].label}</th>`).join('')}
-  `;
-
-  cmpMatrixBody.innerHTML = ['pre2023', 'artex'].map(profileId => {
-    const profile = COMPARISON_PROFILES[profileId];
-    const cellsHtml = defenses.map(defenseId => {
-      const cell = cmpMatrixData.cells[profileId][defenseId];
-      const badge = formatCellOutcomeBadge(cell);
-      const isSelected = profileId === cmpProfileId && defenseId === cmpDefenseId;
-      const alertLine = cell.firstAlertTimeSec !== null
-        ? `Alert: ${formatDurationSeconds(cell.firstAlertTimeSec)} (${cell.firstAlertSource === 'virtual_patch' ? 'WAF' : cell.firstAlertSource === 'canary' ? 'Canary' : 'SOC'})`
-        : 'Alert: None';
-      const controlLine = cell.effectiveControlTimeSec !== null
-        ? `Effective: ${formatDurationSeconds(cell.effectiveControlTimeSec)}`
-        : 'Effective: None';
-      const extraLine = cell.fixtureKind === 'capability'
-        ? `${cell.opportunitiesReviewed} reviewed · ${cell.concurrentReviews} concurrent · ${cell.manualHandoffs} handoff`
-        : `Margin: ${formatSignedDelta(cell.responseMarginSec)} · Lead: ${formatSignedDelta(cell.detectionLeadTimeSec)}`;
-
-      return `
-        <td>
-          <button class="cmp-cell ${isSelected ? 'selected' : ''}" data-profile="${profileId}" data-defense="${defenseId}" type="button">
-            <span class="cmp-badge ${badge.cls}">${badge.text}</span>
-            <span class="cmp-cell-line">${alertLine}</span>
-            <span class="cmp-cell-line">${controlLine}</span>
-            <span class="cmp-cell-reason">${cell.controlReason}</span>
-            <span class="cmp-cell-meta">${extraLine}</span>
-          </button>
-        </td>
-      `;
-    }).join('');
-
-    return `
-      <tr>
-        <th class="cmp-row-head">
-          <div class="cmp-row-title">${profile.label}</div>
-          <div class="cmp-row-desc">${profile.description}</div>
-        </th>
-        ${cellsHtml}
-      </tr>
-    `;
-  }).join('');
-
-  cmpMatrixBody.querySelectorAll('.cmp-cell').forEach(btn => {
-    btn.addEventListener('click', () => {
-      selectComparisonCell(btn.dataset.profile, btn.dataset.defense);
-    });
-  });
-}
-
-function renderSelectedCellDetail() {
-  const cell = getSelectedComparisonCell();
-  if (!cell) return;
-
-  cmpDetailTitle.textContent = `${cell.profileLabel.toUpperCase()} × ${cell.defenseLabel.toUpperCase()}`;
-  const badge = formatCellOutcomeBadge(cell);
-  cmpDetailBadge.className = `cmp-badge ${badge.cls}`;
-  cmpDetailBadge.textContent = badge.text;
-
-  const metrics = [
-    { label: 'Protected Read', val: cell.protectedReadReached ? formatDurationSeconds(cell.protectedReadTimeSec) : 'Not reached' },
-    { label: 'First Alert', val: cell.firstAlertTimeSec !== null ? `${formatDurationSeconds(cell.firstAlertTimeSec)} (${cell.firstAlertSource})` : 'Unavailable' },
-    { label: 'Effective Control', val: cell.effectiveControlTimeSec !== null ? formatDurationSeconds(cell.effectiveControlTimeSec) : 'None' },
-    { label: 'Response Margin', val: formatSignedDelta(cell.responseMarginSec) },
-    { label: 'Detection Lead', val: formatSignedDelta(cell.detectionLeadTimeSec) },
-    { label: 'Control Reason', val: cell.controlReason }
-  ];
-
-  if (cell.telemetryTimeSec !== null || cell.defenseId === 'soc' || cell.defenseId === 'combined') {
-    metrics.push(
-      { label: 'SOC Telemetry', val: formatDurationSeconds(cell.telemetryTimeSec) },
-      { label: 'SOC Decision', val: formatDurationSeconds(cell.decisionTimeSec) },
-      { label: 'SOC Enforcement', val: formatDurationSeconds(cell.enforcementTimeSec) }
-    );
-    if (cell.enforcementTimeSec === null && cell.scheduledEnforcementTimeSec !== null) {
-      metrics.push({ label: 'SOC Scheduled Enforcement', val: formatDurationSeconds(cell.scheduledEnforcementTimeSec) });
+    if (startedAt === null) {
+      startedAt = now;
+      fromTime = modeledTime;
+      duration = Math.max(showProbes(phase.events, run.lanes), 650);
     }
-  }
-
-  if (cell.fixtureKind === 'capability') {
-    metrics.push(
-      { label: 'Opportunities (Scenario)', val: `${cell.opportunitiesReviewed} / 3 reviewed` },
-      { label: 'Concurrent (Scenario)', val: `${cell.concurrentReviews} parallel` },
-      { label: 'Manual Handoffs', val: `${cell.manualHandoffs}` }
-    );
-  }
-
-  cmpMetricsGrid.innerHTML = metrics.map(m => `
-    <div class="cmp-metric-box">
-      <div class="cmp-metric-label">${m.label}</div>
-      <div class="cmp-metric-val">${m.val}</div>
-    </div>
-  `).join('');
-
-  cmpAssumptions.innerHTML = `
-    <strong>Assumptions behind this cell:</strong>
-    <ul>${(cell.assumptions || []).map(a => `<li>${a}</li>`).join('')}</ul>
-  `;
-
-  cmpTraceList.innerHTML = cell.trace.map((ev, idx) => `
-    <div class="cmp-trace-item ${ev.outcome === 'suppressed' ? 'suppressed' : ''}" data-trace-idx="${idx}" data-time-sec="${ev.timeSec}">
-      <div class="cmp-trace-time">${formatDurationSeconds(ev.timeSec)}</div>
-      <div>
-        <div class="cmp-trace-title">${ev.title}</div>
-        <div class="cmp-trace-detail">${ev.detail}</div>
-        <div class="cmp-trace-reason">${ev.reason}</div>
-      </div>
-    </div>
-  `).join('');
-}
-
-function renderComparisonGraphState(currentSec) {
-  const cell = getPlaybackRun();
-  const estate = mapTraceRun ? mapTraceEstate : cmpMatrixData?.estate;
-  if (!cell || !estate) return;
-
-  const rect = cmpGraphStage.getBoundingClientRect();
-  const w = Math.max(300, rect.width || 520);
-  const h = Math.max(240, rect.height || 310);
-  cmpWireSvg.innerHTML = '';
-  cmpNodesLayer.innerHTML = '';
-
-  const activeEvents = cell.trace.filter(e => e.timeSec <= currentSec && e.outcome !== 'suppressed');
-  const assetOutcome = new Map();
-  const relationshipOutcomes = new Map();
-  for (const ev of activeEvents) {
-    if (ev.relationshipId) relationshipOutcomes.set(ev.relationshipId, ev.outcome);
-    if (!ev.assetId) continue;
-    if (ev.outcome === 'blocked' || ev.outcome === 'enforced' || ev.outcome === 'denied') {
-      assetOutcome.set(ev.assetId, 'defended');
-    } else if (ev.outcome === 'alert') {
-      if (assetOutcome.get(ev.assetId) !== 'defended') assetOutcome.set(ev.assetId, 'canary');
-    } else if (ev.outcome === 'succeeded') {
-      if (!assetOutcome.has(ev.assetId)) assetOutcome.set(ev.assetId, 'hit');
+    const progress = Math.min(1, (now - startedAt) / duration);
+    showTime(fromTime + (phase.time - fromTime) * progress);
+    if (progress === 1) {
+      renderPhase(phase, true);
+      phaseIndex++;
+      startedAt = null;
     }
+    frame = requestAnimationFrame(tick);
   }
-
-  const nodePos = new Map();
-  estate.assets.forEach(a => {
-    nodePos.set(a.id, {
-      ...a,
-      px: 44 + a.x * (w - 88),
-      py: 34 + a.y * (h - 74)
-    });
-  });
-
-  estate.relationships.forEach(rel => {
-    const s = nodePos.get(rel.sourceId);
-    const t = nodePos.get(rel.targetId);
-    if (!s || !t) return;
-    const dx = Math.abs(t.px - s.px) * 0.5;
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', `M ${s.px} ${s.py} C ${s.px + dx} ${s.py}, ${t.px - dx} ${t.py}, ${t.px} ${t.py}`);
-    let cls = 'wire';
-    const outcome = relationshipOutcomes.get(rel.id);
-    if (outcome === 'blocked' || outcome === 'enforced' || outcome === 'denied') {
-      cls += ' defended-wire';
-    } else if (outcome === 'succeeded' || outcome === 'alert') {
-      cls += ' hit-wire';
-    }
-    path.setAttribute('class', cls);
-    cmpWireSvg.appendChild(path);
-  });
-
-  nodePos.forEach(node => {
-    const state = assetOutcome.get(node.id);
-    const el = document.createElement('div');
-    el.className = 'node' + (state === 'hit' ? ' hit' : state === 'defended' ? ' defended' : state === 'canary' ? ' canary' : node.isDecoyAsset ? ' canary' : '');
-    el.style.left = `${node.px}px`;
-    el.style.top = `${node.py}px`;
-    el.innerHTML = `
-      <div class="node-icon-wrapper">
-        <div class="node-halo"></div>
-        <div class="node-icon" style="-webkit-mask-image: url('${ICON_BASE}${node.icon}'); mask-image: url('${ICON_BASE}${node.icon}');"></div>
-      </div>
-      <div class="node-label">${node.label}</div>
-    `;
-    cmpNodesLayer.appendChild(el);
-  });
-
-  // Sync trace item highlights
-  if (!mapTraceRun) {
-    cmpTraceList.querySelectorAll('.cmp-trace-item').forEach(el => {
-      const t = Number(el.dataset.timeSec || 0);
-      el.classList.toggle('reached', t <= currentSec);
-    });
-  }
-
-  // Sync SOC tickets up to currentSec
-  const ticketEvents = activeEvents.filter(ev =>
-    ev.outcome === 'blocked' || ev.outcome === 'enforced' || ev.outcome === 'denied' ||
-    ev.outcome === 'alert' || ev.isProtectedRead || ev.isBoundaryCrossing
-  );
-  cmpTicketsList.innerHTML = ticketEvents.length
-    ? ticketEvents.map(ev => {
-      const cls = ev.outcome === 'blocked' || ev.outcome === 'enforced' || ev.outcome === 'denied'
-        ? 'defense'
-        : ev.outcome === 'alert'
-          ? 'canary'
-          : ev.isProtectedRead ? 'critical' : '';
-      return `
-        <div class="cmp-ticket-card ${cls}">
-          <div><strong>${formatDurationSeconds(ev.timeSec)}</strong> · ${ev.title}</div>
-          <div style="color:#94a3b8;margin-top:2px;">${ev.reason}</div>
-        </div>
-      `;
-    }).join('')
-    : '<div style="font-size:10px;color:#64748b;">No alerts or tickets emitted yet at current playback timestamp.</div>';
+  frame = requestAnimationFrame(tick);
 }
 
-function getPlaybackRun() {
-  return mapTraceRun || getSelectedComparisonCell();
-}
-
-function updateComparisonClockAndFrame(timeSec) {
-  cmpCurrentTimeSec = timeSec;
-  const clock = mapTraceRun ? swClockEl : cmpClockEl;
-  clock.textContent = formatDurationSeconds(Math.floor(timeSec));
-  renderComparisonGraphState(timeSec);
-}
-
-function setComparisonPlaybackStatus(status) {
-  if (mapTraceRun) {
-    runHud.className = '';
-    if (status === 'COMPLETE') {
-      const badge = formatCellOutcomeBadge(mapTraceRun);
-      runHud.textContent = `TIMING RACE · ${badge.text} · ${mapTraceRun.controlReason}`;
-      if (badge.cls === 'read') runHud.classList.add('breached');
-      if (badge.cls === 'prevented') runHud.classList.add('contained');
-    } else {
-      runHud.textContent = `FIXED ESTATE · TIMING RACE · ${status}`;
-    }
-  } else {
-    cmpPlaybackStatus.textContent = status;
-  }
-}
-
-function startComparisonPlayback(fromStart = false) {
-  const cell = getPlaybackRun();
-  if (!cell) return;
-  if (fromStart) {
-    clearComparisonPlayback();
-    cmpAnimProgress = 0;
-    updateComparisonClockAndFrame(0);
-  } else if (cmpRafId) {
-    cancelAnimationFrame(cmpRafId);
-    cmpRafId = null;
-  }
-
-  const times = cell.trace.map(e => e.timeSec);
-  cmpMaxTimeSec = Math.max(cell.cutoffSec || 0, ...times, 1);
-  cmpIsPlaying = true;
-  cmpPlayBtn.textContent = 'PAUSE';
-  cmpPlayBtn.classList.add('active');
-  setComparisonPlaybackStatus('PLAYING');
-
-  const gen = cmpPlaybackGen;
-  const startProgress = cmpAnimProgress >= 1 ? 0 : cmpAnimProgress;
-  const t0 = performance.now();
-
-  function stepPlayback(now) {
-    if (gen !== cmpPlaybackGen || !cmpIsPlaying) return;
-    const elapsed = now - t0;
-    cmpAnimProgress = Math.min(1, startProgress + elapsed / CMP_ANIM_DURATION_MS);
-    const simSec = cmpAnimProgress * cmpMaxTimeSec;
-    updateComparisonClockAndFrame(simSec);
-    if (cmpAnimProgress < 1) {
-      cmpRafId = requestAnimationFrame(stepPlayback);
-    } else {
-      cmpIsPlaying = false;
-      cmpRafId = null;
-      cmpPlayBtn.textContent = 'PLAY';
-      cmpPlayBtn.classList.remove('active');
-      setComparisonPlaybackStatus('COMPLETE');
-    }
-  }
-  cmpRafId = requestAnimationFrame(stepPlayback);
-}
-
-function pauseComparisonPlayback() {
-  cmpIsPlaying = false;
-  if (cmpRafId) {
-    cancelAnimationFrame(cmpRafId);
-    cmpRafId = null;
-  }
-  cmpPlayBtn.textContent = 'PLAY';
-  cmpPlayBtn.classList.remove('active');
-  setComparisonPlaybackStatus('PAUSED');
-}
-
-function skipComparisonPlayback() {
-  const cell = getPlaybackRun();
-  if (!cell) return;
-  clearComparisonPlayback();
-  const times = cell.trace.map(e => e.timeSec);
-  cmpMaxTimeSec = Math.max(cell.cutoffSec || 0, ...times, 1);
-  cmpAnimProgress = 1;
-  cmpPlayBtn.textContent = 'PLAY';
-  cmpPlayBtn.classList.remove('active');
-  setComparisonPlaybackStatus('COMPLETE');
-  updateComparisonClockAndFrame(cmpMaxTimeSec);
-}
-
-function selectComparisonCell(profileId, defenseId) {
-  cmpProfileId = profileId;
-  cmpDefenseId = defenseId;
-  renderComparisonMatrix();
-  renderSelectedCellDetail();
-  startComparisonPlayback(true);
-}
-
-function replayComparisonExercise() {
-  renderComparisonMatrix();
-  renderSelectedCellDetail();
-  startComparisonPlayback(true);
-}
-
-function mountTraceSurface(onMap) {
-  mapViewport.classList.toggle('map-trace-mode', onMap);
-  mapTraceSurface.hidden = !onMap;
-  if (onMap) {
-    mapTraceSurface.append(cmpGraphStage, cmpTicketsList);
-  } else {
-    cmpTicketsHeading.before(cmpGraphStage);
-    cmpTicketsHeading.after(cmpTicketsList);
-  }
-}
-
-function stopGeneratedPlayback() {
-  simulationGeneration++;
-  clearAllActiveTimeouts();
-  resetStopwatch();
-  isSimulating = false;
-  window.isSimulating = false;
-}
-
-function runMapTrace() {
-  mapTraceRun = evaluateComparisonRun('speed-race', mapProfile.value, mapDefense.value);
-  startComparisonPlayback(true);
-}
-
-function refreshMapRun() {
-  if (mapProfile.value !== 'generated') {
-    stopGeneratedPlayback();
-    mountTraceSurface(true);
-    swClockLabel.textContent = 'MODELED CLOCK';
-    swClockCaption.textContent = 'HH:MM:SS · SCENARIO TIME';
-    runMapTrace();
-    return;
-  }
-
-  clearComparisonPlayback();
-  mapTraceRun = null;
-  mountTraceSurface(false);
-  if (!currentEstate) {
-    generateNewInfra();
-  } else {
-    layoutGraph(currentEstate);
-    runSimulationOnCurrentInfra();
-  }
-}
-
-function setViewMode(mode) {
-  if (mode === 'exploratory') {
-    document.body.classList.remove('mode-comparison');
-    document.body.classList.add('mode-exploratory');
-    refreshMapRun();
-  } else {
-    stopGeneratedPlayback();
-    mapTraceRun = null;
-    mountTraceSurface(false);
-    document.body.classList.remove('mode-exploratory');
-    document.body.classList.add('mode-comparison');
-    replayComparisonExercise();
-  }
-}
-
-cmpAttackExample.addEventListener('change', replayComparisonExercise);
-cmpFixtureButtons.forEach(button => {
+modeButtons.forEach(button => {
   button.addEventListener('click', () => {
-    cmpSharedFixtureId = button.dataset.fixture;
-    replayComparisonExercise();
+    defense = button.dataset.mode;
+    modeButtons.forEach(candidate => {
+      const selected = candidate === button;
+      candidate.classList.toggle('selected', selected);
+      candidate.setAttribute('aria-pressed', String(selected));
+    });
+    playRun();
   });
 });
-cmpPlayBtn.addEventListener('click', () => {
-  if (cmpIsPlaying) pauseComparisonPlayback();
-  else startComparisonPlayback(cmpAnimProgress >= 1);
+mapProfile.addEventListener('change', playRun);
+function applianceRoster(estate) {
+  return estate.assets.filter(asset => asset.referenceCve).map(asset => asset.groupId).sort().join();
+}
+
+function drawReferenceCase() {
+  if (!catalog) return null;
+  if (!catalogDeck.length) catalogDeck = [...catalog.examples];
+  const index = Math.floor(Math.random() * catalogDeck.length);
+  const [example] = catalogDeck.splice(index, 1);
+  return { example, context: catalog.infrastructure[example.context] };
+}
+
+function drawPre2023Group() {
+  if (!pre2023Deck.length) pre2023Deck = Object.keys(pre2023Groups);
+  const index = Math.floor(Math.random() * pre2023Deck.length);
+  return pre2023Deck.splice(index, 1)[0];
+}
+
+function newInfra() {
+  const previous = applianceRoster(estate);
+  referenceCase = drawReferenceCase();
+  pre2023Group = drawPre2023Group();
+  do {
+    estate = generateEstate({
+      seedExercise: true,
+      preferredIngress: referenceCase?.context.groups[0]
+    });
+  } while (applianceRoster(estate) === previous);
+  catalogLabel.hidden = !referenceCase;
+  if (referenceCase) {
+    const { example, context } = referenceCase;
+    catalogLabel.textContent = `${context.title} · Reference ${example.id}`;
+    catalogLabel.title = `${example.vendor} ${example.product}\n${context.defensiveFocus}\nATT&CK · ${example.techniques.join(', ')}`;
+  }
+  playRun();
+}
+document.getElementById('new-run-btn').addEventListener('click', newInfra);
+document.getElementById('map-replay-btn').addEventListener('click', playRun);
+document.getElementById('map-results-btn').addEventListener('click', finishRun);
+window.addEventListener('resize', () => {
+  resetGraph();
+  phases.slice(0, phaseIndex).forEach(phase => renderPhase(phase));
 });
-cmpSkipBtn.addEventListener('click', skipComparisonPlayback);
-cmpRestartBtn.addEventListener('click', () => startComparisonPlayback(true));
-cmpToggleCombinedBtn.addEventListener('click', () => {
-  cmpShowCombined = !cmpShowCombined;
-  cmpToggleCombinedBtn.classList.toggle('active', cmpShowCombined);
-  cmpToggleCombinedBtn.setAttribute('aria-pressed', String(cmpShowCombined));
-  cmpToggleCombinedBtn.textContent = `DEFENSE IN DEPTH: ${cmpShowCombined ? 'ON' : 'OFF'}`;
-  if (!cmpShowCombined && cmpDefenseId === 'combined') {
-    selectComparisonCell(cmpProfileId, 'soc');
+async function startWire() {
+  try {
+    const response = await fetch('assets/wire-defense-catalog.json');
+    if (!response.ok) throw new Error(`Catalog request returned ${response.status}`);
+    catalog = await response.json();
+  } catch {
+    playRun();
     return;
   }
-  renderComparisonMatrix();
-});
-cmpEvidenceBtn.addEventListener('click', () => cmpEvidencePanel.classList.toggle('open'));
-cmpEvidenceClose.addEventListener('click', () => cmpEvidencePanel.classList.remove('open'));
-document.getElementById('view-exploratory-btn').addEventListener('click', () => setViewMode('exploratory'));
-document.getElementById('view-comparison-btn').addEventListener('click', () => setViewMode('comparison'));
-document.getElementById('back-to-comparison-btn').addEventListener('click', () => setViewMode('comparison'));
-mapProfile.addEventListener('change', refreshMapRun);
-mapDefense.addEventListener('change', runMapTrace);
-document.getElementById('map-replay-btn').addEventListener('click', () => startComparisonPlayback(true));
-document.getElementById('map-results-btn').addEventListener('click', skipComparisonPlayback);
-
-window.addEventListener('load', () => {
-  try {
-    const mode = localStorage.getItem('artex-wire-mode');
-    if (mode && DEFENSE_SCENARIOS[mode]) {
-      currentMode = mode;
-      modeButtons.forEach(btn => btn.classList.toggle('selected', btn.dataset.mode === mode));
-    }
-    const savedPreset = localStorage.getItem(PRESET_STORAGE_KEY);
-    if (savedPreset === 'demo' || savedPreset === 'mixed' || savedPreset === 'logs') currentPreset = savedPreset;
-    updatePresetButton();
-
-    const snapshot = JSON.parse(localStorage.getItem(INFRA_STORAGE_KEY));
-    if (snapshot) {
-      const res = migrateSnapshot(snapshot);
-      if (res.ok) {
-        currentEstate = res.estate;
-        if (currentEstate !== snapshot) localStorage.setItem(INFRA_STORAGE_KEY, JSON.stringify(currentEstate));
-      }
-    }
-  } catch (e) { console.warn('Unable to restore infrastructure', e); }
-
-  // Start in Comparison Demo mode by default
-  setViewMode('comparison');
-});
+  newInfra();
+}
+startWire();
 </script>
 </body>
 </html>

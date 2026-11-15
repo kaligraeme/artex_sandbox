@@ -29,31 +29,34 @@ On macOS or Linux, run `./start.sh` from the repository folder. It looks for `py
 
 ## Demo branches
 
-- **`main`** serves the Wire Diagram as the demo. The site root and old Table View address (`/index.html`) redirect to `/wire.html`. The Wire navigation offers **Comparison Demo** and **Exploratory Infra**.
+- **`main`** runs the demo on the full wire diagram. The site root and old Table View address (`/index.html`) redirect to `/wire.html`.
 - **`wire-combined`** preserves the demo before that change, including the standalone Range Operations dashboard and the original **Compare Combined** toggle. Use this branch to revisit that version.
 
 ## Run the wire diagram
 
-1. **Comparison Demo (default):** Compare **Pre-2023 human-led** vs **ARTEX & Friends** on a fixed four-layer estate. Use **Attack example** to open a synthetic defense exercise under one of the six reference names (**LockBit**, **Conti**, **BlackCat**, **Hive**, **REvil**, or **ARTEX**). The choices reuse generic event traces for both attacker workflows. Select **Shared speed and capability exercises** to return to the four controlled comparisons. Click any matrix cell for its trace and SOC tickets. Playback uses a modeled hours, minutes, and seconds clock (`HH:MM:SS`).
-2. **Exploratory Infra:** Generate a topology with **New Infra**, cycle presets (**Mixed**, **Demo-Ready**, **Cred-in-Logs**), and compare defenses against generated activity. Use the **Attacker** menu on the map to run the same timing race as **Pre-2023 human-led** or **ARTEX & Friends**. The two profiles share a fixed estate and the selected **Defense**. Use **Replay** or **Results** to control playback. Select **Generated activity** to return to the generated estate. **Mixed** opens with a signed-in diagnostics viewer and one of three equally weighted starting conditions: low exposure, misconfiguration, or a modeled low-impact vulnerability. The mix gives each scenario equal demo coverage. The synthetic credential grants access only to the Staging Status API. Other paths through the estate vary by seed. Generated activity shows elapsed playback time. The two fixed attacker traces show modeled scenario time.
+1. Choose **Pre-2023** or **ARTEX-like** from the **Attacker** menu. Each new estate draws LockBit, Conti, BlackCat, Hive, or REvil in randomized order and keeps that group for replay and defense comparisons. The modeled time from foothold to a sample record read is drawn from **80–270 minutes** for the pre-2023 examples and **45–75 minutes** for ARTEX-like. Each estate keeps both draws for replay and defense comparisons. ARTEX-like shows up to three probes in parallel.
+2. Start with **Baseline**, then choose one of the three defenses. Changing the attacker or defense replays the same topology.
+3. Use **Replay** to repeat the run or **Results** to jump to its outcome. The **Elapsed** clock shows cumulative modeled time from the assumed edge foothold.
+4. Use **New Infra** to generate a fresh topology and a different mix of five to seven appliance families from the [Layer 1 appliance pool](docs/wire_diagram_logic.md#layer-1-appliance-pool). Most baseline runs include a simulated path to a sample record. Credential exposure in logs can appear as an opening in the same mix.
+
+**New Infra** draws from 100 CISA KEV and CTID references. Each entry selects one of four representative infrastructure profiles, and the remaining topology is generated around it. The simulation shows which generated services were reached or defended. See the [JSON catalog](assets/wire-defense-catalog.json).
+
+The estate may also contain an exposure from the [external misconfiguration pool](docs/wire_diagram_logic.md#external-misconfiguration-pool). The replay identifies the exposed service and the access established there.
 
 ## Scenarios
 
-In **Comparison Demo**, the former **Combined** scenario appears as **Defense in Depth**. Its column is visible on load and can be hidden or restored with the **Defense in Depth** toggle.
-
 | Scenario | What the demo shows |
 | --- | --- |
-| **Baseline** | Unmitigated outcome without the three modeled controls. |
-| **Virtual Patching** | Blocks covered ingress events at the edge (`RULE MATCH · BLOCKED AT EDGE`); out-of-scope events continue (`OUTSIDE RULE COVERAGE`). |
-| **Agentic SOC** | Exposes telemetry, decision/approval, and enforcement timestamps under a fixed 60-second containment policy, showing where the same response wins at Pre-2023 pace (`+29 min`) and loses at ARTEX pace (`−10 s`). |
-| **Canaries** | Standalone decoy interaction (`DECOY TRIGGERED · ALERT ONLY`) showing detection lead time without containment. |
-| **Defense in Depth** | An early canary signal feeds the same SOC policy, shifting containment ahead of the protected read (`+15 s`). |
+| **Baseline** | The estate model evaluates usable paths. Either profile can reach protected data if the generated estate supplies a complete path. |
+| **Virtual Patch** | The WAF stops requests when the modeled rule covers the finding. |
+| **Agentic SOAR** | Matching telemetry starts a 60-second modeled containment window. The run records whether the affected session reads protected data before enforcement. |
+| **Agentic SOAR + Canary** | Uses the same SOAR response policy. A touched decoy can give SOAR an earlier signal. Timing, signal availability, and session scope determine the outcome. |
 
-For generated activity in **Exploratory Infra**, the defense modes are **Baseline**, **Virtual Patch**, **Agentic SOAR**, and **Defense in Depth** (WAF + Agentic SOAR + Canary). The map's fixed attacker traces use the Comparison Demo defenses. Defense rules, coverage, detection, and response are demo assumptions.
+WAF coverage, response timing, and outcomes are synthetic assumptions for this exercise.
 
 ## Infrastructure and tickets
 
-The diagram spans internet-facing access, gateways and security controls, internal applications, and data stores. Objects are assigned product-specific CVEs where modeled; other findings can represent public access or assumed credential use. The displayed attack descriptions identify the type of flaw, while an assigned exposure assumes an affected configuration.
+The diagram spans internet-facing access, gateways and security controls, internal applications, and data stores. Dotted lines show simulated checks of candidate entry points and branches from reached assets. ARTEX-like displays up to three probe lanes in parallel. Pre-2023 human-led displays one lane at a time. Solid red lines show the path that succeeds. Click an asset to reveal its adjacent connections.
 
 An environment may include one network-monitoring system, selected from Cacti, LibreNMS, SolarWinds NPM, Zabbix, PRTG and ManageEngine OpManager. The selection has a 90% inclusion chance before topology filtering. Some products have a mapped historical CVE; others have no CVE assigned.
 

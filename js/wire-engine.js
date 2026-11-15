@@ -39,16 +39,44 @@
 
   // Demo-design budgets per layer (starting targets for exploitable findings, not risk rates)
   const LAYER_FINDING_BUDGETS = [
-    { min: 1, max: 2 },
+    { min: 2, max: 3 },
     { min: 2, max: 3 },
     { min: 2, max: 3 },
     { min: 1, max: 2 }
   ];
 
-  // Individually reviewed example deployments. Versions and conditions are
-  // synthetic; links describe the underlying vulnerability, not this estate.
-  const REVIEWED_EXAMPLES = {
+  // Historical analogues for an isolated Layer 1 event in the browser.
+  const EDGE_MISCONFIGURATIONS = [
+    { id: 'default-admin', asset: 'External Device Admin Portal', title: 'Default admin credentials', icon: 'iot.png', interfaces: ['device-management'], assumedAccount: true, reference: 'Unitronics device intrusions', source: 'https://www.cisa.gov/sites/default/files/2024-12/aa23-335a-irgc-affiliated-cyber-actors-exploit-plcs-in-multiple-sectors.pdf' },
+    { id: 'rdp-exposed', asset: 'Internet-Facing Remote Desktop', title: 'Remote Desktop exposed directly', icon: 'remote-access.png', interfaces: ['rdp'], assumedAccount: true, reference: 'SamSam ransomware incidents', source: 'https://www.cisa.gov/news-events/cybersecurity-advisories/aa18-337a' },
+    { id: 'legacy-vpn', asset: 'Legacy VPN Portal', title: 'Legacy VPN account still enabled without MFA', icon: 'remote-access.png', interfaces: ['vpn'], assumedAccount: true, reference: 'Colonial Pipeline breach', source: 'https://www.govinfo.gov/content/pkg/CHRG-117hhrg45085/html/CHRG-117hhrg45085.htm' },
+    { id: 'test-tenant', asset: 'Nonproduction Cloud Tenant', title: 'Test tenant account excluded from MFA', icon: 'identity.png', interfaces: ['https'], assumedAccount: true, reference: 'Microsoft Midnight Blizzard incident', source: 'https://www.microsoft.com/en-us/security/blog/2024/01/25/midnight-blizzard-guidance-for-responders-on-nation-state-attack/' },
+    { id: 'data-allowlist', asset: 'Public Cloud Data Warehouse Login', title: 'Cloud warehouse reachable without trusted-network restrictions', icon: 'data.png', interfaces: ['https'], assumedAccount: true, reference: 'UNC5537 Snowflake customer compromises', source: 'https://cloud.google.com/blog/topics/threat-intelligence/unc5537-snowflake-data-theft-extortion' },
+    { id: 'public-storage', asset: 'Public Document Storage', title: 'Sensitive storage allows anonymous read', icon: 'data.png', interfaces: ['storage-s3', 'https'], reference: 'Ascension mortgage document breach', source: 'https://search.ftc.gov/system/files/documents/cases/1923126ascensioncomplaint.pdf' },
+    { id: 'public-kubernetes', asset: 'Public Kubernetes Console', title: 'Kubernetes dashboard with no authentication', icon: 'cloud-infrastructure.png', interfaces: ['https'], reference: 'RedLock investigation of Tesla cryptojacking', source: 'https://www.ten-inc.com/documents/RedLock_Whitepaper_2018.pdf' },
+    { id: 'public-docker', asset: 'Public Container Management Interface', title: 'Docker management API with no authentication', icon: 'components.png', interfaces: ['http'], reference: 'Unit 42 investigation of compromised Docker hosts', source: 'https://unit42.paloaltonetworks.com/attackers-tactics-and-techniques-in-unsecured-docker-daemons-revealed/' },
+    { id: 'waf-forwarding', asset: 'Public Cloud Application Gateway', title: 'WAF permits unintended backend access', icon: 'network.png', interfaces: ['https'], reference: 'Capital One cloud data breach', source: 'https://www.justice.gov/usao-wdwa/united-states-v-paige-thompson' },
+    { id: 'public-web-config', asset: 'Public Application Configuration', title: 'Web server publishes deployment configuration', icon: 'configuration.png', interfaces: ['https'], reference: 'Unit 42 cloud extortion investigation', source: 'https://unit42.paloaltonetworks.com/large-scale-cloud-extortion-operation/' },
+    { id: 'datadog-proxy', asset: 'Customer-Managed Datadog Proxy', title: 'Unauthenticated proxy exposes logs', icon: 'threat-detection.png', interfaces: ['https'], illustration: 'git-to-idp', reference: 'User-supplied scenario. Datadog documentation provides product context.', source: 'https://docs.datadoghq.com/data_security/agent/' }
+  ];
+
+  // Advisory-backed appliance families. Affected builds and configurations are
+  // assigned only when that family receives a modeled finding in an estate.
+  const EDGE_APPLIANCES = {
     'f5-gateway': { cve: 'CVE-2022-1388', product: 'F5 BIG-IP', version: '16.1.0', conditions: { managementReachable: true }, source: 'https://www.cisa.gov/sites/default/files/publications/AA22-138A-Threat_Actors_Exploiting_F5_BIG-IP_CVE-2022-1388_F5.pdf' },
+    'ivanti-connect': { cve: 'CVE-2023-46805', product: 'Ivanti Connect Secure', version: '22.4R2', conditions: { gatewayWebEnabled: true }, source: 'https://www.ivanti.com/blog/security-update-for-ivanti-connect-secure-and-ivanti-policy-secure-gateways' },
+    'forti-vpn': { cve: 'CVE-2018-13379', product: 'Fortinet FortiGate', version: '6.0.4', conditions: { sslVpnEnabled: true }, source: 'https://www.fortinet.com/blog/psirt-blogs/fortios-ssl-vulnerability' },
+    'pan-globalprotect': { cve: 'CVE-2024-3400', product: 'Palo Alto Networks PAN-OS Firewall', version: '10.2.8', conditions: { globalProtectEnabled: true }, source: 'https://security.paloaltonetworks.com/CVE-2024-3400' },
+    'citrix-adc': { cve: 'CVE-2023-3519', product: 'Citrix NetScaler ADC', version: '13.1-48.47', conditions: { gatewayMode: true }, source: 'https://www.cisa.gov/sites/default/files/2023-07/aa23-201a_csa_threat_actors_exploiting_citrix-cve-2023-3519_to_implant_webshells.pdf' },
+    'cisco-asa': { cve: 'CVE-2020-3452', product: 'Cisco ASA Firewall', version: '9.12.3', conditions: { webVpnEnabled: true }, source: 'https://www.cisco.com/c/en/us/support/docs/csa/cisco-sa-asaftd-ro-path-KJuQhB86.html' },
+    'sonicwall-sma': { cve: 'CVE-2021-20016', product: 'SonicWall SMA 100', version: '10.2.0.6', conditions: { sslVpnEnabled: true }, source: 'https://www.csa.gov.sg/alerts-and-advisories/alerts/al-2021-005/' },
+    'sophos-firewall': { cve: 'CVE-2022-1040', product: 'Sophos Firewall', version: '18.5 MR2 before hotfix', conditions: { userPortalEnabled: true }, source: 'https://www.sophos.com/en-us/security-advisories/sophos-sa-20220325-sfos-rce' },
+    'zyxel-atp': { cve: 'CVE-2023-28771', product: 'Zyxel ATP Firewall', version: '5.35', conditions: { ipsecEnabled: true }, source: 'https://www.zyxel.com/global/en/support/security-advisories/zyxels-guidance-for-the-recent-attacks-on-the-zywall-devices' },
+    'checkpoint-quantum': { cve: 'CVE-2024-24919', product: 'Check Point Quantum Security Gateway', version: 'R81.20 before hotfix', conditions: { remoteAccessVpnEnabled: true }, source: 'https://advisories.checkpoint.com/defense/advisories/public/2024/cpai-2024-0353.html/' }
+  };
+
+  const REVIEWED_EXAMPLES = {
+    ...EDGE_APPLIANCES,
     'cust-api': { cve: 'CVE-2022-29464', product: 'WSO2 API Manager', version: '3.2.0', conditions: { uploadEndpointReachable: true, executableUpload: true }, source: 'https://www.cisa.gov/sites/default/files/2023-08/aa23-215a_joint_csa_2022_top_routinely_exploited_vulnerabilities.pdf' },
     'app-engine': { cve: 'CVE-2022-22965', product: 'Spring Framework', version: '5.3.17', conditions: { jdk9Plus: true, tomcatVulnerable: true, warDeployment: true, mvcDataBinding: true }, source: 'https://spring.io/security/cve-2022-22965/' }
   };
@@ -117,7 +145,7 @@
   const LAYER_KEVS = [
     [
       { id: 'CVE-2024-4577', title: 'PHP CGI Arg Injection RCE', tech: 'T1190', inKev: true, reqInterface: 'https', yields: 'app_exec' },
-      { id: 'CVE-2023-46805', title: 'Ivanti Connect Secure Auth Bypass', tech: 'T1190', inKev: true, reqInterface: 'https', yields: 'app_exec' },
+      { id: 'CVE-2023-46805', title: 'Ivanti Connect Secure Auth Bypass', tech: 'T1190', inKev: true, reqInterface: 'https', yields: 'file_read' },
       { id: 'CVE-2024-3400', title: 'PAN-OS Command Injection RCE', tech: 'T1190', inKev: true, reqInterface: 'https', yields: 'app_exec' },
       { id: 'CVE-2023-3519', title: 'Citrix NetScaler ADC Unauth RCE', tech: 'T1190', inKev: true, reqInterface: 'https', yields: 'app_exec' },
       { id: 'CVE-2023-20198', title: 'Cisco IOS XE Priv Escalation', tech: 'T1068', inKev: true, reqInterface: 'https', yields: 'app_exec' },
@@ -125,6 +153,11 @@
       { id: 'CVE-2022-1388', title: 'F5 BIG-IP iControl REST Auth Bypass', tech: 'T1190', inKev: true, reqInterface: 'https', yields: 'app_exec' },
       { id: 'CVE-2022-42475', title: 'FortiOS SSL-VPN Heap Buffer Overflow', tech: 'T1190', inKev: true, reqInterface: 'vpn', yields: 'app_exec' },
       { id: 'CVE-2018-13379', title: 'FortiOS SSL-VPN Path Traversal', tech: 'T1190', inKev: true, reqInterface: 'https', yields: 'file_read' },
+      { id: 'CVE-2020-3452', title: 'Cisco ASA VPN File Disclosure', tech: 'T1190', inKev: true, reqInterface: 'https', yields: 'file_read' },
+      { id: 'CVE-2021-20016', title: 'SonicWall SMA SQL Injection', tech: 'T1190', inKev: true, reqInterface: 'https', yields: 'file_read' },
+      { id: 'CVE-2022-1040', title: 'Sophos Firewall Auth Bypass', tech: 'T1190', inKev: true, reqInterface: 'https', yields: 'app_exec' },
+      { id: 'CVE-2023-28771', title: 'Zyxel ATP Command Injection', tech: 'T1190', inKev: true, reqInterface: 'vpn', yields: 'app_exec' },
+      { id: 'CVE-2024-24919', title: 'Check Point VPN Information Disclosure', tech: 'T1190', inKev: true, reqInterface: 'https', yields: 'file_read' },
       { id: 'CVE-2019-11510', title: 'Pulse Connect Secure Arbitrary File Read', tech: 'T1190', inKev: true, reqInterface: 'https', yields: 'file_read' },
       { id: 'CVE-2021-42013', title: 'Apache HTTP Server Path Traversal', tech: 'T1190', inKev: true, reqInterface: 'https', yields: 'file_read' }
     ],
@@ -254,7 +287,8 @@
             { id: 'public-s3', icon: 'data.png', interfaces: ['storage-s3', 'https'], attackTechnique: 'T1530', attackDescription: 'Data from Cloud Storage', publicExposure: 'Simulated S3 bucket permits anonymous public read; the contents are not assumed to contain credentials.', variants: ['Amazon S3 · Bucket'] },
             { id: 'ivanti-connect', icon: 'remote-access.png', interfaces: ['https', 'vpn'], kevByVariant: ['CVE-2023-46805'], variants: ['Ivanti Connect Secure VPN'] },
             { id: 'f5-gateway', icon: 'network.png', interfaces: ['https'], kevByVariant: ['CVE-2022-1388'], variants: ['F5 BIG-IP Management Interface'] },
-            { id: 'forti-vpn', icon: 'remote-access.png', interfaces: ['https', 'vpn'], kevByVariant: ['CVE-2018-13379'], variants: ['FortiOS SSL VPN'] }
+            { id: 'forti-vpn', icon: 'remote-access.png', interfaces: ['https', 'vpn'], kevByVariant: ['CVE-2018-13379'], variants: ['Fortinet FortiGate SSL VPN'] },
+            { id: 'cisco-asa', icon: 'network.png', interfaces: ['https', 'vpn'], kevByVariant: ['CVE-2020-3452'], variants: ['Cisco ASA Firewall'] }
           ]
         },
         {
@@ -262,7 +296,8 @@
           targets: [
             { id: 'public-blob', icon: 'data.png', interfaces: ['storage-s3', 'https'], attackTechnique: 'T1530', attackDescription: 'Data from Cloud Storage', publicExposure: 'Simulated Azure Blob container permits anonymous public read; the contents are not assumed to contain credentials.', variants: ['Azure Blob Storage · Container'] },
             { id: 'pan-globalprotect', icon: 'network.png', interfaces: ['https', 'vpn'], kevByVariant: ['CVE-2024-3400'], variants: ['PAN-OS GlobalProtect Gateway'] },
-            { id: 'pulse-vpn', icon: 'remote-access.png', interfaces: ['https', 'vpn'], kevByVariant: ['CVE-2019-11510'], variants: ['Pulse Connect Secure VPN'] }
+            { id: 'sonicwall-sma', icon: 'remote-access.png', interfaces: ['https', 'vpn'], kevByVariant: ['CVE-2021-20016'], variants: ['SonicWall SMA 100'] },
+            { id: 'sophos-firewall', icon: 'network.png', interfaces: ['https'], kevByVariant: ['CVE-2022-1040'], variants: ['Sophos Firewall'] }
           ]
         },
         {
@@ -271,8 +306,11 @@
             { id: 'public-gitlab', icon: 'code.png', interfaces: ['repo-http', 'https'], attackTechnique: 'T1593.003', attackDescription: 'Search public code repositories', publicExposure: 'Simulated GitLab project is publicly readable contrary to its intended access policy.', variants: ['GitLab · Project'] },
             { id: 'public-bitbucket', icon: 'code.png', interfaces: ['repo-http', 'https'], attackTechnique: 'T1593.003', attackDescription: 'Search public code repositories', publicExposure: 'Simulated Bitbucket repository is publicly readable contrary to its intended access policy.', variants: ['Bitbucket · Repository'] },
             { id: 'citrix-adc', icon: 'server-infrastructure.png', interfaces: ['https'], kevByVariant: ['CVE-2023-3519'], variants: ['Citrix NetScaler ADC Gateway'] },
+            { id: 'zyxel-atp', icon: 'network.png', interfaces: ['vpn'], kevByVariant: ['CVE-2023-28771'], variants: ['Zyxel ATP Firewall'] },
+            { id: 'checkpoint-quantum', icon: 'remote-access.png', interfaces: ['https', 'vpn'], kevByVariant: ['CVE-2024-24919'], variants: ['Check Point Quantum Gateway'] },
             { id: 'apache-edge', icon: 'server-infrastructure.png', interfaces: ['https'], kevByVariant: ['CVE-2021-42013'], variants: ['Apache HTTP Server 2.4.50 Edge'] },
-            { id: 'support-diagnostics', preset: 'mixed', icon: 'configuration.png', interfaces: ['https'], variants: ['Support Diagnostics Portal'] }
+            { id: 'support-diagnostics', preset: 'mixed', icon: 'configuration.png', interfaces: ['https'], variants: ['Support Diagnostics Portal'] },
+            { id: 'external-misconfig', preset: 'mixed', icon: 'configuration.png', variants: ['External service'] }
           ]
         }
       ]
@@ -377,7 +415,11 @@
     'ivanti-connect': ['cust-api', 'iam-idp'],
     'f5-gateway': ['cust-api', 'partner-api', 'waf-proxy', 'wso2-api'],
     'forti-vpn': ['sentry-auth', 'ivanti-epm', 'iam-idp', 'ad-identity', 'vault-creds', 'threat-det'],
-    'pulse-vpn': ['sentry-auth', 'ivanti-epm'],
+    'cisco-asa': ['iam-idp', 'ad-identity'],
+    'sonicwall-sma': ['sentry-auth', 'iam-idp'],
+    'sophos-firewall': ['exchange', 'iam-idp'],
+    'zyxel-atp': ['partner-api', 'iam-idp'],
+    'checkpoint-quantum': ['iam-idp', 'ad-identity'],
     'apache-edge': ['cust-api', 'exchange'],
     'pan-globalprotect': ['cust-api', 'iam-idp'],
     'citrix-adc': ['wso2-api'],
@@ -404,9 +446,8 @@
   };
 
   const EXTERNAL_ENTRY_GROUPS = new Set([
-    'ivanti-connect', 'pan-globalprotect', 'citrix-adc', 'f5-gateway',
-    'forti-vpn', 'pulse-vpn', 'apache-edge', 'public-s3', 'public-blob',
-    'public-gitlab', 'public-bitbucket', 'support-diagnostics'
+    ...Object.keys(EDGE_APPLIANCES), 'apache-edge', 'public-s3', 'public-blob',
+    'public-gitlab', 'public-bitbucket', 'support-diagnostics', 'external-misconfig'
   ]);
 
   const DEFENSE_SCENARIOS = {
@@ -548,6 +589,22 @@
    */
   function evaluateDistinctActions(state, sourceAsset, targetAsset, relationship, estate, options = {}) {
     const targetFindings = estate.findings.filter(f => f.assetId === targetAsset.id);
+    // A tabletop step moves only its fictional session along the seeded display route.
+    const exercise = targetFindings.find(f => f.kind === 'exercise' &&
+      f.relationshipId === (relationship?.id ?? null));
+    if (exercise && (sourceAsset
+      ? relationship?.sourceId === sourceAsset.id && relationship.targetId === targetAsset.id &&
+        state.reachedAssets.get(sourceAsset.id)?.capabilities.has('exercise_session')
+      : targetAsset.isExternalEntry)) {
+      return [{
+        eligible: true,
+        actionKind: 'exercise',
+        finding: exercise,
+        technique: exercise.technique,
+        yieldsCapability: targetAsset.layerIdx === 3 ? 'data_read' : 'exercise_session',
+        reason: exercise.description
+      }];
+    }
     const actions = [];
     let lastReason = null;
 
@@ -709,7 +766,7 @@
       const action = {
         eligible: true,
         actionKind: 'valid_credential',
-        finding: null,
+        finding: targetFindings.find(finding => finding.kind === 'assumed_edge_account') || null,
         credentialUsed: credCheck.credential,
         technique: 'T1078',
         requiredAccess: `Acquired credential: ${credCheck.credential.label} (scope: ${credCheck.credential.scope})`,
@@ -783,6 +840,12 @@
   }
 
   function evaluateDefense(targetAsset, action, mode, seed, isCanary) {
+    if (action.actionKind === 'exercise') {
+      if (mode === 'patch' && action.finding.patchCovered) {
+        return { addressed: true, badge: 'BLOCKED · VIRTUAL PATCH', reason: 'The exercise assumes a matching edge rule blocks this session.' };
+      }
+      return { addressed: false, reason: action.reason };
+    }
     if (isCanary && mode === 'combined') {
       return {
         addressed: true,
@@ -893,7 +956,7 @@
   /**
    * Pure, deterministic, bounded graph traversal and action evaluator.
    */
-  function simulateEstate(estate, mode = 'baseline') {
+  function simulateEstate(estate, mode = 'baseline', timing = null) {
     const validation = validateEstate(estate);
     if (!validation.valid) {
       throw new Error(`Invalid estate: ${validation.errors.join('; ')}`);
@@ -920,6 +983,50 @@
     const layerSuccessCount = [0, 0, 0, 0];
     const onwardSuccessCount = new Map();
     const events = [];
+    const controls = [];
+    const signals = new Map();
+    let firstBoundaryScope;
+    let canaryTouched = false;
+
+    function scopeFor(source) {
+      let entry = source.id;
+      let parent = state.reachedAssets.get(entry)?.sourceId;
+      while (parent) {
+        entry = parent;
+        parent = state.reachedAssets.get(entry)?.sourceId;
+      }
+      return entry;
+    }
+
+    function signal(scope, targetId, source, timeSec) {
+      if (signals.has(scope)) {
+        if (source === 'canary') controls.push({ scope, targetId, source, timeSec, control: 'signal' });
+        return;
+      }
+      const effectiveAt = timeSec + timing.responseDelay;
+      signals.set(scope, effectiveAt);
+      controls.push(
+        { scope, targetId, source, timeSec, control: 'signal' },
+        { scope, targetId, source, timeSec: timeSec + timing.decisionDelay, control: 'decision' },
+        { scope, targetId, source, timeSec: effectiveAt, control: 'enforced' }
+      );
+    }
+
+    function recordTelemetry(source, target, action, scope, timeSec) {
+      if (!timing?.respond) return;
+      if (!canaryTouched && (
+        (timing.canary === 'early' && !source && action.actionKind !== 'diagnostic_access') ||
+        (timing.canary === 'late' && action.yieldsCapability === 'data_read')
+      )) {
+        canaryTouched = true;
+        signal(scope, target.id, 'canary', timeSec + timing.canaryDelay);
+      }
+      if (timing.boundarySignal === 'none' || target.layerIdx !== 1 || target.groupId === 'staging-status') return;
+      firstBoundaryScope ??= scope;
+      if (timing.boundarySignal !== 'first' || scope === firstBoundaryScope) {
+        signal(scope, target.id, 'boundary', timeSec);
+      }
+    }
 
     let eligibleTransitions = 0;
     let attemptedTransitions = 0;
@@ -930,6 +1037,9 @@
     let dataReached = false;
 
     function processTransition(sourceAsset, targetAsset, relationship) {
+      const timeSec = timing?.stageTimes[targetAsset.layerIdx];
+      const scope = timing?.respond && (sourceAsset ? scopeFor(sourceAsset) : targetAsset.id);
+      if (scope && signals.get(scope) < timeSec) return;
       const transitionKey = `${sourceAsset ? sourceAsset.id : 'EXTERNAL'}->${targetAsset.id}:${relationship ? relationship.id : 'EXT'}`;
       if (visitedTransitions.has(transitionKey)) return;
       visitedTransitions.add(transitionKey);
@@ -975,7 +1085,7 @@
         }
 
         eligibleTransitions++;
-        const mitigation = evaluateDefense(targetAsset, action, mode, estate.seed, isCanary);
+        const mitigation = evaluateDefense(targetAsset, action, timing?.respond ? 'baseline' : mode, estate.seed, isCanary);
 
         if (mitigation.addressed) {
           blockedTransitions++;
@@ -1075,10 +1185,12 @@
           reachability: action.reachability,
           grantedCapability: action.yieldsCapability,
           acquiredCredentials: newlyAcquired,
+          ...(scope && { scope }),
           mitigation,
           outcome: 'succeeded',
           reason: action.reason
         });
+        recordTelemetry(sourceAsset, targetAsset, action, scope, timeSec);
       }
     }
 
@@ -1123,6 +1235,7 @@
       mode,
       canaryAssetId: canaryAsset ? canaryAsset.id : null,
       events,
+      controls,
       summary: {
         layerSuccessCounts: layerSuccessCount,
         eligibleTransitions,
@@ -1148,6 +1261,58 @@
     return copy;
   }
 
+  function seedExercise(assets, relationships, preferredIngress, rng) {
+    const byId = new Map(assets.map(asset => [asset.id, asset]));
+    const bySource = new Map();
+    for (const link of relationships) {
+      if (!bySource.has(link.sourceId)) bySource.set(link.sourceId, []);
+      bySource.get(link.sourceId).push(link);
+    }
+
+    function findRoute(asset, incoming = null) {
+      const stage = { assetId: asset.id, relationshipId: incoming };
+      if (asset.layerIdx === 3) return [stage];
+      for (const link of shuffleWithRng(bySource.get(asset.id) || [], rng)) {
+        const next = byId.get(link.targetId);
+        if (next.layerIdx !== asset.layerIdx + 1) continue;
+        const tail = findRoute(next, link.id);
+        if (tail) return [stage, ...tail];
+      }
+      return null;
+    }
+
+    const startingPoints = shuffleWithRng(assets.filter(asset => asset.isExternalEntry), rng);
+    startingPoints.sort((a, b) => Number(b.groupId === preferredIngress) - Number(a.groupId === preferredIngress));
+    let route;
+    for (const start of startingPoints) {
+      route = findRoute(start);
+      if (route) break;
+    }
+    if (!route) return [];
+
+    const fromLogs = rng() < 0.25;
+    const patchCovered = !fromLogs && rng() < 0.65;
+    const stages = [
+      fromLogs
+        ? ['Credential exposed in sample logs', 'A fictional session was accepted after a credential appeared in sample logs.']
+        : ['Edge access weakness', 'The edge accepted the fictional session.'],
+      ['Overbroad session access', 'The fictional session crossed the identity boundary.'],
+      ['Internal service access weakness', 'The fictional session reached the internal service.'],
+      ['Overbroad sample record access', 'The fictional session read a sample record.']
+    ];
+    // Leave some generated environments without a simulated data read.
+    const length = rng() < 0.85 ? stages.length : stages.length - 1;
+    return route.slice(0, length).map((stage, index) => ({
+      ...stage,
+      id: `exercise-${stage.assetId}`,
+      kind: 'exercise',
+      provenance: 'tabletop_exercise',
+      title: stages[index][0],
+      description: stages[index][1],
+      ...(index === 0 && { patchCovered, ...(fromLogs && { technique: 'T1552.001' }) })
+    }));
+  }
+
   /**
    * Generates a versioned v3 estate.
    * - preset === 'mixed' (default): uses demo-design budgets per layer, allows 0 complete paths without resampling.
@@ -1164,12 +1329,29 @@
     const rng = createRng(seed);
     const rand = (min, max) => rng() * (max - min) + min;
     const randInt = (min, max) => Math.floor(rand(min, max + 1));
+    const edgePool = Object.keys(EDGE_APPLIANCES);
+    const applianceCount = randInt(5, 7);
+    const preferredIngress = options.preferredIngress;
+    const pinned = preset === 'demo' ? ['f5-gateway']
+      : preset === 'mixed' && edgePool.includes(preferredIngress) ? [preferredIngress] : [];
+    const selectedAppliances = new Set([
+      ...pinned,
+      ...shuffleWithRng(edgePool.filter(id => !pinned.includes(id)), rng).slice(0, applianceCount - pinned.length)
+    ]);
+    const ingressBudget = LAYER_FINDING_BUDGETS[0];
+    const hasAdditionalOpening = preset === 'mixed' && randInt(ingressBudget.min, ingressBudget.max) === ingressBudget.max;
+    const edgeMisconfig = hasAdditionalOpening
+      ? EDGE_MISCONFIGURATIONS[randInt(0, EDGE_MISCONFIGURATIONS.length - 1)]
+      : null;
 
     const assets = [];
     LAYER_CONFIG.forEach((layer, layerIdx) => {
       const numClusters = layer.clusters.length;
       layer.clusters.forEach((cluster, clusterIdx) => {
-        const targets = cluster.targets.filter(target => !target.preset || target.preset === preset);
+        const targets = cluster.targets.filter(target =>
+          (!target.preset || target.preset === preset) &&
+          (target.id !== 'external-misconfig' || edgeMisconfig) &&
+          (!EDGE_APPLIANCES[target.id] || selectedAppliances.has(target.id)));
         const numTargets = targets.length;
         targets.forEach((targetDef, targetIdx) => {
           if (targetDef.includeChance != null && rng() >= targetDef.includeChance) return;
@@ -1181,7 +1363,8 @@
 
           for (let slot = 0; slot < instanceCount; slot++) {
             const vIdx = variants[slot];
-            const label = targetDef.variants[vIdx];
+            const misconfig = targetDef.id === 'external-misconfig' ? edgeMisconfig : null;
+            const label = misconfig?.asset || targetDef.variants[vIdx];
             const familyAngle = (targetIdx / numTargets) * Math.PI * 2 - Math.PI / 2 + rand(-0.08, 0.08);
             const clusterCenterX = (layer.xBand[0] + (layer.xBand[1] - layer.xBand[0]) * 0.5) + rand(-0.02, 0.02);
             const clusterCenterY = (clusterIdx + 0.5) / numClusters + rand(-0.025, 0.025);
@@ -1189,23 +1372,26 @@
             const oy = instanceCount === 2 ? (slot === 0 ? -0.02 : 0.02) : instanceCount === 3 ? Math.sin((slot / 3) * Math.PI * 2) * 0.022 : 0;
             const x = Math.max(0.04, Math.min(0.95, clusterCenterX + Math.cos(familyAngle) * 0.045 + ox));
             const y = Math.max(0.05, Math.min(0.95, clusterCenterY + Math.sin(familyAngle) * 0.065 + oy));
+            const reviewed = REVIEWED_EXAMPLES[targetDef.id];
+            const appliance = EDGE_APPLIANCES[targetDef.id];
 
             assets.push({
               id: `${targetDef.id}-${vIdx + 1}`,
               groupId: targetDef.id,
               label,
-              product: REVIEWED_EXAMPLES[targetDef.id]?.product || label,
-              assumedVersion: REVIEWED_EXAMPLES[targetDef.id]?.version || null,
-              conditions: { ...(REVIEWED_EXAMPLES[targetDef.id]?.conditions || {}) },
+              product: reviewed?.product || label,
+              assumedVersion: appliance ? null : reviewed?.version || null,
+              conditions: appliance ? {} : { ...reviewed?.conditions },
+              ...(appliance && { referenceCve: appliance.cve }),
               layerIdx,
               trustZone: TRUST_ZONES[layerIdx],
-              interfaces: [...(targetDef.interfaces || ['https'])],
-              auth: targetDef.publicExposure ? 'none' : 'token',
+              interfaces: [...(misconfig?.interfaces || targetDef.interfaces || ['https'])],
+              auth: targetDef.publicExposure || (misconfig && !misconfig.assumedAccount) ? 'none' : 'token',
               isExternalEntry: EXTERNAL_ENTRY_GROUPS.has(targetDef.id),
               isSecurity: !!targetDef.isSecurity,
               isLake: !!targetDef.isLake,
               isDb: !!targetDef.isDb,
-              icon: targetDef.icon,
+              icon: misconfig?.icon || targetDef.icon,
               clusterName: cluster.name,
               variantIdx: vIdx,
               x,
@@ -1330,6 +1516,10 @@
       if (!cveId || cveId !== reviewed.cve) return false;
       const kev = findKev(asset.layerIdx, cveId);
       if (!kev) return false;
+      if (asset.referenceCve) {
+        asset.assumedVersion = reviewed.version;
+        Object.assign(asset.conditions, reviewed.conditions);
+      }
       findings.push({
         id: `finding-${asset.id}-${cveId}`,
         assetId: asset.id,
@@ -1567,12 +1757,48 @@
         requiredSourceCapability: 'diagnostic_read'
       });
 
-      // The diagnostic finding consumes one of the mixed estate's ingress slots.
-      for (let layerIdx = 0; layerIdx < 4; layerIdx++) {
+      const edgeAppliances = shuffleWithRng(keptAssets.filter(asset => asset.referenceCve), rng);
+      addCveFindingForAsset(edgeAppliances[0]);
+      if (edgeMisconfig) {
+        const { id } = keptAssets.find(asset => asset.groupId === 'external-misconfig');
+        const logToken = edgeMisconfig.illustration === 'git-to-idp';
+        findings.push({
+          id: `finding-${edgeMisconfig.id}`,
+          assetId: id,
+          kind: edgeMisconfig.assumedAccount ? 'assumed_edge_account' : 'anonymous_access',
+          category: 'external_misconfiguration',
+          title: edgeMisconfig.title,
+          description: logToken
+            ? 'The exposed synthetic logs contain a Git token.'
+            : 'The scenario records access to the exposed edge service only.',
+          ...(logToken && { illustration: edgeMisconfig.illustration }),
+          historicalReference: edgeMisconfig.reference,
+          sourceUrl: edgeMisconfig.source,
+          sourceReviewed: '2026-11-15',
+          provenance: 'synthetic_assumption',
+          technique: logToken ? 'T1552.001' : edgeMisconfig.assumedAccount ? 'T1078' : null,
+          yieldsCapability: logToken ? 'file_read' : 'edge_access'
+        });
+        if (edgeMisconfig.assumedAccount) {
+          credentials.push({
+            id: 'mixed-external-example',
+            kind: 'account',
+            label: 'Synthetic edge-only account',
+            scope: 'authenticate to this edge service',
+            permissions: ['authenticate'],
+            targetAssetIds: [id],
+            audience: id,
+            sourceAssetId: id,
+            startingAccess: true
+          });
+        }
+      }
+
+      for (let layerIdx = 1; layerIdx < 4; layerIdx++) {
         const budget = LAYER_FINDING_BUDGETS[layerIdx];
         const targetCount = randInt(budget.min, budget.max);
         const candidates = shuffleWithRng(keptAssets.filter(a => a.layerIdx === layerIdx), rng);
-        let assigned = layerIdx === 0 ? 1 : 0;
+        let assigned = 0;
 
         for (const asset of candidates) {
           if (assigned >= targetCount) break;
@@ -1617,6 +1843,12 @@
       actionOrder.splice(actionOrder.indexOf(diagnostics.id), 1);
       actionOrder.unshift(diagnostics.id);
     }
+    if (preset === 'mixed' && options.seedExercise) {
+      const exercise = seedExercise(keptAssets, keptRels, preferredIngress, rng);
+      findings.push(...exercise);
+      const priority = exercise.map(finding => finding.assetId);
+      actionOrder.splice(0, actionOrder.length, ...priority, ...actionOrder.filter(id => !priority.includes(id)));
+    }
     const estate = {
       schemaVersion: SCHEMA_VERSION,
       seed,
@@ -1658,6 +1890,27 @@
       legacy: true,
       reason: 'Incompatible infrastructure snapshot replaced with a new synthetic estate.'
     };
+  }
+
+  // Resolve one predeclared service flow for display. Findings and the runner
+  // do not use this reference context.
+  function referenceServiceFlow(estate, groups) {
+    const assets = [];
+    const relationships = [];
+    const byId = new Map(estate.assets.map(asset => [asset.id, asset]));
+    let asset = estate.assets.find(node => node.layerIdx === 0 && node.groupId === groups[0]);
+    for (const group of groups.slice(1)) {
+      if (!asset) return null;
+      assets.push(asset.id);
+      const relationship = estate.relationships.find(link => link.sourceId === asset.id &&
+        byId.get(link.targetId)?.groupId === group);
+      if (!relationship) return null;
+      relationships.push(relationship.id);
+      asset = byId.get(relationship.targetId);
+    }
+    if (!asset) return null;
+    assets.push(asset.id);
+    return { assets, relationships };
   }
 
   // ---------------------------------------------------------------------------
@@ -2259,6 +2512,64 @@
     ];
   }
 
+  // Fixed timestamps for the authored comparison fixtures below.
+  const TIMING_RACE = {
+    pre2023: { decoyTime: 10 * 60, boundaryTime: 75 * 60, lateralTime: 90 * 60, protectedReadTime: 105 * 60 },
+    artex: { decoyTime: 2 * 60, boundaryTime: 14 * 60 + 45, lateralTime: 15 * 60, protectedReadTime: 15 * 60 + 35 }
+  };
+
+  // Names identify scenario examples. Signal and decoy settings are illustrative.
+  const WIRE_ATTACKERS = {
+    lockbit: { pace: 'pre2023', boundarySignal: 'all', canary: 'early' },
+    conti: { pace: 'pre2023', boundarySignal: 'first', canary: 'early' },
+    blackcat: { pace: 'pre2023', boundarySignal: 'none', canary: 'late' },
+    hive: { pace: 'pre2023', boundarySignal: 'all', canary: 'untouched' },
+    revil: { pace: 'pre2023', boundarySignal: 'none', canary: 'untouched' },
+    artex: { pace: 'artex', boundarySignal: 'all', canary: 'early' }
+  };
+
+  const WIRE_READ_MINUTES = {
+    pre2023: { min: 80, max: 270 },
+    artex: { min: 45, max: 75 }
+  };
+
+  function wireTiming(seed, pace) {
+    const { min, max } = WIRE_READ_MINUTES[pace];
+    const draw = hashNode(seed, `wire-timing:${pace}`, 0x9e3779b9);
+    const readTime = (min + Math.floor(draw * (max - min + 1))) * 60;
+
+    if (pace === 'artex') {
+      // Vary the time before the final burst and keep its short gaps for the SOAR exercise.
+      return { stageTimes: [0, readTime - 50, readTime - 35, readTime], earlyCanaryDelay: 120 };
+    }
+
+    // Preserve the proportions of the original 10/75/90/105-minute milestones.
+    return {
+      stageTimes: [0, Math.round(readTime * 75 / 105), Math.round(readTime * 90 / 105), readTime],
+      earlyCanaryDelay: Math.round(readTime * 10 / 105)
+    };
+  }
+
+  function simulateWireRun(estate, mode, attackerId) {
+    const attacker = WIRE_ATTACKERS[attackerId];
+    if (!attacker) throw new Error(`Unknown Wire attacker: ${attackerId}`);
+    const { stageTimes, earlyCanaryDelay } = wireTiming(estate.seed, attacker.pace);
+    const result = simulateEstate(estate, mode, {
+      stageTimes,
+      respond: mode === 'soc' || mode === 'soc-canary',
+      boundarySignal: attacker.boundarySignal,
+      canary: mode === 'soc-canary' ? attacker.canary : null,
+      canaryDelay: attacker.canary === 'late' ? 1 : earlyCanaryDelay,
+      decisionDelay: 15,
+      responseDelay: 60
+    });
+    const layerById = new Map(estate.assets.map(asset => [asset.id, asset.layerIdx]));
+    const events = result.events.map(event => ({
+      ...event, timeSec: stageTimes[layerById.get(event.targetId)]
+    }));
+    return { ...result, events, lanes: attacker.pace === 'artex' ? 3 : 1 };
+  }
+
   const COMPARISON_FIXTURES = {
     'speed-race': {
       id: 'speed-race',
@@ -2276,8 +2587,8 @@
         'Same response policy, action scope, and 60 s latency across both attacker paces.'
       ],
       traces: {
-        pre2023: buildSpeedEvents({ ingressTime: 0, decoyTime: 600, boundaryTime: 5400, lateralTime: 6300, protectedReadTime: 7200, patchCovered: false }),
-        artex: buildSpeedEvents({ ingressTime: 0, decoyTime: 5, boundaryTime: 30, lateralTime: 55, protectedReadTime: 80, patchCovered: false })
+        pre2023: buildSpeedEvents(TIMING_RACE.pre2023),
+        artex: buildSpeedEvents(TIMING_RACE.artex)
       }
     },
     'speed-covered-patch': {
@@ -2294,8 +2605,8 @@
         'Blocking at ingress suppresses all dependent downstream milestones.'
       ],
       traces: {
-        pre2023: buildSpeedEvents({ ingressTime: 0, decoyTime: 600, boundaryTime: 5400, lateralTime: 6300, protectedReadTime: 7200, patchCovered: true }),
-        artex: buildSpeedEvents({ ingressTime: 0, decoyTime: 5, boundaryTime: 30, lateralTime: 55, protectedReadTime: 80, patchCovered: true })
+        pre2023: buildSpeedEvents({ ...TIMING_RACE.pre2023, patchCovered: true }),
+        artex: buildSpeedEvents({ ...TIMING_RACE.artex, patchCovered: true })
       }
     },
     'capability-45s': {
@@ -2422,7 +2733,7 @@
 
     const rawEvents = fixture.traces[profileId] || [];
     const cutoffSec = fixture.cutoffSec;
-    const useVirtualPatch = defenseId === 'patch';
+    const useVirtualPatch = defenseId === 'patch' || (defenseId === 'combined' && options.combineVirtualPatch);
     const useSoc = defenseId === 'soc' || defenseId === 'combined';
     const useCanaries = defenseId === 'canaries' || (defenseId === 'combined' && options.useDecoySignal !== false);
     const enforcementPrecedesOnTie = !!options.enforcementPrecedesOnTie;
@@ -2614,13 +2925,11 @@
 
     if (defenseId === 'baseline') {
       controlReason = accessDeniedObserved ? 'ACCESS DENIED' : (protectedReadReached ? 'UNMITIGATED · PROTECTED READ' : 'NO PROTECTED READ BY CUTOFF');
+    } else if (edgeBlockedTimeSec !== null) {
+      effectiveControlTimeSec = edgeBlockedTimeSec;
+      controlReason = 'RULE MATCH · BLOCKED AT EDGE';
     } else if (defenseId === 'patch') {
-      if (edgeBlockedTimeSec !== null) {
-        effectiveControlTimeSec = edgeBlockedTimeSec;
-        controlReason = 'RULE MATCH · BLOCKED AT EDGE';
-      } else {
-        controlReason = 'OUTSIDE RULE COVERAGE';
-      }
+      controlReason = 'OUTSIDE RULE COVERAGE';
     } else if (defenseId === 'canaries') {
       if (decoyTriggeredTimeSec !== null) {
         controlReason = 'DECOY TRIGGERED · ALERT ONLY';
@@ -2727,7 +3036,9 @@
     evaluateDistinctActions,
     evaluateDefense,
     simulateEstate,
+    simulateWireRun,
     generateEstate,
+    referenceServiceFlow,
     migrateSnapshot
   };
 }));

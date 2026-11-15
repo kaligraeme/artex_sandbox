@@ -9,7 +9,143 @@ const html = fs.readFileSync(path.join(root, 'wire.html'), 'utf8');
 
 // 1. Verify wire.html integration
 assert(html.includes('<script src="js/wire-engine.js"></script>'), 'wire.html must load js/wire-engine.js');
-assert(html.includes('id="preset-btn"'), 'wire.html must include preset toggle button');
+assert(html.includes('id="map-profile"'), 'wire.html must include the attacker picker');
+assert(!html.includes('id="estate-preset"'), 'Wire should have one estate generator');
+assert.deepEqual([...html.matchAll(/data-mode="([^"]+)"/g)].map(match => match[1]),
+  ['baseline', 'patch', 'soc', 'soc-canary'], 'Wire must offer Baseline and three defenses');
+const demoAttackers = ['lockbit', 'conti', 'blackcat', 'hive', 'revil', 'artex'];
+const attackerSelect = html.match(/<select id="map-profile">([\s\S]*?)<\/select>/)[1];
+assert.deepEqual([...attackerSelect.matchAll(/<option value="([^\"]+)"/g)].map(match => match[1]), ['pre2023', 'artex']);
+
+{
+  const catalog = require('../assets/wire-defense-catalog.json');
+  assert.equal(catalog.schemaVersion, 1);
+  assert.equal(catalog.examples.length, 100);
+  assert.equal(new Set(catalog.examples.map(example => example.id)).size, 100);
+  assert.equal(Object.keys(catalog.infrastructure).length, 4);
+  assert(html.includes('assets/wire-defense-catalog.json'), 'Wire must load the reference catalog');
+  for (const example of catalog.examples) {
+    assert.match(example.id, /^CVE-\d{4}-\d{4,}$/);
+    assert(Object.hasOwn(catalog.infrastructure, example.context));
+    assert(example.vendor && example.product && example.techniques.length);
+    for (const technique of example.techniques) assert.match(technique, /^T\d{4}(\.\d{3})?$/);
+  }
+  for (const [id, context] of Object.entries(catalog.infrastructure)) {
+    assert.equal(catalog.examples.filter(example => example.context === id).length, 25);
+    assert.equal(context.roles.length, 4);
+    assert.equal(context.groups.length, 4);
+    assert(context.roles[context.focus]);
+    const rosters = new Set();
+    for (let seed = 1; seed <= 25; seed++) {
+      const estate = engine.generateEstate({ preset: 'mixed', seed, preferredIngress: context.groups[0] });
+      const before = JSON.stringify(estate);
+      const flow = engine.referenceServiceFlow(estate, context.groups);
+      assert(flow, `Missing ${id} service flow for seed ${seed}`);
+      assert.equal(flow.relationships.length, 3);
+      assert.deepEqual(flow.assets.map(assetId => estate.assets.find(asset => asset.id === assetId).groupId), context.groups);
+      assert.equal(JSON.stringify(estate), before);
+      rosters.add(estate.assets.filter(asset => asset.referenceCve).map(asset => asset.groupId).sort().join());
+    }
+    assert(rosters.size > 1, `Expected appliance variety for ${id}`);
+  }
+}
+
+{
+  let baselineReads = 0;
+  let patchReads = 0;
+  let canaryReads = 0;
+  let logsOpenings = 0;
+  const pre2023ReadTimes = new Set();
+  const artexReadTimes = new Set();
+  for (let seed = 1; seed <= 60; seed++) {
+    const estate = engine.generateEstate({ seed, seedExercise: true });
+    const steps = estate.findings.filter(finding => finding.kind === 'exercise');
+    assert([3, 4].includes(steps.length));
+    assert.equal(steps[0].relationshipId, null);
+    if (steps[0].technique === 'T1552.001') logsOpenings++;
+    for (let index = 1; index < steps.length; index++) {
+      const link = estate.relationships.find(candidate => candidate.id === steps[index].relationshipId);
+      assert.equal(link.sourceId, steps[index - 1].assetId);
+      assert.equal(link.targetId, steps[index].assetId);
+    }
+    const read = (mode, attacker) => engine.simulateWireRun(estate, mode, attacker).events.find(event =>
+      event.finding?.kind === 'exercise' && event.grantedCapability === 'data_read');
+    const artexBaseline = read('baseline', 'artex');
+    if (artexBaseline) {
+      baselineReads++;
+      const artexMinutes = artexBaseline.timeSec / 60;
+      const pre2023Minutes = read('baseline', 'lockbit').timeSec / 60;
+      assert(Number.isInteger(artexMinutes) && artexMinutes >= 45 && artexMinutes <= 75);
+      assert(Number.isInteger(pre2023Minutes) && pre2023Minutes >= 80 && pre2023Minutes <= 270);
+      pre2023ReadTimes.add(pre2023Minutes);
+      artexReadTimes.add(artexMinutes);
+    }
+    if (read('patch', 'artex')) patchReads++;
+    if (read('soc-canary', 'artex')) canaryReads++;
+    assert.equal(read('soc', 'lockbit'), undefined);
+  }
+  assert(pre2023ReadTimes.size > 1, 'Pre-2023 timing should vary by estate seed');
+  assert(artexReadTimes.size > 1, 'ARTEX timing should vary by estate seed');
+  assert(baselineReads >= 45 && baselineReads < 60, 'Most estates should demonstrate a baseline data read');
+  assert(patchReads > 0 && patchReads < baselineReads, 'Patch coverage should vary across estates');
+  assert.equal(canaryReads, 0, 'The early canary should contain the ARTEX-like exercise session');
+  assert(logsOpenings > 0 && logsOpenings < 60, 'Credential exposure in logs should appear within the mixed estate pool');
+}
+
+{
+  const estate = engine.generateEstate({ preset: 'demo', seed: 777 });
+  const run = (mode, attacker) => engine.simulateWireRun(estate, mode, attacker);
+  const read = result => result.events.find(event => event.grantedCapability === 'data_read');
+  const pre2023ReadTime = read(run('baseline', 'lockbit')).timeSec;
+  for (const attacker of demoAttackers) {
+    const baseline = run('baseline', attacker);
+    assert.equal(baseline.summary.dataReached, true);
+    assert.equal(baseline.lanes, attacker === 'artex' ? 3 : 1);
+    if (attacker !== 'artex') assert.equal(read(baseline).timeSec, pre2023ReadTime);
+    assert.equal(run('patch', attacker).summary.dataReached, false);
+    assert.deepEqual(run('baseline', attacker), baseline, 'Replay should keep all event timestamps');
+  }
+  const enforcement = result => result.controls.find(event => event.control === 'enforced');
+  const slow = run('soc', 'lockbit');
+  const fast = run('soc', 'artex');
+  const early = run('soc-canary', 'artex');
+  assert.equal(slow.summary.dataReached, false);
+  assert.equal(read(fast).timeSec, read(run('baseline', 'artex')).timeSec);
+  assert(enforcement(fast).timeSec > read(fast).timeSec);
+  assert.equal(early.summary.dataReached, false);
+  assert.equal(enforcement(early).source, 'canary');
+  assert(enforcement(early).timeSec < enforcement(fast).timeSec);
+  assert.equal(early.controls[1].timeSec - early.controls[0].timeSec, 15);
+  assert.equal(enforcement(early).timeSec - early.controls[0].timeSec, 60);
+  const blackcat = run('soc-canary', 'blackcat');
+  assert(blackcat.controls.find(event => event.control === 'signal').timeSec > read(blackcat).timeSec);
+  assert(run('soc-canary', 'hive').controls.every(event => event.source === 'boundary'));
+  assert.equal(run('soc-canary', 'revil').controls.length, 0);
+  assert.equal(run('soc-canary', 'revil').summary.dataReached, true);
+
+  const missingPrerequisites = {
+    ...estate,
+    assets: estate.assets.map(asset => ({ ...asset, conditions: {} }))
+  };
+  assert.equal(engine.simulateWireRun(missingPrerequisites, 'soc-canary', 'artex').controls.length, 0);
+}
+
+for (const profile of ['pre2023', 'artex']) {
+  const run = (fixture, defense) =>
+    engine.evaluateComparisonRun(fixture, profile, defense, { combineVirtualPatch: true });
+  assert.equal(run('speed-race', 'baseline').protectedReadReached, true);
+  assert.equal(run('speed-race', 'patch').patchMissed, true);
+  assert.equal(run('speed-race', 'soc').protectedReadReached, profile === 'artex');
+  const layered = run('speed-race', 'combined');
+  assert.equal(layered.protectedReadReached, false);
+  assert.equal(layered.signalSource, 'canary');
+  for (const stance of ['patch', 'combined']) {
+    const covered = run('speed-covered-patch', stance);
+    assert.equal(covered.protectedReadReached, false);
+    assert.equal(covered.controlReason, 'RULE MATCH · BLOCKED AT EDGE');
+    assert.equal(covered.effectiveControlTimeSec, 0);
+  }
+}
 
 // 2. Structural checks on catalog, variant mappings, icons, connections, and external entries
 const { LAYER_KEVS, LAYER_CONFIG, ALLOWED_CONNECTIONS, EXTERNAL_ENTRY_GROUPS } = engine;
@@ -268,12 +404,61 @@ function makeAsset(id, groupId, layerIdx, extra = {}) {
   assert.deepEqual(openingKinds, new Set(['low_exposure', 'misconfiguration', 'low_vulnerability']));
 
   const counts = new Map();
+  const entryCounts = new Set();
+  const dataOutcomes = new Set();
+  const applianceFamilies = new Set();
+  const applianceCves = new Set();
+  const applianceRosters = new Set();
+  const misconfigurations = new Set();
   for (let seed = 0; seed < 300; seed++) {
     const estate = engine.generateEstate({ seed, preset: 'mixed' });
+    const appliances = estate.assets.filter(asset => asset.referenceCve);
+    assert(appliances.length >= 5 && appliances.length <= 7);
+    applianceRosters.add(appliances.map(asset => asset.groupId).sort().join());
+    for (const asset of appliances) {
+      applianceFamilies.add(asset.groupId);
+      const finding = estate.findings.find(item => item.assetId === asset.id);
+      if (finding) {
+        assert.equal(finding.cveId, asset.referenceCve);
+        applianceCves.add(finding.cveId);
+      } else {
+        assert.equal(asset.assumedVersion, null);
+      }
+    }
+    assert(appliances.some(asset => asset.assumedVersion), 'Mixed must model at least one appliance finding');
     const { openingType } = estate.findings.find(finding => finding.kind === 'diagnostic_access');
     counts.set(openingType, (counts.get(openingType) || 0) + 1);
+    const { summary, events } = engine.simulateEstate(estate, 'baseline');
+    entryCounts.add(summary.layerSuccessCounts[0]);
+    dataOutcomes.add(summary.dataReached);
+    const misconfig = estate.findings.find(item => item.category === 'external_misconfiguration');
+    if (misconfig) {
+      misconfigurations.add(misconfig.id);
+      const asset = estate.assets.find(item => item.id === misconfig.assetId);
+      assert(asset.isExternalEntry);
+      assert(fs.existsSync(path.join(root, 'assets/diagram-icons/transparent', asset.icon)));
+      assert(misconfig.sourceUrl && misconfig.historicalReference);
+      const entry = events.find(event => event.targetId === asset.id);
+      assert.equal(entry.outcome, 'succeeded');
+      const outgoing = estate.relationships.filter(relationship => relationship.sourceId === asset.id);
+      assert.equal(outgoing.length, 0);
+      if (misconfig.id === 'finding-datadog-proxy') {
+        assert.equal(misconfig.illustration, 'git-to-idp');
+        assert.equal(entry.grantedCapability, 'file_read');
+        assert.equal(entry.acquiredCredentials.length, 0);
+      } else {
+        assert(['edge_access', 'account_session'].includes(entry.grantedCapability));
+      }
+    }
   }
   assert.deepEqual([...counts.values()], [100, 100, 100]);
+  assert.deepEqual(entryCounts, new Set([2, 3]));
+  assert.deepEqual(dataOutcomes, new Set([true, false]));
+  assert.equal(applianceFamilies.size, 10);
+  assert.equal(applianceCves.size, 10);
+  assert(applianceRosters.size > 50);
+  assert.equal(misconfigurations.size, 11);
+  assert(misconfigurations.has('finding-datadog-proxy'));
 
   const newMixed = engine.generateEstate({ seed: 42 });
   const legacyMixed = makeEstate({ seed: 42 });
@@ -416,9 +601,11 @@ for (let seed = 0; seed < 20; seed++) {
 
   // Baseline
   assert.equal(m1.cells.pre2023.baseline.protectedReadReached, true);
-  assert.equal(m1.cells.pre2023.baseline.protectedReadTimeSec, 7200);
+  assert.equal(m1.cells.pre2023.baseline.protectedReadTimeSec, 105 * 60);
+  assert.equal(m1.cells.pre2023.baseline.trace.find(event => event.kind === 'lateral').timeSec, 90 * 60);
   assert.equal(m1.cells.artex.baseline.protectedReadReached, true);
-  assert.equal(m1.cells.artex.baseline.protectedReadTimeSec, 80);
+  assert.equal(m1.cells.artex.baseline.trace.find(event => event.kind === 'lateral').timeSec, 15 * 60);
+  assert.equal(m1.cells.artex.baseline.protectedReadTimeSec, 15 * 60 + 35);
 
   // Virtual patch miss (out of scope)
   assert.equal(m1.cells.pre2023.patch.controlReason, 'OUTSIDE RULE COVERAGE');
@@ -428,49 +615,49 @@ for (let seed = 0; seed < 20; seed++) {
 
   // Agentic SOC: same 60s policy wins at pre2023 pace (+29 min) and loses at artex pace (-10 s)
   const preSoc = m1.cells.pre2023.soc;
-  assert.equal(preSoc.telemetryTimeSec, 5400);
-  assert.equal(preSoc.decisionTimeSec, 5415);
-  assert.equal(preSoc.enforcementTimeSec, 5460);
+  assert.equal(preSoc.telemetryTimeSec, 4500);
+  assert.equal(preSoc.decisionTimeSec, 4515);
+  assert.equal(preSoc.enforcementTimeSec, 4560);
   assert.equal(preSoc.protectedReadReached, false);
   assert.equal(preSoc.responseMarginSec, 1740); // +29 min
   assert.equal(preSoc.detectionLeadTimeSec, 1800); // +30 min
 
   const artSoc = m1.cells.artex.soc;
-  assert.equal(artSoc.telemetryTimeSec, 30);
-  assert.equal(artSoc.decisionTimeSec, 45);
-  assert.equal(artSoc.enforcementTimeSec, 90);
+  assert.equal(artSoc.telemetryTimeSec, 885);
+  assert.equal(artSoc.decisionTimeSec, 900);
+  assert.equal(artSoc.enforcementTimeSec, 945);
   assert.equal(artSoc.protectedReadReached, true);
-  assert.equal(artSoc.protectedReadTimeSec, 80);
+  assert.equal(artSoc.protectedReadTimeSec, 935);
   assert.equal(artSoc.controlReason, 'CONTAINMENT EFFECTIVE AFTER DATA ACCESS');
   assert.equal(artSoc.responseMarginSec, -10);
   assert.equal(artSoc.detectionLeadTimeSec, 50);
-  assert(artSoc.trace.some(e => e.kind === 'containment' && e.timeSec === 90), 'Trace must retain late containment event after objective');
+  assert(artSoc.trace.some(e => e.kind === 'containment' && e.timeSec === 945), 'Trace must retain late containment event after objective');
 
   // Canaries-only: alert only, protected read still occurs
   assert.equal(m1.cells.pre2023.canaries.controlReason, 'DECOY TRIGGERED · ALERT ONLY');
   assert.equal(m1.cells.pre2023.canaries.firstAlertTimeSec, 600);
-  assert.equal(m1.cells.pre2023.canaries.detectionLeadTimeSec, 6600);
+  assert.equal(m1.cells.pre2023.canaries.detectionLeadTimeSec, 5700);
   assert.equal(m1.cells.pre2023.canaries.responseMarginSec, null);
   assert.equal(m1.cells.pre2023.canaries.protectedReadReached, true);
 
   assert.equal(m1.cells.artex.canaries.controlReason, 'DECOY TRIGGERED · ALERT ONLY');
-  assert.equal(m1.cells.artex.canaries.firstAlertTimeSec, 5);
-  assert.equal(m1.cells.artex.canaries.detectionLeadTimeSec, 75);
+  assert.equal(m1.cells.artex.canaries.firstAlertTimeSec, 120);
+  assert.equal(m1.cells.artex.canaries.detectionLeadTimeSec, 815);
   assert.equal(m1.cells.artex.canaries.responseMarginSec, null);
   assert.equal(m1.cells.artex.canaries.protectedReadReached, true);
 
   // Combined: early canary signal + same 60s SOC prevents protected read at both paces
   assert.equal(m1.cells.pre2023.combined.enforcementTimeSec, 660); // 00:11:00
   assert.equal(m1.cells.pre2023.combined.protectedReadReached, false);
-  assert.equal(m1.cells.artex.combined.enforcementTimeSec, 65); // 00:01:05
+  assert.equal(m1.cells.artex.combined.enforcementTimeSec, 180); // 3 min
   assert.equal(m1.cells.artex.combined.protectedReadReached, false);
   assert.equal(m1.cells.artex.combined.signalSource, 'canary');
-  assert.equal(m1.cells.artex.combined.responseMarginSec, 15);
+  assert.equal(m1.cells.artex.combined.responseMarginSec, 755);
 
   // Removing decoy signal in combined faster run restores late outcome
   const noDecoyCombined = engine.evaluateComparisonRun('speed-race', 'artex', 'combined', { useDecoySignal: false });
   assert.equal(noDecoyCombined.protectedReadReached, true);
-  assert.equal(noDecoyCombined.enforcementTimeSec, 90);
+  assert.equal(noDecoyCombined.enforcementTimeSec, 945);
   assert.equal(noDecoyCombined.responseMarginSec, -10);
 
   // Covered virtual patch blocks at both paces

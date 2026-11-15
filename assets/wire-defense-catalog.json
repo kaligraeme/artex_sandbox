@@ -1,0 +1,996 @@
+{
+  "schemaVersion": 1,
+  "scope": "Defensive reference cases. Infrastructure roles describe illustrative service flows.",
+  "sources": {
+    "referenceRepo": "https://github.com/kaligraeme/mitre-threat-vision-ncs/tree/8f93e85",
+    "ctid": "https://github.com/center-for-threat-informed-defense/mappings-explorer/blob/59f8d7230f672db0d4b197357561f47880478426/mappings/kev/attack-16.1/kev-07.28.2025/enterprise/kev-07.28.2025_attack-16.1-enterprise.json",
+    "ctidLicense": "Apache-2.0",
+    "cisa": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+  },
+  "infrastructure": {
+    "edge": {
+      "title": "Network perimeter",
+      "roles": [
+        "Public edge appliance",
+        "Application gateway",
+        "Internal service",
+        "Records store"
+      ],
+      "groups": [
+        "pan-globalprotect",
+        "cust-api",
+        "app-engine",
+        "db-rds"
+      ],
+      "focus": 0,
+      "defensiveFocus": "Review gateway exposure, patch coverage and ingress telemetry."
+    },
+    "web": {
+      "title": "Web applications",
+      "roles": [
+        "Web front end",
+        "Application gateway",
+        "Application service",
+        "Records store"
+      ],
+      "groups": [
+        "apache-edge",
+        "cust-api",
+        "spring-svc",
+        "db-rds"
+      ],
+      "focus": 2,
+      "defensiveFocus": "Review application patching, web request logging and isolation between the service and its records."
+    },
+    "collaboration": {
+      "title": "Messaging and collaboration",
+      "roles": [
+        "Security gateway",
+        "Messaging service",
+        "Collaboration service",
+        "Content store"
+      ],
+      "groups": [
+        "sophos-firewall",
+        "exchange",
+        "confluence-admin",
+        "mssql-db"
+      ],
+      "focus": 1,
+      "defensiveFocus": "Review external access and correlate messaging, identity and content-access logs."
+    },
+    "management": {
+      "title": "Infrastructure administration",
+      "roles": [
+        "Remote access boundary",
+        "Management service",
+        "Managed application",
+        "Records store"
+      ],
+      "groups": [
+        "forti-vpn",
+        "ivanti-epm",
+        "weblogic",
+        "db-rds"
+      ],
+      "focus": 1,
+      "defensiveFocus": "Review separation of management access and alerting on privileged administrative changes."
+    }
+  },
+  "examples": [
+    {
+      "id": "CVE-2025-5777",
+      "context": "edge",
+      "vendor": "Citrix",
+      "product": "NetScaler ADC and Gateway",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2024-0769",
+      "context": "edge",
+      "vendor": "D-Link",
+      "product": "DIR-859 Router",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2023-33538",
+      "context": "edge",
+      "vendor": "TP-Link",
+      "product": "Multiple Routers",
+      "techniques": [
+        "T1068"
+      ]
+    },
+    {
+      "id": "CVE-2023-39780",
+      "context": "edge",
+      "vendor": "ASUS",
+      "product": "RT-AX55 Routers",
+      "techniques": [
+        "T1078",
+        "T1133",
+        "T1588"
+      ]
+    },
+    {
+      "id": "CVE-2021-32030",
+      "context": "edge",
+      "vendor": "ASUS",
+      "product": "Routers",
+      "techniques": [
+        "T1068"
+      ]
+    },
+    {
+      "id": "CVE-2024-12987",
+      "context": "edge",
+      "vendor": "DrayTek",
+      "product": "Vigor Routers",
+      "techniques": [
+        "T1068"
+      ]
+    },
+    {
+      "id": "CVE-2023-44221",
+      "context": "edge",
+      "vendor": "SonicWall",
+      "product": "SMA100 Appliances",
+      "techniques": [
+        "T1068",
+        "T1548"
+      ]
+    },
+    {
+      "id": "CVE-2025-22457",
+      "context": "edge",
+      "vendor": "Ivanti",
+      "product": "Connect Secure, Policy Secure, and ZTA Gateways",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2025-21590",
+      "context": "edge",
+      "vendor": "Juniper",
+      "product": "Junos OS",
+      "techniques": [
+        "T1068"
+      ]
+    },
+    {
+      "id": "CVE-2023-20118",
+      "context": "edge",
+      "vendor": "Cisco",
+      "product": "Small Business RV Series Routers",
+      "techniques": [
+        "T1068",
+        "T1078"
+      ]
+    },
+    {
+      "id": "CVE-2025-0111",
+      "context": "edge",
+      "vendor": "Palo Alto Networks",
+      "product": "PAN-OS",
+      "techniques": [
+        "T1068"
+      ]
+    },
+    {
+      "id": "CVE-2024-53704",
+      "context": "edge",
+      "vendor": "SonicWall",
+      "product": "SonicOS",
+      "techniques": [
+        "T1199",
+        "T1212"
+      ]
+    },
+    {
+      "id": "CVE-2025-23006",
+      "context": "edge",
+      "vendor": "SonicWall",
+      "product": "SMA1000 Appliances",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2024-55591",
+      "context": "edge",
+      "vendor": "Fortinet",
+      "product": "FortiOS and FortiProxy",
+      "techniques": [
+        "T1068"
+      ]
+    },
+    {
+      "id": "CVE-2024-24919",
+      "context": "edge",
+      "vendor": "Check Point",
+      "product": "Quantum Security Gateways",
+      "techniques": [
+        "T1202"
+      ]
+    },
+    {
+      "id": "CVE-2021-40655",
+      "context": "edge",
+      "vendor": "D-Link",
+      "product": "DIR-605 Router",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2024-20359",
+      "context": "edge",
+      "vendor": "Cisco",
+      "product": "Adaptive Security Appliance (ASA) and Firepower Threat Defense (FTD)",
+      "techniques": [
+        "T1078"
+      ]
+    },
+    {
+      "id": "CVE-2024-21762",
+      "context": "edge",
+      "vendor": "Fortinet",
+      "product": "FortiOS",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2024-21893",
+      "context": "edge",
+      "vendor": "Ivanti",
+      "product": "Connect Secure, Policy Secure, and Neurons",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2023-6549",
+      "context": "edge",
+      "vendor": "Citrix",
+      "product": "NetScaler ADC and NetScaler Gateway",
+      "techniques": [
+        "T1574"
+      ]
+    },
+    {
+      "id": "CVE-2024-21887",
+      "context": "edge",
+      "vendor": "Ivanti",
+      "product": "Connect Secure and Policy Secure",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2023-20269",
+      "context": "edge",
+      "vendor": "Cisco",
+      "product": "Adaptive Security Appliance and Firepower Threat Defense",
+      "techniques": [
+        "T1133"
+      ]
+    },
+    {
+      "id": "CVE-2023-27997",
+      "context": "edge",
+      "vendor": "Fortinet",
+      "product": "FortiOS and FortiProxy SSL-VPN",
+      "techniques": [
+        "T1190",
+        "T1574"
+      ]
+    },
+    {
+      "id": "CVE-2022-1388",
+      "context": "edge",
+      "vendor": "F5",
+      "product": "BIG-IP",
+      "techniques": [
+        "T1548"
+      ]
+    },
+    {
+      "id": "CVE-2021-45382",
+      "context": "edge",
+      "vendor": "D-Link",
+      "product": "Multiple Routers",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2025-35939",
+      "context": "web",
+      "vendor": "Craft CMS",
+      "product": "Craft CMS",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2025-42999",
+      "context": "web",
+      "vendor": "SAP",
+      "product": "NetWeaver",
+      "techniques": [
+        "T1190",
+        "T1203"
+      ]
+    },
+    {
+      "id": "CVE-2024-38475",
+      "context": "web",
+      "vendor": "Apache",
+      "product": "HTTP Server",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2023-22527",
+      "context": "web",
+      "vendor": "Atlassian",
+      "product": "Confluence Data Center and Server",
+      "techniques": [
+        "T1221"
+      ]
+    },
+    {
+      "id": "CVE-2023-38203",
+      "context": "web",
+      "vendor": "Adobe",
+      "product": "ColdFusion",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2022-26138",
+      "context": "web",
+      "vendor": "Atlassian",
+      "product": "Confluence",
+      "techniques": [
+        "T1552.001"
+      ]
+    },
+    {
+      "id": "CVE-2022-26134",
+      "context": "web",
+      "vendor": "Atlassian",
+      "product": "Confluence Server/Data Center",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2021-26085",
+      "context": "web",
+      "vendor": "Atlassian",
+      "product": "Confluence Server",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2021-44228",
+      "context": "web",
+      "vendor": "Apache",
+      "product": "Log4j2",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2020-17530",
+      "context": "web",
+      "vendor": "Apache",
+      "product": "Struts",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2019-3398",
+      "context": "web",
+      "vendor": "Atlassian",
+      "product": "Confluence Server and Data Center",
+      "techniques": [
+        "T1202"
+      ]
+    },
+    {
+      "id": "CVE-2019-3396",
+      "context": "web",
+      "vendor": "Atlassian",
+      "product": "Confluence Server and Data Server",
+      "techniques": [
+        "T1133"
+      ]
+    },
+    {
+      "id": "CVE-2018-7600",
+      "context": "web",
+      "vendor": "Drupal",
+      "product": "Drupal Core",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2024-56145",
+      "context": "web",
+      "vendor": "Craft CMS",
+      "product": "Craft CMS",
+      "techniques": [
+        "T1055"
+      ]
+    },
+    {
+      "id": "CVE-2025-31324",
+      "context": "web",
+      "vendor": "SAP",
+      "product": "NetWeaver",
+      "techniques": [
+        "T1055",
+        "T1505.003"
+      ]
+    },
+    {
+      "id": "CVE-2021-42013",
+      "context": "web",
+      "vendor": "Apache",
+      "product": "HTTP Server",
+      "techniques": [
+        "T1210"
+      ]
+    },
+    {
+      "id": "CVE-2023-22518",
+      "context": "web",
+      "vendor": "Atlassian",
+      "product": "Confluence Data Center and Server",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2023-29300",
+      "context": "web",
+      "vendor": "Adobe",
+      "product": "ColdFusion",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2018-11776",
+      "context": "web",
+      "vendor": "Apache",
+      "product": "Struts",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2017-12637",
+      "context": "web",
+      "vendor": "SAP",
+      "product": "NetWeaver",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2021-41773",
+      "context": "web",
+      "vendor": "Apache",
+      "product": "HTTP Server",
+      "techniques": [
+        "T1210"
+      ]
+    },
+    {
+      "id": "CVE-2023-22515",
+      "context": "web",
+      "vendor": "Atlassian",
+      "product": "Confluence Data Center and Server",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2023-26359",
+      "context": "web",
+      "vendor": "Adobe",
+      "product": "ColdFusion",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2017-9805",
+      "context": "web",
+      "vendor": "Apache",
+      "product": "Struts",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2019-0211",
+      "context": "web",
+      "vendor": "Apache",
+      "product": "HTTP Server",
+      "techniques": [
+        "T1068"
+      ]
+    },
+    {
+      "id": "CVE-2025-54309",
+      "context": "collaboration",
+      "vendor": "CrushFTP",
+      "product": "CrushFTP",
+      "techniques": [
+        "T1068"
+      ]
+    },
+    {
+      "id": "CVE-2025-49706",
+      "context": "collaboration",
+      "vendor": "Microsoft",
+      "product": "SharePoint",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2024-42009",
+      "context": "collaboration",
+      "vendor": "Roundcube",
+      "product": "Webmail",
+      "techniques": [
+        "T1566.002"
+      ]
+    },
+    {
+      "id": "CVE-2024-27443",
+      "context": "collaboration",
+      "vendor": "Synacor",
+      "product": "Zimbra Collaboration Suite (ZCS)",
+      "techniques": [
+        "T1566.002"
+      ]
+    },
+    {
+      "id": "CVE-2024-21413",
+      "context": "collaboration",
+      "vendor": "Microsoft",
+      "product": "Office Outlook",
+      "techniques": [
+        "T1566.002"
+      ]
+    },
+    {
+      "id": "CVE-2023-34362",
+      "context": "collaboration",
+      "vendor": "Progress",
+      "product": "MOVEit Transfer",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2023-0669",
+      "context": "collaboration",
+      "vendor": "Fortra",
+      "product": "GoAnywhere MFT",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2022-41082",
+      "context": "collaboration",
+      "vendor": "Microsoft",
+      "product": "Exchange Server",
+      "techniques": [
+        "T1059.001",
+        "T1078"
+      ]
+    },
+    {
+      "id": "CVE-2022-36804",
+      "context": "collaboration",
+      "vendor": "Atlassian",
+      "product": "Bitbucket Server and Data Center",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2022-24682",
+      "context": "collaboration",
+      "vendor": "Synacor",
+      "product": "Zimbra Collaborate Suite (ZCS)",
+      "techniques": [
+        "T1204.001"
+      ]
+    },
+    {
+      "id": "CVE-2021-27104",
+      "context": "collaboration",
+      "vendor": "Accellion",
+      "product": "FTA",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2025-31161",
+      "context": "collaboration",
+      "vendor": "CrushFTP",
+      "product": "CrushFTP",
+      "techniques": [
+        "T1078"
+      ]
+    },
+    {
+      "id": "CVE-2025-49704",
+      "context": "collaboration",
+      "vendor": "Microsoft",
+      "product": "SharePoint",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2023-43770",
+      "context": "collaboration",
+      "vendor": "Roundcube",
+      "product": "Webmail",
+      "techniques": [
+        "T1189"
+      ]
+    },
+    {
+      "id": "CVE-2023-34192",
+      "context": "collaboration",
+      "vendor": "Synacor",
+      "product": "Zimbra Collaboration Suite (ZCS)",
+      "techniques": [
+        "T1055"
+      ]
+    },
+    {
+      "id": "CVE-2021-34523",
+      "context": "collaboration",
+      "vendor": "Microsoft",
+      "product": "Exchange Server",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2021-27103",
+      "context": "collaboration",
+      "vendor": "Accellion",
+      "product": "FTA",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2025-53770",
+      "context": "collaboration",
+      "vendor": "Microsoft",
+      "product": "SharePoint",
+      "techniques": [
+        "T1059",
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2023-5631",
+      "context": "collaboration",
+      "vendor": "Roundcube",
+      "product": "Webmail",
+      "techniques": [
+        "T1204.001"
+      ]
+    },
+    {
+      "id": "CVE-2021-34473",
+      "context": "collaboration",
+      "vendor": "Microsoft",
+      "product": "Exchange Server",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2021-27102",
+      "context": "collaboration",
+      "vendor": "Accellion",
+      "product": "FTA",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2019-0604",
+      "context": "collaboration",
+      "vendor": "Microsoft",
+      "product": "SharePoint",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2021-31207",
+      "context": "collaboration",
+      "vendor": "Microsoft",
+      "product": "Exchange Server",
+      "techniques": [
+        "T1548.002"
+      ]
+    },
+    {
+      "id": "CVE-2021-27065",
+      "context": "collaboration",
+      "vendor": "Microsoft",
+      "product": "Exchange Server",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2021-26858",
+      "context": "collaboration",
+      "vendor": "Microsoft",
+      "product": "Exchange Server",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2025-3935",
+      "context": "management",
+      "vendor": "ConnectWise",
+      "product": "ScreenConnect",
+      "techniques": [
+        "T1203"
+      ]
+    },
+    {
+      "id": "CVE-2025-4428",
+      "context": "management",
+      "vendor": "Ivanti",
+      "product": "Endpoint Manager Mobile (EPMM)",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2024-13161",
+      "context": "management",
+      "vendor": "Ivanti",
+      "product": "Endpoint Manager (EPM)",
+      "techniques": [
+        "T1190",
+        "T1558"
+      ]
+    },
+    {
+      "id": "CVE-2025-22225",
+      "context": "management",
+      "vendor": "VMware",
+      "product": "ESXi",
+      "techniques": [
+        "T1068"
+      ]
+    },
+    {
+      "id": "CVE-2025-22224",
+      "context": "management",
+      "vendor": "VMware",
+      "product": "ESXi and Workstation",
+      "techniques": [
+        "T1055"
+      ]
+    },
+    {
+      "id": "CVE-2022-22948",
+      "context": "management",
+      "vendor": "VMware",
+      "product": "vCenter Server",
+      "techniques": [
+        "T1078"
+      ]
+    },
+    {
+      "id": "CVE-2021-44529",
+      "context": "management",
+      "vendor": "Ivanti",
+      "product": "Endpoint Manager Cloud Service Appliance (EPM CSA)",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2024-27198",
+      "context": "management",
+      "vendor": "JetBrains",
+      "product": "TeamCity",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2023-27532",
+      "context": "management",
+      "vendor": "Veeam",
+      "product": "Backup & Replication",
+      "techniques": [
+        "T1133"
+      ]
+    },
+    {
+      "id": "CVE-2022-28810",
+      "context": "management",
+      "vendor": "Zoho",
+      "product": "ManageEngine",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2021-21973",
+      "context": "management",
+      "vendor": "VMware",
+      "product": "vCenter Server and Cloud Foundation",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2021-21975",
+      "context": "management",
+      "vendor": "VMware",
+      "product": "vRealize Operations Manager API",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2021-44077",
+      "context": "management",
+      "vendor": "Zoho",
+      "product": "ManageEngine ServiceDesk Plus (SDP) / SupportCenter Plus",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2021-37415",
+      "context": "management",
+      "vendor": "Zoho",
+      "product": "ManageEngine ServiceDesk Plus (SDP)",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2021-1498",
+      "context": "management",
+      "vendor": "Cisco",
+      "product": "HyperFlex HX",
+      "techniques": [
+        "T1133"
+      ]
+    },
+    {
+      "id": "CVE-2025-4427",
+      "context": "management",
+      "vendor": "Ivanti",
+      "product": "Endpoint Manager Mobile (EPMM)",
+      "techniques": [
+        "T1190",
+        "T1203"
+      ]
+    },
+    {
+      "id": "CVE-2024-13160",
+      "context": "management",
+      "vendor": "Ivanti",
+      "product": "Endpoint Manager (EPM)",
+      "techniques": [
+        "T1190",
+        "T1558"
+      ]
+    },
+    {
+      "id": "CVE-2024-37085",
+      "context": "management",
+      "vendor": "VMware",
+      "product": "ESXi",
+      "techniques": [
+        "T1078"
+      ]
+    },
+    {
+      "id": "CVE-2021-22017",
+      "context": "management",
+      "vendor": "VMware",
+      "product": "vCenter Server",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2023-42793",
+      "context": "management",
+      "vendor": "JetBrains",
+      "product": "TeamCity",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2022-26501",
+      "context": "management",
+      "vendor": "Veeam",
+      "product": "Backup & Replication",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2022-47966",
+      "context": "management",
+      "vendor": "Zoho",
+      "product": "ManageEngine",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2021-1497",
+      "context": "management",
+      "vendor": "Cisco",
+      "product": "HyperFlex HX",
+      "techniques": [
+        "T1133"
+      ]
+    },
+    {
+      "id": "CVE-2023-35081",
+      "context": "management",
+      "vendor": "Ivanti",
+      "product": "Endpoint Manager Mobile (EPMM)",
+      "techniques": [
+        "T1190"
+      ]
+    },
+    {
+      "id": "CVE-2024-13159",
+      "context": "management",
+      "vendor": "Ivanti",
+      "product": "Endpoint Manager (EPM)",
+      "techniques": [
+        "T1190",
+        "T1558"
+      ]
+    }
+  ]
+}

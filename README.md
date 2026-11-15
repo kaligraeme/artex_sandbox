@@ -30,6 +30,7 @@ On macOS or Linux, run `./start.sh` from the repository folder. It looks for `py
 ## Demo branches
 
 - **`main`** runs the demo on the full wire diagram. The site root and old Table View address (`/index.html`) redirect to `/wire.html`.
+- **`artex-gemini`** (`e:\work\artex_sandbox-gemini` worktree) implements the realistic attack-and-defense improvements specified in [docs/wire-improvement-engineering-spec.md](docs/wire-improvement-engineering-spec.md).
 - **`wire-combined`** preserves the demo before that change, including the standalone Range Operations dashboard and the original **Compare Combined** toggle. Use this branch to revisit that version.
 
 ## Run the wire diagram

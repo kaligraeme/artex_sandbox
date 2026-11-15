@@ -25,7 +25,7 @@ The batch file runs `start.py`, which starts a local HTTP server and opens [http
 
 If port 8080 is already in use, the launcher opens the existing service at that address rather than starting another server. If neither `python` nor `py` is available, `start.bat` attempts to open that address but does not start a server.
 
-On macOS or Linux, run `./start.sh` from the repository folder; it looks for `python3` and then `python`. A separate [tabular view](http://localhost:8080/index.html) is also available through the **Table View** link.
+On macOS or Linux, run `./start.sh` from the repository folder. It looks for `python3` and then `python`.
 
 ## Run the wire diagram
 
@@ -34,7 +34,7 @@ On macOS or Linux, run `./start.sh` from the repository folder; it looks for `py
 
 ## Scenarios
 
-In **Comparison Demo**, the matrix evaluates four primary columns plus an optional **Combined** run:
+In **Comparison Demo**, the matrix has four primary columns and a toggle for **Defense in Depth**.
 
 | Scenario | What the demo shows |
 | --- | --- |
@@ -42,9 +42,9 @@ In **Comparison Demo**, the matrix evaluates four primary columns plus an option
 | **Virtual Patching** | Blocks covered ingress events at the edge (`RULE MATCH · BLOCKED AT EDGE`); out-of-scope events continue (`OUTSIDE RULE COVERAGE`). |
 | **Agentic SOC** | Exposes telemetry, decision/approval, and enforcement timestamps under a fixed 60-second containment policy, showing where the same response wins at Pre-2023 pace (`+29 min`) and loses at ARTEX pace (`−10 s`). |
 | **Canaries** | Standalone decoy interaction (`DECOY TRIGGERED · ALERT ONLY`) showing detection lead time without containment. |
-| **Combined (SOC + Canary)** | Optional comparison against Agentic SOC where an early canary signal feeds the same SOC policy, shifting containment ahead of the protected read (`+15 s`). |
+| **Defense in Depth** | An early canary signal feeds the same SOC policy, shifting containment ahead of the protected read (`+15 s`). |
 
-In **Exploratory Infra**, the four defense modes are **Baseline**, **Virtual Patch**, **Agentic SOAR**, and **Defense-in-Depth** (WAF + Agentic SOAR + Canary). Defense rules, coverage, detection and response are demo assumptions; a blocked path does not establish that a real product would detect or prevent the activity.
+For generated activity in **Exploratory Infra**, the defense modes are **Baseline**, **Virtual Patch**, **Agentic SOAR**, and **Defense in Depth** (WAF + Agentic SOAR + Canary). The map's fixed attacker traces use the Comparison Demo defenses. Defense rules, coverage, detection, and response are demo assumptions.
 
 ## Infrastructure and tickets
 

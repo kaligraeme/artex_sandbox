@@ -62,11 +62,9 @@ def main():
 
     httpd = socketserver.TCPServer(("", port), QuietHandler)
     url = f"http://localhost:{port}{TARGET_PATH}"
-    table_url = f"http://localhost:{port}/index.html"
 
     print(f"[+] Serving directory: {sandbox_dir}")
     print(f"[+] Wire Diagram Demo: {url}")
-    print(f"[+] Tabular Range View: {table_url}")
     print("[+] Launching web browser...")
 
     server_thread = threading.Thread(target=httpd.serve_forever, daemon=True)

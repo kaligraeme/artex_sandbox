@@ -413,7 +413,7 @@
     baseline: { tag: '01 / BASELINE', name: 'Baseline (Unmitigated)' },
     patch: { tag: '02 / VIRTUAL PATCH', name: 'Virtual Patch (WAF)' },
     defender: { tag: '03 / AGENTIC SOAR', name: 'Agentic SOAR' },
-    combined: { tag: '04 / DEFENSE-IN-DEPTH', name: 'Combined Defense-in-Depth' }
+    combined: { tag: '04 / DEFENSE IN DEPTH', name: 'Defense in Depth' }
   };
 
   function createRng(seed) {
@@ -1683,7 +1683,7 @@
     patch: { id: 'patch', label: 'Virtual Patching', shortLabel: 'VIRTUAL PATCH' },
     soc: { id: 'soc', label: 'Agentic SOC', shortLabel: 'AGENTIC SOC' },
     canaries: { id: 'canaries', label: 'Canaries', shortLabel: 'CANARIES' },
-    combined: { id: 'combined', label: 'Combined (SOC + Canary)', shortLabel: 'COMBINED' }
+    combined: { id: 'combined', label: 'Defense in Depth', shortLabel: 'DEFENSE IN DEPTH' }
   };
 
   function createComparisonEstate() {

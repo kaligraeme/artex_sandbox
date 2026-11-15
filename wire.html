@@ -211,28 +211,6 @@
     background: rgba(4, 20, 14, 0.85);
   }
 
-  /* Discreet nav link to return to table view */
-  .back-link {
-    position: absolute;
-    top: 20px;
-    right: 26px;
-    pointer-events: auto;
-    color: rgba(255, 255, 255, 0.35);
-    font-size: 10.5px;
-    letter-spacing: 0.1em;
-    text-decoration: none;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    padding: 5px 11px;
-    border-radius: 3px;
-    transition: all 0.2s;
-    z-index: 1000;
-  }
-  .back-link:hover {
-    color: var(--turquoise);
-    border-color: var(--turquoise);
-    background: rgba(0, 240, 255, 0.08);
-  }
-
   /* SVG layer for wires and pulses */
   #wire-svg {
     position: absolute;
@@ -906,9 +884,8 @@
     <div class="cmp-nav-actions">
       <button id="view-comparison-btn" class="cmp-pill-btn active" type="button">COMPARISON DEMO</button>
       <button id="view-exploratory-btn" class="cmp-pill-btn" type="button">EXPLORATORY INFRA</button>
-      <button id="cmp-toggle-combined-btn" class="cmp-pill-btn active" type="button" title="Show or hide optional Combined (SOC + Canary) comparison column">COMPARE COMBINED: ON</button>
+      <button id="cmp-toggle-combined-btn" class="cmp-pill-btn active" type="button" aria-pressed="true" title="Show or hide the Defense in Depth (SOC + Canary) column">DEFENSE IN DEPTH: ON</button>
       <button id="cmp-evidence-btn" class="cmp-pill-btn" type="button">EVIDENCE &amp; NOTES</button>
-      <a href="index.html" class="cmp-pill-btn" title="Switch back to tabular view">TABLE VIEW ↗</a>
     </div>
   </div>
 
@@ -1034,7 +1011,7 @@
         <span class="mode-desc">Agentic response · Mesh isolation [SI-4]</span>
       </button>
       <button class="mode-btn" data-mode="combined" title="Multi-layered defense-in-depth posture">
-        <span class="mode-title">04 / DEFENSE-IN-DEPTH</span>
+        <span class="mode-title">04 / DEFENSE IN DEPTH</span>
         <span class="mode-desc">WAF + Agentic SOAR + Canary trigger</span>
       </button>
     </div>
@@ -1063,7 +1040,7 @@
             <option value="patch">Virtual Patching</option>
             <option value="soc">Agentic SOC</option>
             <option value="canaries">Canaries</option>
-            <option value="combined">SOC + Canary</option>
+            <option value="combined">Defense in Depth</option>
           </select>
         </label>
         <button id="map-replay-btn" class="cmp-pill-btn" type="button">REPLAY</button>
@@ -1073,8 +1050,6 @@
     </div>
     <div id="run-hud" role="status">GENERATED ACTIVITY · SELECT A DEFENSE</div>
   </div>
-
-  <a href="index.html" class="back-link" title="Switch back to tabular view">TABLE VIEW ↗ <span style="opacity:0.6;font-size:9px;margin-left:5px;border-left:1px solid rgba(255,255,255,0.2);padding-left:7px;">v2.4.0</span></a>
 
   <div class="soc-ticker" aria-label="Simulated SOC tickets">
     <div id="soc-cards" class="soc-cards" aria-live="off"></div>
@@ -2230,7 +2205,8 @@ cmpRestartBtn.addEventListener('click', () => startComparisonPlayback(true));
 cmpToggleCombinedBtn.addEventListener('click', () => {
   cmpShowCombined = !cmpShowCombined;
   cmpToggleCombinedBtn.classList.toggle('active', cmpShowCombined);
-  cmpToggleCombinedBtn.textContent = `COMPARE COMBINED: ${cmpShowCombined ? 'ON' : 'OFF'}`;
+  cmpToggleCombinedBtn.setAttribute('aria-pressed', String(cmpShowCombined));
+  cmpToggleCombinedBtn.textContent = `DEFENSE IN DEPTH: ${cmpShowCombined ? 'ON' : 'OFF'}`;
   if (!cmpShowCombined && cmpDefenseId === 'combined') {
     selectComparisonCell(cmpProfileId, 'soc');
     return;

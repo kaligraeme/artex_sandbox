@@ -24,7 +24,7 @@ Today we'll show:
    ```
 
 3️⃣ *Open Screens*:
-   • *Visual Dashboard*: open `artex_sandbox/index.html` in browser
+   • *Wire Diagram*: open `artex_sandbox/wire.html` in browser
    • *ARTEX Mission UI*: `http://localhost:8787`
 
 ━━━━━━━━━━━━━━━━━━━━

@@ -11,7 +11,7 @@ The demo is illustrative: its infrastructure, access paths, alerts and defense o
 Clone the current repository:
 
 ```powershell
-git clone https://github.com/ash-at-ncs/artex_sandbox.git
+git clone https://github.com/kostchei/artex_sandbox.git
 cd artex_sandbox
 ```
 
@@ -27,6 +27,11 @@ If port 8080 is already in use, the launcher opens the existing service at that 
 
 On macOS or Linux, run `./start.sh` from the repository folder. It looks for `python3` and then `python`.
 
+## Demo branches
+
+- **`main`** serves the Wire Diagram as the demo. The site root and old Table View address (`/index.html`) redirect to `/wire.html`. The Wire navigation offers **Comparison Demo** and **Exploratory Infra**.
+- **`wire-combined`** preserves the demo before that change, including the standalone Range Operations dashboard and the original **Compare Combined** toggle. Use this branch to revisit that version.
+
 ## Run the wire diagram
 
 1. **Comparison Demo (default):** Compare **Pre-2023 human-led** vs **ARTEX & Friends** on a fixed four-layer estate. Use **Attack example** to open a synthetic defense exercise under one of the six reference names (**LockBit**, **Conti**, **BlackCat**, **Hive**, **REvil**, or **ARTEX**). The choices reuse generic event traces for both attacker workflows. Select **Shared speed and capability exercises** to return to the four controlled comparisons. Click any matrix cell for its trace and SOC tickets. Playback uses a modeled hours, minutes, and seconds clock (`HH:MM:SS`).
@@ -34,7 +39,7 @@ On macOS or Linux, run `./start.sh` from the repository folder. It looks for `py
 
 ## Scenarios
 
-In **Comparison Demo**, the matrix has four primary columns and a toggle for **Defense in Depth**.
+In **Comparison Demo**, the former **Combined** scenario appears as **Defense in Depth**. Its column is visible on load and can be hidden or restored with the **Defense in Depth** toggle.
 
 | Scenario | What the demo shows |
 | --- | --- |

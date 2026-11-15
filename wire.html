@@ -200,9 +200,40 @@
   }
 
   .wire.revealed, .wire.hit-wire, .wire.defended-wire { opacity: 1; }
+  .wire.contained-wire {
+    opacity: 1;
+    stroke: #f6b93b;
+    stroke-width: 2;
+    stroke-dasharray: 5 4;
+  }
   .node.catalog-focus .node-label {
     outline: 1px solid rgba(121, 189, 255, 0.75);
     outline-offset: 2px;
+  }
+  .node.decoy .node-halo {
+    border-color: #f6b93b;
+    opacity: 0.75;
+  }
+  .node.decoy .node-icon {
+    background-color: #f6b93b;
+    filter: drop-shadow(0 0 6px rgba(246, 185, 59, 0.6));
+  }
+  .node.decoy .node-label {
+    color: #ffe6a3;
+    border: 1px dashed rgba(246, 185, 59, 0.55);
+  }
+  .node.contained .node-halo {
+    border-color: #f6b93b;
+    opacity: 0.9;
+  }
+  .node.contained .node-icon {
+    background-color: #f6b93b;
+    filter: drop-shadow(0 0 8px rgba(246, 185, 59, 0.75));
+  }
+  .node.contained .node-kev,
+  .node.contained .cve {
+    display: block;
+    color: #ffd37a;
   }
   .illustrative-wire {
     fill: none;
@@ -534,12 +565,16 @@
         <span class="mode-title">02 / VIRTUAL PATCH</span>
         <span class="mode-desc">Edge WAF</span>
       </button>
+      <button class="mode-btn" data-mode="canaries" aria-pressed="false">
+        <span class="mode-title">03 / CANARIES</span>
+        <span class="mode-desc">Decoy alert only</span>
+      </button>
       <button class="mode-btn" data-mode="soc" aria-pressed="false">
-        <span class="mode-title">03 / AGENTIC SOAR</span>
+        <span class="mode-title">04 / AGENTIC SOAR</span>
         <span class="mode-desc">Detect and contain</span>
       </button>
       <button class="mode-btn" data-mode="soc-canary" aria-pressed="false">
-        <span class="mode-title">04 / AGENTIC SOAR + CANARY</span>
+        <span class="mode-title">05 / AGENTIC SOAR + CANARY</span>
         <span class="mode-desc">Containment with a decoy signal</span>
       </button>
     </div>
@@ -680,17 +715,8 @@ function layoutGraph(estate) {
   svg.innerHTML = '';
   document.getElementById('viewport').classList.remove('illustration-active');
 
-  const overlappingControls = new Set(['waf-proxy', 'iam-idp', 'threat-det']);
-  const controlCounts = new Map();
-
   const nodes = estate.assets.map(asset => {
-    let displayLabel = asset.label.replace(/ · (?:Decommissioned|P\.o\.C)$/, '');
-    if (overlappingControls.has(asset.groupId)) {
-      const position = (controlCounts.get(asset.groupId) || 0) + 1;
-      controlCounts.set(asset.groupId, position);
-      if (position === 2) displayLabel += ' · Decommissioned';
-      if (position === 3) displayLabel += ' · P.o.C';
-    }
+    const displayLabel = asset.isDecoy ? `${asset.label} · Decoy` : asset.label;
     const findings = estate.findings.filter(f => f.assetId === asset.id);
     const creds = estate.credentials.filter(c => c.sourceAssetId === asset.id);
     return {
@@ -718,7 +744,7 @@ function layoutGraph(estate) {
 
   nodes.forEach(node => {
     const el = document.createElement('div');
-    el.className = 'node';
+    el.className = node.isDecoy ? 'node decoy' : 'node';
     el.id = 'node-' + node.id;
     if (node.referenceCve) el.dataset.appliance = node.groupId;
     el.title = formatAssetTooltip(node, node.findings, node.creds);
@@ -746,14 +772,19 @@ function layoutGraph(estate) {
   if (referenceCase) markReferenceFlow(estate, referenceCase);
 }
 
-function markReferenceFlow(estate, { context }) {
+function markReferenceFlow(estate, { context, example }) {
   const flow = referenceServiceFlow(estate, context.groups);
   if (!flow) return;
 
+  const vendorToken = (example?.vendor || '').toLowerCase();
+  const productToken = (example?.product || '').toLowerCase();
   flow.assets.forEach((id, index) => {
-    const el = currentNodes.get(id).el;
-    el.title += `\nReference infrastructure · ${context.roles[index]}`;
-    if (index === context.focus) {
+    const node = currentNodes.get(id);
+    const el = node.el;
+    el.title += `\nReference KEV Context · ${context.roles[index]}`;
+    const labelLower = node.label.toLowerCase();
+    const matchesVendor = !vendorToken || labelLower.includes(vendorToken) || labelLower.includes(productToken) || node.groupId === context.groups[index];
+    if (index === context.focus && matchesVendor) {
       el.classList.add('catalog-focus');
       el.title += `\n${context.defensiveFocus}`;
     }
@@ -872,7 +903,9 @@ function renderEvent(event, time, animate) {
   const wire = currentWires.get(event.relationshipId);
   const success = event.outcome === 'succeeded';
   const blocked = event.outcome === 'blocked';
-  const read = event.grantedCapability === 'data_read';
+  const contained = event.outcome === 'contained';
+  const alertOnly = event.outcome === 'alert_only';
+  const read = event.grantedCapability === 'data_read' && node.layerIdx === 3 && !node.isDecoy;
   const staging = node.groupId === 'staging-status';
   const finding = event.finding;
   const diagnostic = finding?.kind === 'diagnostic_access';
@@ -880,10 +913,12 @@ function renderEvent(event, time, animate) {
   const action = finding?.title || (event.credentialUsed ? 'Valid Accounts' : 'Access check');
   const summary = reference ? `${action} · ${reference}` : action;
   node.el.title += `\n${formatEstimate(time)} · ${summary} · ${event.reason}`;
-  if (!success && !blocked) return;
+  if (!success && !blocked && !contained && !alertOnly) return;
 
   let result = 'ACCESS ESTABLISHED';
-  if (blocked) result = event.mitigation.badge;
+  if (blocked) result = event.mitigation?.badge || 'BLOCKED';
+  else if (contained) result = 'CONTAINED BY AGENTIC SOC';
+  else if (alertOnly) result = 'CANARY ALERT (NO CONTAINMENT)';
   else if (read) result = 'PROTECTED RECORD READ';
   else if (diagnostic) result = 'STAGING CREDENTIAL EXPOSED';
   else if (finding?.illustration === 'git-to-idp') {
@@ -898,17 +933,20 @@ function renderEvent(event, time, animate) {
   if (success || !node.el.classList.contains('hit')) {
     node.el.classList.toggle('hit', success);
     node.el.classList.toggle('defended', blocked);
+    node.el.classList.toggle('contained', contained || alertOnly);
     if (read) node.el.classList.add('breach-target');
     node.el.querySelector('.cve').textContent = result;
     node.el.querySelector('.vuln-title').textContent = summary;
   }
   if (wire) {
-    wire.path.classList.add(blocked ? 'defended-wire' : 'hit-wire');
+    if (blocked) wire.path.classList.add('defended-wire');
+    else if (contained || alertOnly) wire.path.classList.add('contained-wire');
+    else wire.path.classList.add('hit-wire');
     if (animate && success) animatePulse(wire);
   }
   socTickets.set(`${node.id}-${event.outcome}`, {
     title: summary,
-    severity: read ? 'CRITICAL' : blocked ? 'HIGH' : 'INFO',
+    severity: read ? 'CRITICAL' : (blocked || contained || alertOnly) ? 'HIGH' : 'INFO',
     detail: `${formatEstimate(time)} · ${result}`
   });
 }
@@ -957,29 +995,34 @@ function finishRun() {
   showTime(phases.at(-1)?.time ?? 0);
   socLooping = true;
   renderSocTickets();
-  const { dataReached, truncated, layerSuccessCounts, blockedTransitions } = run.summary;
+  const { dataReached, truncated, layerSuccessCounts, blockedTransitions, containedSessions } = run.summary;
   const successes = run.events.filter(event => event.outcome === 'succeeded');
-  const read = successes.find(event => event.grantedCapability === 'data_read');
+  const read = successes.find(event => {
+    const n = currentNodes.get(event.targetId);
+    return event.grantedCapability === 'data_read' && n?.layerIdx === 3 && !n?.isDecoy;
+  });
   const milestone = read ?? successes.at(-1);
   const asset = milestone && currentNodes.get(milestone.targetId);
   const evidence = milestone?.finding?.cveId || milestone?.technique;
-  const sampleLogs = successes.find(event => event.finding?.kind === 'exercise' && event.finding.technique === 'T1552.001');
+  const sampleLogs = successes.find(event => event.finding?.technique === 'T1552.001');
   const result = read ? `Protected record read at ${asset.label} (${formatEstimate(read.timeSec)})`
     : asset ? `Reached ${asset.label} (${formatEstimate(milestone.timeSec)})`
     : 'No access established';
   const limit = dataReached ? '' : truncated ? 'Exploration limit reached' : 'No protected record read';
   const count = layerSuccessCounts[0];
   const containments = run.controls.filter(event => event.control === 'enforced');
+  const canarySignals = run.controls.filter(event => event.control === 'signal' && event.source === 'canary');
   const late = read && containments.some(event => event.scope === read.scope && event.timeSec >= read.timeSec);
   const response = late ? 'SOAR contained after the read'
     : containments.length ? `${containments.length} ${containments.length === 1 ? 'session' : 'sessions'} contained`
+    : defense === 'canaries' ? (canarySignals.length ? 'Canary alerted (alert only)' : 'Canary untouched')
     : defense.startsWith('soc') ? 'No matching signal' : '';
   runHud.className = dataReached ? 'breached' : 'contained';
   const illustration = run.events.some(event => event.outcome === 'succeeded' && event.finding?.illustration === 'git-to-idp')
     ? 'Illustrative branch ends at IdP admin' : '';
   const group = run.lanes === 1 ? pre2023Groups[pre2023Group] : '';
   runHud.textContent = [group, result, evidence, limit, sampleLogs?.finding.title, `${count} external ${count === 1 ? 'entry' : 'entries'} reached`,
-    blockedTransitions ? `${blockedTransitions} blocked` : '', response, illustration].filter(Boolean).join(' · ');
+    blockedTransitions ? `${blockedTransitions} blocked` : '', containedSessions && !containments.length ? `${containedSessions} contained` : '', response, illustration].filter(Boolean).join(' · ');
 }
 
 function playRun() {
@@ -1069,7 +1112,7 @@ function newInfra() {
   catalogLabel.hidden = !referenceCase;
   if (referenceCase) {
     const { example, context } = referenceCase;
-    catalogLabel.textContent = `${context.title} · Reference ${example.id}`;
+    catalogLabel.textContent = `${context.title} · Reference KEV Context (${example.id})`;
     catalogLabel.title = `${example.vendor} ${example.product}\n${context.defensiveFocus}\nATT&CK · ${example.techniques.join(', ')}`;
   }
   playRun();

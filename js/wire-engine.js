@@ -78,7 +78,26 @@
   const REVIEWED_EXAMPLES = {
     ...EDGE_APPLIANCES,
     'cust-api': { cve: 'CVE-2022-29464', product: 'WSO2 API Manager', version: '3.2.0', conditions: { uploadEndpointReachable: true, executableUpload: true }, source: 'https://www.cisa.gov/sites/default/files/2023-08/aa23-215a_joint_csa_2022_top_routinely_exploited_vulnerabilities.pdf' },
-    'app-engine': { cve: 'CVE-2022-22965', product: 'Spring Framework', version: '5.3.17', conditions: { jdk9Plus: true, tomcatVulnerable: true, warDeployment: true, mvcDataBinding: true }, source: 'https://spring.io/security/cve-2022-22965/' }
+    'partner-api': { cve: 'CVE-2022-29464', product: 'WSO2 API Manager', version: '3.2.0', conditions: { uploadEndpointReachable: true, executableUpload: true }, source: 'https://www.cisa.gov/sites/default/files/2023-08/aa23-215a_joint_csa_2022_top_routinely_exploited_vulnerabilities.pdf' },
+    'wso2-api': { cve: 'CVE-2022-29464', product: 'WSO2 API Manager', version: '3.2.0', conditions: { uploadEndpointReachable: true, executableUpload: true }, source: 'https://www.cisa.gov/sites/default/files/2023-08/aa23-215a_joint_csa_2022_top_routinely_exploited_vulnerabilities.pdf' },
+    'sentry-auth': { cve: 'CVE-2023-38035', product: 'Ivanti Sentry', version: '9.18.0', conditions: { adminPort8443Reachable: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2023-38035' },
+    'ad-identity': { cve: 'CVE-2022-26923', product: 'Active Directory Domain Services', version: 'Windows Server 2022', conditions: { adcsEnrollmentEnabled: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2022-26923' },
+    'ivanti-epm': { cve: 'CVE-2024-29824', product: 'Ivanti EPM', version: '2022 SU5', conditions: { coreServerReachable: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2024-29824' },
+    'exchange': { cve: 'CVE-2021-26855', product: 'Microsoft Exchange Server', version: '2019 CU8', conditions: { ewsExposed: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2021-26855' },
+    'app-engine': { cve: 'CVE-2022-22965', product: 'Spring Framework', version: '5.3.17', conditions: { jdk9Plus: true, tomcatVulnerable: true, warDeployment: true, mvcDataBinding: true }, source: 'https://spring.io/security/cve-2022-22965/' },
+    'spring-svc': { cve: 'CVE-2022-22965', product: 'Spring Framework', version: '5.3.17', conditions: { jdk9Plus: true, tomcatVulnerable: true, warDeployment: true, mvcDataBinding: true }, source: 'https://spring.io/security/cve-2022-22965/' },
+    'log4j-svc': { cve: 'CVE-2021-44228', product: 'Apache Log4j 2', version: '2.14.1', conditions: { jndiLookupsEnabled: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2021-44228' },
+    'iot-hub': { cve: 'CVE-2021-44228', product: 'Apache Log4j 2', version: '2.14.1', conditions: { jndiLookupsEnabled: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2021-44228' },
+    'confluence-node': { cve: 'CVE-2023-22527', product: 'Atlassian Confluence Data Center', version: '8.5.3', conditions: { templateEndpointExposed: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2023-22527' },
+    'confluence-admin': { cve: 'CVE-2023-22515', product: 'Atlassian Confluence Server', version: '8.5.1', conditions: { setupEndpointExposed: true }, source: 'https://support.atlassian.com/atlassian-knowledge-base/kb/faq-for-cve-2023-22515/' },
+    'weblogic': { cve: 'CVE-2020-14882', product: 'Oracle WebLogic Server', version: '12.2.1.4.0', conditions: { adminConsoleReachable: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2020-14882' },
+    'sql-reporting': { cve: 'CVE-2020-0618', product: 'SQL Server Reporting Services', version: '2016', conditions: { reportViewerExposed: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2020-0618' },
+    'forti-ems': { cve: 'CVE-2023-48788', product: 'Fortinet FortiClient EMS', version: '7.2.2', conditions: { fcmDaemonReachable: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2023-48788' },
+    'cicd-runner': { cve: 'CVE-2023-42793', product: 'JetBrains TeamCity', version: '2023.05.3', conditions: { restAuthBypass: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2023-42793' },
+    'activemq': { cve: 'CVE-2023-46604', product: 'Apache ActiveMQ', version: '5.18.2', conditions: { openWirePortExposed: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2023-46604' },
+    'moveit-sftp': { cve: 'CVE-2023-34362', product: 'Progress MOVEit Transfer', version: '2023.0.0', conditions: { webTransferEnabled: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2023-34362' },
+    'ai-core': { cve: 'CVE-2026-42271', product: 'LiteLLM Proxy', version: '1.83.6', conditions: { mcpTestEndpointsEnabled: true }, source: 'https://github.com/BerriAI/litellm/security/advisories/GHSA-v4p8-mg3p-g94g' },
+    'redis-debian': { cve: 'CVE-2022-0543', product: 'Debian Redis', version: '5:6.0.16-1', conditions: { luaSandboxUnpatched: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2022-0543' }
   };
 
   // Concise attack descriptions based on the linked vulnerability records.
@@ -221,20 +240,20 @@
 
   const KEV_MITIGATION_RULES = {
     'CVE-2026-42271': { waf: { mitigates: false, reason: 'The internal LiteLLM proxy is not assumed to be covered by the perimeter WAF.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Scenario assumption: agentic response detects unexpected subprocess execution by the proxy.' } },
-    'CVE-2024-4577': { waf: { mitigates: true, control: 'NIST SI-2 / SC-7', reason: 'WAF query regex drops %ad PHP CGI argument injection' }, ml: { mitigates: false, reason: 'Edge CGI exploit bypasses internal behavioral telemetry' } },
-    'CVE-2023-46805': { waf: { mitigates: true, control: 'NIST SC-7', reason: 'WAF virtual patch restricts unauthenticated /api/v1/cav/client endpoints' }, ml: { mitigates: false, reason: 'Perimeter auth bypass occurs before internal ML baseline can flag session' } },
-    'CVE-2024-3400': { waf: { mitigates: true, control: 'NIST SI-2 / SC-7', reason: 'Simulated targeted virtual patch filters malicious HTTP requests to the GlobalProtect portal when covered.' }, ml: { mitigates: false, reason: 'Edge firewall OS injection executes at edge appliance firmware layer' } },
-    'CVE-2023-3519': { waf: { mitigates: true, control: 'NIST SC-7', reason: 'WAF protocol validator drops malformed HTTP Host header buffer overflow' }, ml: { mitigates: false, reason: 'Edge ADC stack overflow executes pre-auth before user identity creation' } },
+    'CVE-2024-4577': { waf: { mitigates: true, ruleStrictness: 'signature_regex', control: 'NIST SI-2 / SC-7', reason: 'WAF query regex drops %ad PHP CGI argument injection' }, ml: { mitigates: false, reason: 'Edge CGI exploit bypasses internal behavioral telemetry' } },
+    'CVE-2023-46805': { waf: { mitigates: true, ruleStrictness: 'strict_virtual_patch', control: 'NIST SC-7', reason: 'WAF virtual patch restricts unauthenticated /api/v1/cav/client endpoints' }, ml: { mitigates: false, reason: 'Perimeter auth bypass occurs before internal ML baseline can flag session' } },
+    'CVE-2024-3400': { waf: { mitigates: true, ruleStrictness: 'strict_virtual_patch', control: 'NIST SI-2 / SC-7', reason: 'Simulated targeted virtual patch filters malicious HTTP requests to the GlobalProtect portal when covered.' }, ml: { mitigates: false, reason: 'Edge firewall OS injection executes at edge appliance firmware layer' } },
+    'CVE-2023-3519': { waf: { mitigates: true, ruleStrictness: 'strict_virtual_patch', control: 'NIST SC-7', reason: 'WAF protocol validator drops malformed HTTP Host header buffer overflow' }, ml: { mitigates: false, reason: 'Edge ADC stack overflow executes pre-auth before user identity creation' } },
     'CVE-2023-20198': { waf: { mitigates: false, reason: 'Direct REST management endpoint bypasses edge reverse proxy' }, ml: { mitigates: false, reason: 'Direct network boundary exploitation circumvents internal host ML agents' } },
     'CVE-2024-21887': { waf: { mitigates: false, reason: 'In-line edge gateway exploit triggers prior to internal microservice logs' }, ml: { mitigates: false, reason: 'In-line edge gateway exploit triggers prior to internal microservice logs' } },
-    'CVE-2022-1388': { waf: { mitigates: true, control: 'NIST SC-7', reason: 'WAF drops hop-by-hop Connection header smuggling to /mgmt/shared/authn' }, ml: { mitigates: false, reason: 'Edge appliance admin bypass executes outside host mesh' } },
+    'CVE-2022-1388': { waf: { mitigates: true, ruleStrictness: 'strict_virtual_patch', control: 'NIST SC-7', reason: 'WAF drops hop-by-hop Connection header smuggling to /mgmt/shared/authn' }, ml: { mitigates: false, reason: 'Edge appliance admin bypass executes outside host mesh' } },
     'CVE-2022-42475': { waf: { mitigates: false, reason: 'VPN binary protocol heap overflow bypasses L7 HTTP reverse proxy' }, ml: { mitigates: false, reason: 'Edge VPN daemon heap overwrite occurs before telemetry ingestion' } },
     'CVE-2023-22515': { waf: { mitigates: false, reason: 'Legitimate HTTP requests to /setup endpoints pass perimeter WAF inspection' }, ml: { mitigates: true, control: 'NIST SI-4 / AC-3', reason: 'Agentic SOC Mitigation flags setup wizard execution on established production instance' } },
     'CVE-2024-27198': { waf: { mitigates: false, reason: 'OAuth/Auth endpoint traversal passes standard perimeter HTTP parsers' }, ml: { mitigates: true, control: 'NIST IA-5 / AC-3', reason: 'Agentic SOC Mitigation isolates service on forged administrative token minting' } },
-    'CVE-2023-38035': { waf: { mitigates: true, control: 'NIST SC-7', reason: 'Edge WAF blocks unauthenticated HTTP requests to MICS port 8443 interface' }, ml: { mitigates: false, reason: 'Admin API interface lacks granular internal behavioral baseline' } },
+    'CVE-2023-38035': { waf: { mitigates: true, ruleStrictness: 'strict_virtual_patch', control: 'NIST SC-7', reason: 'Edge WAF blocks unauthenticated HTTP requests to MICS port 8443 interface' }, ml: { mitigates: false, reason: 'Admin API interface lacks granular internal behavioral baseline' } },
     'CVE-2023-4966': { waf: { mitigates: false, reason: 'Outbound session token memory disclosure occurs in TLS response stream' }, ml: { mitigates: true, control: 'NIST AC-3 / IA-5', reason: 'Zero-Trust ML halts stolen session token used across divergent IP/fingerprint' } },
     'CVE-2024-1709': { waf: { mitigates: false, reason: 'Setup wizard URI /SetupWizard.aspx is considered valid application traffic by WAF' }, ml: { mitigates: true, control: 'NIST AC-3', reason: 'Agentic SOC Mitigation blocks unauthorized admin account creation out-of-band' } },
-    'CVE-2021-26855': { waf: { mitigates: true, control: 'NIST SI-2 / SC-7', reason: 'WAF virtual patch filters X-AnonResource-Backend SSRF header' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Agentic SOC Mitigation detects internal SSRF lateral probe to backend Exchange RPC' } },
+    'CVE-2021-26855': { waf: { mitigates: true, ruleStrictness: 'signature_regex', control: 'NIST SI-2 / SC-7', reason: 'WAF virtual patch filters X-AnonResource-Backend SSRF header' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Agentic SOC Mitigation detects internal SSRF lateral probe to backend Exchange RPC' } },
     'CVE-2022-26923': { waf: { mitigates: false, reason: 'Active Directory certificate enrollment traffic is outside HTTP WAF scope' }, ml: { mitigates: true, control: 'NIST IA-5 / AC-3', reason: 'Agentic SOC Mitigation detects anomalous dNSHostName attribute modification on computer account' } },
     'CVE-2023-29357': { waf: { mitigates: false, reason: 'Forged JWT signing alg=none tokens pass initial TLS termination proxies' }, ml: { mitigates: true, control: 'NIST AC-3', reason: 'Agentic SOC Mitigation isolates spoofed farm administrator claims without valid IdP signature' } },
     'CVE-2021-44228': { waf: { mitigates: false, reason: 'Nested/obfuscated JNDI ${jndi:ldap://...} strings bypass edge WAF pattern matching' }, ml: { mitigates: true, control: 'NIST SI-4 / SC-7', reason: 'Agentic SOC Mitigation terminates unexpected outbound LDAP/RMI egress from worker node' } },
@@ -246,7 +265,7 @@
     'CVE-2023-46604': { waf: { mitigates: false, reason: 'OpenWire TCP 61616 protocol traffic bypasses perimeter HTTP WAF' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Agentic SOC Mitigation terminates anomalous Java ClassPathXmlApplicationContext load' } },
     'CVE-2022-46169': { waf: { mitigates: false, reason: 'Forwarded-For header spoofing bypasses remote agent authentication' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Agentic SOC Mitigation flags shell command injection in poller.php execution' } },
     'CVE-2023-42793': { waf: { mitigates: false, reason: 'The internal TeamCity management service is outside the perimeter WAF.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Behavioral monitoring detects an anomalous TeamCity administrative session and build execution.' } },
-    'CVE-2023-34362': { waf: { mitigates: true, control: 'NIST SI-2', reason: 'WAF SQLi virtual patch inspects & blocks malformed X-MOVEit headers' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Agentic SOC Mitigation detects abnormal mass query exfiltration on core SQL tables' } },
+    'CVE-2023-34362': { waf: { mitigates: true, ruleStrictness: 'signature_regex', control: 'NIST SI-2', reason: 'WAF SQLi virtual patch inspects & blocks malformed X-MOVEit headers' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Agentic SOC Mitigation detects abnormal mass query exfiltration on core SQL tables' } },
     'CVE-2023-27350': { waf: { mitigates: false, reason: 'Setup wizard bypass occurs over legitimate administrative web interface' }, ml: { mitigates: true, control: 'NIST SI-4 / AC-3', reason: 'Agentic SOC Mitigation blocks unauthenticated database dump and lateral admin spawn' } },
     'CVE-2020-1472': { waf: { mitigates: false, reason: 'Zerologon exploits Netlogon RPC (TCP 135/445), not covered by HTTP/WAF' }, ml: { mitigates: true, control: 'NIST AC-3 / IA-5', reason: 'Agentic SOC Mitigation flags anomalous NetrServerAuthenticate with 16 zero-bytes' } },
     'CVE-2023-36884': { waf: { mitigates: false, reason: 'Office document protocol payload bypasses perimeter application firewalls' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Agentic SOC Mitigation halts SearchFilterHost.exe memory injection and credential dump' } },
@@ -258,9 +277,9 @@
     'CVE-2022-26134': { waf: { mitigates: false, reason: 'OGNL payload executed against internal application server pool' }, ml: { mitigates: true, control: 'NIST IA-5', reason: 'Agentic SOC Mitigation detects memory dumping of database connection credentials' } },
     'CVE-2024-1086': { waf: { mitigates: false, reason: 'Local Linux kernel netfilter double-free exploit is internal to host OS' }, ml: { mitigates: true, control: 'NIST AC-3', reason: 'Agentic SOC Mitigation terminates unauthorized privilege escalation targeting root vault databases' } },
     'CVE-2022-22954': { waf: { mitigates: false, reason: 'SSTI expression inside OAuth client parameters bypasses standard URI filters' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Agentic SOC Mitigation detects lateral dump of embedded identity database secrets' } },
-    'CVE-2018-13379': { waf: { mitigates: true, control: 'NIST SI-2 / SC-7', reason: 'Simulated virtual patch filters malicious requests to the FortiOS SSL VPN web portal when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
-    'CVE-2019-11510': { waf: { mitigates: true, control: 'NIST SI-2 / SC-7', reason: 'Simulated virtual patch filters malicious requests to the Pulse web portal when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
-    'CVE-2021-42013': { waf: { mitigates: true, control: 'NIST SI-2', reason: 'Simulated WAF rule blocks traversal requests.' }, ml: { mitigates: false, reason: 'The edge server is outside internal behavioral monitoring.' } },
+    'CVE-2018-13379': { waf: { mitigates: true, ruleStrictness: 'strict_virtual_patch', control: 'NIST SI-2 / SC-7', reason: 'Simulated virtual patch filters malicious requests to the FortiOS SSL VPN web portal when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
+    'CVE-2019-11510': { waf: { mitigates: true, ruleStrictness: 'strict_virtual_patch', control: 'NIST SI-2 / SC-7', reason: 'Simulated virtual patch filters malicious requests to the Pulse web portal when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
+    'CVE-2021-42013': { waf: { mitigates: true, ruleStrictness: 'signature_regex', control: 'NIST SI-2', reason: 'Simulated WAF rule blocks traversal requests.' }, ml: { mitigates: false, reason: 'The edge server is outside internal behavioral monitoring.' } },
     'CVE-2024-29824': { waf: { mitigates: false, reason: 'The EPM core server is on the internal network.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Simulated monitoring flags anomalous EPM database activity.' } },
     'CVE-2020-14882': { waf: { mitigates: false, reason: 'The internal WebLogic console is outside the perimeter WAF.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Simulated monitoring flags anomalous console access.' } },
     'CVE-2022-0543': { waf: { mitigates: false, reason: 'Redis protocol traffic is outside the HTTP WAF.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Simulated monitoring flags unexpected Redis child processes.' } },
@@ -453,8 +472,11 @@
   const DEFENSE_SCENARIOS = {
     baseline: { tag: '01 / BASELINE', name: 'Baseline (Unmitigated)' },
     patch: { tag: '02 / VIRTUAL PATCH', name: 'Virtual Patch (WAF)' },
-    defender: { tag: '03 / AGENTIC SOAR', name: 'Agentic SOAR' },
-    combined: { tag: '04 / DEFENSE IN DEPTH', name: 'Defense in Depth' }
+    canaries: { tag: '03 / CANARIES', name: 'Canaries (Alert Only)' },
+    defender: { tag: '04 / AGENTIC SOAR', name: 'Agentic SOAR' },
+    soc: { tag: '04 / AGENTIC SOC', name: 'Agentic SOC' },
+    'soc-canary': { tag: '05 / SOC + CANARY', name: 'Agentic SOC + Canary' },
+    combined: { tag: '05 / DEFENSE IN DEPTH', name: 'Defense in Depth' }
   };
 
   function createRng(seed) {
@@ -479,8 +501,8 @@
     return (hash >>> 0) / 4294967296;
   }
 
-  function soarDetects(assetId, seed) {
-    return hashNode(seed, assetId, 2166136261) < SOAR_DETECTION_RATE;
+  function soarDetects(assetId, seed, multiplier = 1) {
+    return hashNode(seed, assetId, 2166136261) < Math.min(0.95, SOAR_DETECTION_RATE * multiplier);
   }
 
   function wafPortalCovered(assetId, seed) {
@@ -839,52 +861,75 @@
     return { usable: false, reason: rejectedReason };
   }
 
-  function evaluateDefense(targetAsset, action, mode, seed, isCanary) {
+  function evaluateDefense(targetAsset, action, mode, seed, isCanary, options = {}) {
+    const attackerProfile = options.attackerProfile || null;
+    const defensePosture = options.defensePosture || null;
+    const multiplier = attackerProfile?.detectionMultiplier ?? 1;
+    const layerMonitored = !defensePosture?.telemetryLayers || defensePosture.telemetryLayers.includes(targetAsset.layerIdx);
+
     if (action.actionKind === 'exercise') {
       if (mode === 'patch' && action.finding.patchCovered) {
         return { addressed: true, badge: 'BLOCKED · VIRTUAL PATCH', reason: 'The exercise assumes a matching edge rule blocks this session.' };
       }
       return { addressed: false, reason: action.reason };
     }
-    if (isCanary && mode === 'combined') {
-      return {
-        addressed: true,
-        badge: 'BLOCKED · CANARY TRIGGER',
-        control: 'NIST SI-4',
-        reason: 'Access to the decoy generated an alert; the simulated SOAR playbook contained the attacker session.'
-      };
+    if (isCanary) {
+      if (mode === 'canaries') {
+        return {
+          addressed: false,
+          alertOnly: true,
+          badge: 'CANARY TRIGGERED · ALERT ONLY',
+          control: 'NIST SI-4',
+          reason: 'Decoy interaction emitted a high-confidence alert without blocking or containing the session.'
+        };
+      }
+      if (mode === 'combined' || mode === 'soc-canary') {
+        return {
+          addressed: true,
+          badge: 'CONTAINED · CANARY TRIGGER',
+          control: 'NIST SI-4',
+          reason: 'Access to the decoy generated an alert; Agentic SOC immediately contained the session.'
+        };
+      }
     }
     if (action.actionKind === 'diagnostic_access') {
       return { addressed: false, badge: 'SCOPED CREDENTIAL EXPOSED', reason: action.reason };
     }
 
-    if (mode === 'baseline') {
-      return { addressed: false, badge: 'EXPLOITED', reason: 'Baseline scenario unmitigated: zero active defenses applied.' };
+    if (mode === 'baseline' || mode === 'canaries') {
+      return {
+        addressed: false,
+        badge: mode === 'canaries' ? 'UNMITIGATED · NO DECOY HIT' : 'EXPLOITED',
+        reason: mode === 'canaries'
+          ? 'Canaries alert on decoy contact only; non-decoy paths remain unblocked.'
+          : 'Baseline scenario unmitigated: zero active defenses applied.'
+      };
     }
 
     const isHttpSurface = (targetAsset.interfaces || []).some(i => ['https', 'api-https', 'repo-http', 'storage-s3'].includes(i));
-    const nonHttpGroups = new Set(['aws-vpn', 'az-net', 'az-branch', 'partner-gw']);
+    const nonHttpGroups = new Set(['aws-vpn', 'az-net', 'az-branch', 'partner-gw', 'zyxel-atp']);
     const isNonHttpProtocol = nonHttpGroups.has(targetAsset.groupId) || !isHttpSurface;
     const portalIds = new Set(['forti-vpn', 'pulse-vpn', 'pan-globalprotect']);
     const portalCovered = !portalIds.has(targetAsset.groupId) || wafPortalCovered(targetAsset.id, seed);
+    const socEnabled = mode === 'defender' || mode === 'soc' || mode === 'soc-canary' || mode === 'combined';
 
     if (action.actionKind === 'anonymous_access') {
-      if ((mode === 'defender' || mode === 'combined') && soarDetects(targetAsset.id, seed)) {
-        return { addressed: true, badge: 'CONTAINED · AGENTIC SOAR', control: 'NIST AC-3 / SI-4', reason: 'Simulation assumption: SOAR detects and closes the public exposure.' };
+      if (socEnabled && layerMonitored && soarDetects(targetAsset.id, seed, multiplier)) {
+        return { addressed: true, badge: 'CONTAINED · AGENTIC SOC', control: 'NIST AC-3 / SI-4', reason: 'Simulation assumption: Agentic SOC detects and closes the public exposure.' };
       }
       return { addressed: false, badge: 'PUBLIC EXPOSURE', reason: action.reason };
     }
 
     if (action.actionKind === 'valid_credential' || action.actionKind === 'password_spray') {
-      if ((mode === 'defender' || mode === 'combined') && soarDetects(targetAsset.id, seed)) {
+      if (socEnabled && layerMonitored && soarDetects(targetAsset.id, seed, multiplier)) {
         return {
           addressed: true,
-          badge: 'CONTAINED · AGENTIC SOAR',
+          badge: 'CONTAINED · AGENTIC SOC',
           control: 'NIST SI-4 / AC-3',
           revokeCredentialId: action.credentialUsed ? action.credentialUsed.id : null,
           reason: action.actionKind === 'password_spray'
-            ? 'Simulation assumption: SOAR detects password-spray anomaly and locks the target account.'
-            : 'Simulation assumption: SOAR detects anomalous credential use and revokes the token.'
+            ? 'Simulation assumption: Agentic SOC detects password-spray anomaly and locks the target account.'
+            : 'Simulation assumption: Agentic SOC detects anomalous credential use and revokes the token.'
         };
       }
       return {
@@ -900,12 +945,17 @@
       waf: { mitigates: false, reason: 'No specific virtual patch is modeled for this vulnerability.' },
       ml: { mitigates: false, reason: 'No specific detection and response is modeled for this vulnerability.' }
     };
-    const wafMitigates = !isNonHttpProtocol && portalCovered && !!rule.waf?.mitigates;
-    const soarMitigates = !!rule.ml?.mitigates && soarDetects(targetAsset.id, seed);
+    const wafRuleMatches = !isNonHttpProtocol && portalCovered && !!rule.waf?.mitigates;
+    const wafEvadedByAdaptive = wafRuleMatches && rule.waf?.ruleStrictness === 'signature_regex' && !!attackerProfile?.adaptiveWafEvasion;
+    const wafMitigates = wafRuleMatches && !wafEvadedByAdaptive;
+    const soarMitigates = layerMonitored && !!rule.ml?.mitigates && soarDetects(targetAsset.id, seed, multiplier);
 
     if (mode === 'patch') {
       if (isNonHttpProtocol) {
         return { addressed: false, badge: 'WAF BLIND', reason: 'WAF operates at L7 HTTP; blind to non-HTTP protocols.' };
+      }
+      if (wafEvadedByAdaptive) {
+        return { addressed: false, badge: 'WAF EVADED · ADAPTIVE', reason: 'Agentic Observer/Guard re-encoded payload around static signature WAF rule.' };
       }
       if (wafMitigates) {
         return { addressed: true, badge: 'SHIELDED · WAF VIRTUAL PATCH', control: rule.waf.control, reason: rule.waf.reason };
@@ -917,11 +967,14 @@
       };
     }
 
-    if (mode === 'defender') {
+    if (mode === 'defender' || mode === 'soc' || mode === 'soc-canary') {
+      if (!layerMonitored) {
+        return { addressed: false, badge: 'TELEMETRY GAP', reason: `Infrastructure telemetry blind spot on Layer ${targetAsset.layerIdx + 1}.` };
+      }
       if (soarMitigates) {
         return {
           addressed: true,
-          badge: 'CONTAINED · AGENTIC SOAR',
+          badge: 'CONTAINED · AGENTIC SOC',
           control: rule.ml.control,
           revokeCredentialId: action.credentialUsed ? action.credentialUsed.id : null,
           reason: rule.ml.reason
@@ -930,7 +983,7 @@
       return {
         addressed: false,
         badge: 'ML MISSED',
-        reason: rule.ml?.mitigates ? 'Simulated SOAR detection missed this attack.' : (rule.ml?.reason || 'Activity does not trigger the simulated detection rule.')
+        reason: rule.ml?.mitigates ? 'Simulated Agentic SOC detection missed this attack.' : (rule.ml?.reason || 'Activity does not trigger the simulated detection rule.')
       };
     }
 
@@ -941,13 +994,13 @@
       if (soarMitigates) {
         return {
           addressed: true,
-          badge: 'CONTAINED · AGENTIC SOAR',
+          badge: 'CONTAINED · AGENTIC SOC',
           control: rule.ml.control,
           revokeCredentialId: action.credentialUsed ? action.credentialUsed.id : null,
           reason: rule.ml.reason
         };
       }
-      return { addressed: false, badge: 'UNADDRESSED', reason: 'The attack bypassed the simulated WAF rule and SOAR detection.' };
+      return { addressed: false, badge: 'UNADDRESSED', reason: 'The attack bypassed the simulated WAF rule and Agentic SOC detection.' };
     }
 
     return { addressed: false, badge: 'EXPLOITED', reason: 'Unmitigated.' };
@@ -966,11 +1019,18 @@
     const orderRank = new Map((estate.actionOrder || []).map((id, idx) => [id, idx]));
     const rankOf = id => (orderRank.has(id) ? orderRank.get(id) : 999999);
 
-    const canaryAsset = mode === 'combined'
+    const defensePosture = estate.defensePosture || null;
+    const canaryAssets = new Set(
+      defensePosture && Array.isArray(defensePosture.decoys)
+        ? defensePosture.decoys.map(d => d.assetId).filter(Boolean)
+        : estate.assets.filter(a => a.isDecoy).map(a => a.id)
+    );
+    const canaryAsset = mode === 'combined' && canaryAssets.size === 0
       ? estate.assets
           .filter(a => a.layerIdx === 3 && estate.relationships.some(r => r.targetId === a.id))
           .sort((a, b) => a.id.localeCompare(b.id))[0] || null
       : null;
+    if (canaryAsset) canaryAssets.add(canaryAsset.id);
 
     const state = {
       reachedAssets: new Map(),
@@ -985,8 +1045,10 @@
     const events = [];
     const controls = [];
     const signals = new Map();
-    let firstBoundaryScope;
-    let canaryTouched = false;
+    const containedSessions = new Set();
+    const sessionHops = new Map();
+    const triggeredDecoys = new Set();
+    const attackerProfile = timing?.attackerProfile || null;
 
     function scopeFor(source) {
       let entry = source.id;
@@ -998,33 +1060,43 @@
       return entry;
     }
 
-    function signal(scope, targetId, source, timeSec) {
+    function signal(scope, targetId, source, timeSec, contain = true) {
       if (signals.has(scope)) {
         if (source === 'canary') controls.push({ scope, targetId, source, timeSec, control: 'signal' });
+        if (contain) containedSessions.add(scope);
         return;
       }
-      const effectiveAt = timeSec + timing.responseDelay;
+      if (!contain) {
+        controls.push({ scope, targetId, source, timeSec, control: 'signal' });
+        return;
+      }
+      const effectiveAt = timeSec + (timing?.responseDelay ?? 0);
       signals.set(scope, effectiveAt);
+      containedSessions.add(scope);
       controls.push(
         { scope, targetId, source, timeSec, control: 'signal' },
-        { scope, targetId, source, timeSec: timeSec + timing.decisionDelay, control: 'decision' },
+        { scope, targetId, source, timeSec: timeSec + (timing?.decisionDelay ?? 0), control: 'decision' },
         { scope, targetId, source, timeSec: effectiveAt, control: 'enforced' }
       );
     }
 
-    function recordTelemetry(source, target, action, scope, timeSec) {
-      if (!timing?.respond) return;
-      if (!canaryTouched && (
-        (timing.canary === 'early' && !source && action.actionKind !== 'diagnostic_access') ||
-        (timing.canary === 'late' && action.yieldsCapability === 'data_read')
-      )) {
-        canaryTouched = true;
-        signal(scope, target.id, 'canary', timeSec + timing.canaryDelay);
+    function recordTelemetry(source, target, action, scope, timeSec, isCanary) {
+      if (!timing) return;
+      if (isCanary) {
+        if ((mode === 'canaries' || mode === 'soc-canary') && !triggeredDecoys.has(target.id)) {
+          triggeredDecoys.add(target.id);
+          signal(scope, target.id, 'canary', timeSec, mode === 'soc-canary');
+        }
+        return;
       }
-      if (timing.boundarySignal === 'none' || target.layerIdx !== 1 || target.groupId === 'staging-status') return;
-      firstBoundaryScope ??= scope;
-      if (timing.boundarySignal !== 'first' || scope === firstBoundaryScope) {
-        signal(scope, target.id, 'boundary', timeSec);
+      if (!timing.respond) return;
+      const layerMonitored = !defensePosture?.telemetryLayers || defensePosture.telemetryLayers.includes(target.layerIdx);
+      if (!layerMonitored || target.groupId === 'staging-status') return;
+      const hops = (sessionHops.get(scope) || 0) + 1;
+      sessionHops.set(scope, hops);
+      // Cross-boundary sequence correlation triggers on >= 2 monitored hops
+      if (hops >= 2 && target.layerIdx >= 1) {
+        signal(scope, target.id, 'boundary', timeSec, true);
       }
     }
 
@@ -1037,16 +1109,47 @@
     let dataReached = false;
 
     function processTransition(sourceAsset, targetAsset, relationship) {
-      const timeSec = timing?.stageTimes[targetAsset.layerIdx];
-      const scope = timing?.respond && (sourceAsset ? scopeFor(sourceAsset) : targetAsset.id);
-      if (scope && signals.get(scope) < timeSec) return;
+      const isCanaryTarget = canaryAssets.has(targetAsset.id);
+      const timeSec = (isCanaryTarget && timing?.canaryDelay != null && targetAsset.layerIdx === 1)
+        ? timing.canaryDelay
+        : timing?.stageTimes?.[targetAsset.layerIdx];
+      const scope = timing ? (sourceAsset ? scopeFor(sourceAsset) : targetAsset.id) : null;
       const transitionKey = `${sourceAsset ? sourceAsset.id : 'EXTERNAL'}->${targetAsset.id}:${relationship ? relationship.id : 'EXT'}`;
-      if (visitedTransitions.has(transitionKey)) return;
+      if (visitedTransitions.has(transitionKey)) return false;
       visitedTransitions.add(transitionKey);
 
-      attemptedTransitions++;
+      if (scope && containedSessions.has(scope) && (signals.get(scope) ?? Infinity) <= timeSec) {
+        attemptedTransitions++;
+        blockedTransitions++;
+        events.push({
+          sourceId: sourceAsset ? sourceAsset.id : null,
+          targetId: targetAsset.id,
+          relationshipId: relationship ? relationship.id : null,
+          finding: null,
+          credentialUsed: null,
+          technique: null,
+          requiredAccess: null,
+          reachability: `${sourceAsset ? sourceAsset.label : 'External'} -> ${targetAsset.label}`,
+          grantedCapability: null,
+          acquiredCredentials: [],
+          scope,
+          mitigation: {
+            addressed: true,
+            badge: 'CONTAINED · AGENTIC SOC',
+            control: 'NIST SI-4 / AC-3',
+            reason: 'Session contained by Agentic SOC before this hop.'
+          },
+          outcome: 'contained',
+          reason: 'Session contained by Agentic SOC before this hop.'
+        });
+        return false;
+      }
 
-      const isCanary = canaryAsset && canaryAsset.id === targetAsset.id;
+      const isCanary = canaryAssets.has(targetAsset.id);
+      if ((isCanary || targetAsset.isDecoy) && (!isCanary || (mode !== 'canaries' && mode !== 'soc-canary' && mode !== 'combined'))) {
+        return false;
+      }
+      attemptedTransitions++;
       const candidates = evaluateDistinctActions(state, sourceAsset, targetAsset, relationship, estate);
 
       if (!candidates[0].eligible) {
@@ -1078,6 +1181,7 @@
         return;
       }
 
+      let gainedAccess = false;
       for (const action of distinctActions) {
         const currentReach = state.reachedAssets.get(targetAsset.id);
         if (currentReach && currentReach.capabilities.has(action.yieldsCapability)) {
@@ -1085,12 +1189,18 @@
         }
 
         eligibleTransitions++;
-        const mitigation = evaluateDefense(targetAsset, action, timing?.respond ? 'baseline' : mode, estate.seed, isCanary);
+        const mitigation = evaluateDefense(targetAsset, action, mode, estate.seed, isCanary, {
+          attackerProfile,
+          defensePosture
+        });
 
         if (mitigation.addressed) {
           blockedTransitions++;
           if (mitigation.revokeCredentialId) {
             state.revokedCredentials.add(mitigation.revokeCredentialId);
+          }
+          if (isCanary && (mode === 'soc-canary' || mode === 'combined')) {
+            recordTelemetry(sourceAsset, targetAsset, action, scope, timeSec, true);
           }
           events.push({
             sourceId: sourceAsset ? sourceAsset.id : null,
@@ -1103,6 +1213,7 @@
             reachability: action.reachability,
             grantedCapability: null,
             acquiredCredentials: [],
+            ...(scope && { scope }),
             mitigation,
             outcome: 'blocked',
             reason: mitigation.reason
@@ -1116,7 +1227,7 @@
         const pairBudgetKey = `${sourceId || 'EXTERNAL'}->${targetAsset.id}`;
         const pairAlreadyCounted = succeededPairs.has(pairBudgetKey);
         const srcCount = sourceId ? (onwardSuccessCount.get(sourceId) || 0) : 0;
-        const dataCap = mode === 'baseline' ? MAX_SUCCESS_PER_LAYER : 1;
+        const dataCap = (mode === 'baseline' || mode === 'canaries') ? MAX_SUCCESS_PER_LAYER : 1;
         const layerCap = targetAsset.layerIdx === 3 ? dataCap : MAX_SUCCESS_PER_LAYER;
 
         if ((!pairAlreadyCounted && sourceId && srcCount >= MAX_ONWARD_PER_SOURCE) ||
@@ -1141,11 +1252,12 @@
         }
 
         // Grant capability and update state
+        gainedAccess = true;
         succeededTransitions++;
-        if (!alreadyReached) layerSuccessCount[targetAsset.layerIdx]++;
+        if (!alreadyReached && !isCanary) layerSuccessCount[targetAsset.layerIdx]++;
         if (sourceId && !pairAlreadyCounted) onwardSuccessCount.set(sourceId, srcCount + 1);
         succeededPairs.add(pairBudgetKey);
-        if (action.yieldsCapability === 'data_read') dataReached = true;
+        if (action.yieldsCapability === 'data_read' && !isCanary) dataReached = true;
 
         let caps;
         if (currentReach) {
@@ -1187,35 +1299,66 @@
           acquiredCredentials: newlyAcquired,
           ...(scope && { scope }),
           mitigation,
-          outcome: 'succeeded',
-          reason: action.reason
+          outcome: isCanary && mode === 'canaries' ? 'alert_only' : 'succeeded',
+          reason: mitigation.alertOnly ? mitigation.reason : action.reason
         });
-        recordTelemetry(sourceAsset, targetAsset, action, scope, timeSec);
+        recordTelemetry(sourceAsset, targetAsset, action, scope, timeSec, isCanary);
       }
+      return gainedAccess;
     }
 
-    // Layer 0 external entries
     const entryAssets = estate.assets
       .filter(a => a.layerIdx === 0 && a.isExternalEntry)
       .sort((a, b) => rankOf(a.id) - rankOf(b.id));
-    for (const entry of entryAssets) {
-      processTransition(null, entry, null);
-    }
 
-    // Layer 1..3 progression from reached assets
-    for (let layer = 0; layer < 3; layer++) {
-      const reachedInLayer = [...state.reachedAssets.entries()]
-        .filter(([, info]) => info.layerIdx === layer)
-        .map(([id]) => assetById.get(id))
-        .sort((a, b) => rankOf(a.id) - rankOf(b.id));
+    if (attackerProfile?.maxConcurrentBranches) {
+      const frontier = entryAssets.map(entry => ({ sourceAsset: null, targetAsset: entry, relationship: null }));
+      const maxWaves = attackerProfile.maxConcurrentBranches === 1 ? 40 : 16;
+      let wave = 0;
+      while (frontier.length > 0 && wave < maxWaves) {
+        const batch = frontier.splice(0, attackerProfile.maxConcurrentBranches);
+        const discovered = [];
+        for (const step of batch) {
+          const ok = processTransition(step.sourceAsset, step.targetAsset, step.relationship);
+          if (ok && step.targetAsset.layerIdx < 3) {
+            const outRels = estate.relationships
+              .filter(r => r.sourceId === step.targetAsset.id)
+              .sort((a, b) => rankOf(a.targetId) - rankOf(b.targetId));
+            for (const rel of outRels) {
+              const tgt = assetById.get(rel.targetId);
+              if (tgt) discovered.push({ sourceAsset: step.targetAsset, targetAsset: tgt, relationship: rel });
+            }
+          }
+        }
+        if (attackerProfile.maxConcurrentBranches === 1) {
+          frontier.unshift(...discovered);
+        } else {
+          frontier.push(...discovered);
+        }
+        wave++;
+      }
+      if (frontier.length > 0 && !dataReached) truncated = true;
+    } else {
+      // Layer 0 external entries
+      for (const entry of entryAssets) {
+        processTransition(null, entry, null);
+      }
 
-      for (const src of reachedInLayer) {
-        const outRels = estate.relationships
-          .filter(r => r.sourceId === src.id)
-          .sort((a, b) => rankOf(a.targetId) - rankOf(b.targetId));
-        for (const rel of outRels) {
-          const tgt = assetById.get(rel.targetId);
-          if (tgt) processTransition(src, tgt, rel);
+      // Layer 1..3 progression from reached assets
+      for (let layer = 0; layer < 3; layer++) {
+        const reachedInLayer = [...state.reachedAssets.entries()]
+          .filter(([, info]) => info.layerIdx === layer)
+          .map(([id]) => assetById.get(id))
+          .sort((a, b) => rankOf(a.id) - rankOf(b.id));
+
+        for (const src of reachedInLayer) {
+          const outRels = estate.relationships
+            .filter(r => r.sourceId === src.id)
+            .sort((a, b) => rankOf(a.targetId) - rankOf(b.targetId));
+          for (const rel of outRels) {
+            const tgt = assetById.get(rel.targetId);
+            if (tgt) processTransition(src, tgt, rel);
+          }
         }
       }
     }
@@ -1243,6 +1386,7 @@
         succeededTransitions,
         blockedTransitions,
         ineligibleTransitions,
+        containedSessions: containedSessions.size,
         truncated,
         dataReached,
         completeFourLayerPath,
@@ -1261,7 +1405,7 @@
     return copy;
   }
 
-  function seedExercise(assets, relationships, preferredIngress, rng) {
+  function seedVerifiedPath(assets, relationships, preferredIngress, rng, findings, credentials, addCveFindingForAsset, assignCredentialOnSource) {
     const byId = new Map(assets.map(asset => [asset.id, asset]));
     const bySource = new Map();
     for (const link of relationships) {
@@ -1270,18 +1414,18 @@
     }
 
     function findRoute(asset, incoming = null) {
-      const stage = { assetId: asset.id, relationshipId: incoming };
+      const stage = { asset, link: incoming };
       if (asset.layerIdx === 3) return [stage];
       for (const link of shuffleWithRng(bySource.get(asset.id) || [], rng)) {
         const next = byId.get(link.targetId);
         if (next.layerIdx !== asset.layerIdx + 1) continue;
-        const tail = findRoute(next, link.id);
+        const tail = findRoute(next, link);
         if (tail) return [stage, ...tail];
       }
       return null;
     }
 
-    const startingPoints = shuffleWithRng(assets.filter(asset => asset.isExternalEntry), rng);
+    const startingPoints = shuffleWithRng(assets.filter(asset => asset.isExternalEntry && asset.groupId !== 'support-diagnostics'), rng);
     startingPoints.sort((a, b) => Number(b.groupId === preferredIngress) - Number(a.groupId === preferredIngress));
     let route;
     for (const start of startingPoints) {
@@ -1290,27 +1434,120 @@
     }
     if (!route) return [];
 
+    const [s0, s1, s2, s3] = route;
     const fromLogs = rng() < 0.25;
-    const patchCovered = !fromLogs && rng() < 0.65;
-    const stages = [
-      fromLogs
-        ? ['Credential exposed in sample logs', 'A fictional session was accepted after a credential appeared in sample logs.']
-        : ['Edge access weakness', 'The edge accepted the fictional session.'],
-      ['Overbroad session access', 'The fictional session crossed the identity boundary.'],
-      ['Internal service access weakness', 'The fictional session reached the internal service.'],
-      ['Overbroad sample record access', 'The fictional session read a sample record.']
-    ];
-    // Leave some generated environments without a simulated data read.
-    const length = rng() < 0.85 ? stages.length : stages.length - 1;
-    return route.slice(0, length).map((stage, index) => ({
-      ...stage,
-      id: `exercise-${stage.assetId}`,
-      kind: 'exercise',
-      provenance: 'tabletop_exercise',
-      title: stages[index][0],
-      description: stages[index][1],
-      ...(index === 0 && { patchCovered, ...(fromLogs && { technique: 'T1552.001' }) })
-    }));
+    let cap0 = 'app_exec';
+
+    if (fromLogs) {
+      if (!findings.some(f => f.assetId === s0.asset.id)) {
+        findings.push({
+          id: `finding-${s0.asset.id}-logs`,
+          assetId: s0.asset.id,
+          kind: 'anonymous_access',
+          inKev: false,
+          provenance: 'synthetic_assumption',
+          technique: 'T1552.001',
+          title: 'Credential exposed in sample logs',
+          description: 'Exposed diagnostics/application logs contain a synthetic service token.',
+          yieldsCapability: 'file_read'
+        });
+      }
+      cap0 = findings.find(f => f.assetId === s0.asset.id)?.yieldsCapability || 'file_read';
+      s1.link.requiredSourceCapability = cap0;
+      credentials.push({
+        id: `cred-path-${s0.asset.id}-to-${s1.asset.id}`,
+        kind: 'api_token',
+        label: `Synthetic token from ${s0.asset.label}`,
+        scope: 'authenticate',
+        permissions: ['authenticate'],
+        targetGroupIds: [],
+        targetAssetIds: [s1.asset.id],
+        audience: s1.asset.id,
+        revoked: false,
+        expired: false,
+        mfaRequired: false,
+        sourceAssetId: s0.asset.id,
+        requiredSourceCapability: cap0
+      });
+    } else {
+      if (!findings.some(f => f.assetId === s0.asset.id)) {
+        if (!addCveFindingForAsset(s0.asset)) {
+          findings.push({
+            id: `finding-${s0.asset.id}-edge`,
+            assetId: s0.asset.id,
+            kind: 'anonymous_access',
+            inKev: false,
+            provenance: 'synthetic_assumption',
+            technique: 'T1190',
+            title: 'Exposed edge service',
+            description: 'External interface permits unauthenticated access.',
+            yieldsCapability: 'app_exec'
+          });
+        }
+      }
+      cap0 = findings.find(f => f.assetId === s0.asset.id)?.yieldsCapability || 'app_exec';
+      s1.link.requiredSourceCapability = cap0;
+      if (cap0 === 'file_read' && !credentials.some(c => c.sourceAssetId === s0.asset.id && c.targetAssetIds?.includes(s1.asset.id))) {
+        credentials.push({
+          id: `cred-path-${s0.asset.id}-to-${s1.asset.id}`,
+          kind: 'api_token',
+          label: `Token disclosed via ${s0.asset.label}`,
+          scope: 'authenticate',
+          permissions: ['authenticate'],
+          targetGroupIds: [],
+          targetAssetIds: [s1.asset.id],
+          audience: s1.asset.id,
+          revoked: false,
+          expired: false,
+          mfaRequired: false,
+          sourceAssetId: s0.asset.id,
+          requiredSourceCapability: 'file_read'
+        });
+      }
+    }
+
+    // Layer 1
+    let cap1 = 'account_session';
+    if (cap0 === 'app_exec' && !fromLogs) {
+      if (!findings.some(f => f.assetId === s1.asset.id)) {
+        addCveFindingForAsset(s1.asset);
+      }
+      const f1 = findings.find(f => f.assetId === s1.asset.id);
+      if (f1 && (!f1.requiredInterface || f1.requiredInterface === s1.link.protocol)) {
+        cap1 = f1.yieldsCapability || 'app_exec';
+      } else {
+        assignCredentialOnSource(s0.asset, s1.asset, 'authenticate', cap0);
+        cap1 = 'account_session';
+      }
+    } else {
+      cap1 = 'account_session';
+    }
+    s2.link.requiredSourceCapability = cap1;
+
+    // Layer 2
+    let cap2 = 'app_exec';
+    if (!findings.some(f => f.assetId === s2.asset.id)) {
+      addCveFindingForAsset(s2.asset);
+    }
+    const f2 = findings.find(f => f.assetId === s2.asset.id);
+    if (f2 && (!f2.requiredInterface || f2.requiredInterface === s2.link.protocol)) {
+      cap2 = f2.yieldsCapability || 'app_exec';
+    } else {
+      assignCredentialOnSource(s1.asset, s2.asset, 'authenticate', cap1);
+      cap2 = 'account_session';
+    }
+    s3.link.requiredSourceCapability = cap2;
+
+    // Layer 3 (85% complete path to protected data, 15% stop at Layer 2)
+    if (rng() < 0.85) {
+      if (!findings.some(f => f.assetId === s3.asset.id) && !addCveFindingForAsset(s3.asset)) {
+        assignCredentialOnSource(s2.asset, s3.asset, 'read', cap2);
+      } else if (!findings.some(f => f.assetId === s3.asset.id && (!f.requiredInterface || f.requiredInterface === s3.link.protocol))) {
+        assignCredentialOnSource(s2.asset, s3.asset, 'read', cap2);
+      }
+    }
+
+    return route.map(stage => stage.asset.id);
   }
 
   /**
@@ -1559,20 +1796,24 @@
       return true;
     };
 
-    const assignCredentialOnSource = (srcAsset, targetAsset, scope = 'read') => {
+    const assignCredentialOnSource = (srcAsset, targetAsset, scope = 'read', requiredSourceCapability = 'app_exec') => {
       const credId = `cred-${srcAsset.id}-to-${targetAsset.id}`;
       if (credentials.some(c => c.id === credId)) return;
+      const permissions = scope === 'read' ? ['read'] : scope === 'authenticate' ? ['authenticate'] : [scope];
       credentials.push({
         id: credId,
         kind: targetAsset.layerIdx === 3 ? 'db_credential' : 'service_account',
         label: `Synthetic ${scope} credential for ${targetAsset.groupId}`,
         scope,
+        permissions,
         targetGroupIds: [],
         targetAssetIds: [targetAsset.id],
+        audience: targetAsset.id,
         revoked: false,
+        expired: false,
         mfaRequired: false,
         sourceAssetId: srcAsset.id,
-        requiredSourceCapability: 'app_exec'
+        requiredSourceCapability
       });
     };
 
@@ -1844,11 +2085,72 @@
       actionOrder.unshift(diagnostics.id);
     }
     if (preset === 'mixed' && options.seedExercise) {
-      const exercise = seedExercise(keptAssets, keptRels, preferredIngress, rng);
-      findings.push(...exercise);
-      const priority = exercise.map(finding => finding.assetId);
+      const priority = seedVerifiedPath(keptAssets, keptRels, preferredIngress, rng, findings, credentials, addCveFindingForAsset, assignCredentialOnSource);
       actionOrder.splice(0, actionOrder.length, ...priority, ...actionOrder.filter(id => !priority.includes(id)));
     }
+
+    // Estate-owned defensive visibility & decoy placement (invariant across attacker switches)
+    const telemetryLayers = rng() < 0.75 ? [0, 1, 2, 3] : [1, 2, 3];
+    const decoys = [];
+    const decoyAnchor = (preset === 'demo' && keptAssets.find(a => a.layerIdx === 0 && a.groupId === 'f5-gateway')) ||
+      keptAssets.find(a => a.layerIdx === 0 && a.isExternalEntry && findings.some(f => f.assetId === a.id && f.yieldsCapability)) ||
+      keptAssets.find(a => a.layerIdx === 1 && a.groupId !== 'staging-status');
+    if ((preset === 'mixed' || preset === 'demo') && decoyAnchor) {
+      const decoyLayer = decoyAnchor.layerIdx + 1;
+      const decoyId = 'canary-decoy-1';
+      keptAssets.push({
+        id: decoyId,
+        groupId: decoyLayer === 3 ? 'lake-cust' : 'comp-registry',
+        label: 'Canary Decoy Vault',
+        product: 'Instrumented Decoy',
+        assumedVersion: '1.0',
+        conditions: {},
+        layerIdx: decoyLayer,
+        trustZone: TRUST_ZONES[decoyLayer],
+        interfaces: ['api-https', 'https'],
+        auth: 'token',
+        isExternalEntry: false,
+        isSecurity: true,
+        isDecoy: true,
+        icon: 'threat-detection.png',
+        clusterName: 'Deception Decoys',
+        variantIdx: 0,
+        x: decoyLayer === 1 ? 0.34 : decoyLayer === 3 ? 0.84 : 0.62,
+        y: 0.90
+      });
+      const anchorCap = findings.find(f => f.assetId === decoyAnchor.id)?.yieldsCapability || 'app_exec';
+      const relCap = anchorCap === 'file_read' ? 'account_session' : anchorCap;
+      keptRels.push({
+        id: `rel-${decoyAnchor.id}->${decoyId}`,
+        sourceId: decoyAnchor.id,
+        targetId: decoyId,
+        protocol: 'api-https',
+        direction: 'outbound',
+        requiredSourceCapability: relCap,
+        trustBoundary: inferTrustBoundary(decoyAnchor.layerIdx, decoyLayer),
+        purpose: 'Instrumented canary decoy endpoint'
+      });
+      findings.push({
+        id: `finding-${decoyId}`,
+        assetId: decoyId,
+        kind: 'anonymous_access',
+        inKev: false,
+        provenance: 'synthetic_decoy',
+        technique: 'T1552',
+        title: 'Canary decoy interaction',
+        description: 'Instrumented decoy triggers high-confidence deception alert on access.',
+        yieldsCapability: 'decoy_alert'
+      });
+      decoys.push({
+        id: decoyId,
+        kind: 'decoy_asset',
+        assetId: decoyId,
+        credentialId: null,
+        placement: decoyLayer <= 2 ? 'early' : 'late'
+      });
+      actionOrder.unshift(decoyId);
+    }
+
     const estate = {
       schemaVersion: SCHEMA_VERSION,
       seed,
@@ -1858,6 +2160,11 @@
         : preset === 'logs'
           ? 'CREDENTIAL-IN-LOGS · INTENTIONAL 4-LAYER PATH'
           : null,
+      defensePosture: {
+        telemetryLayers,
+        socCoverageSeed: seed,
+        decoys
+      },
       assets: keptAssets,
       findings,
       credentials,
@@ -2518,14 +2825,30 @@
     artex: { decoyTime: 2 * 60, boundaryTime: 14 * 60 + 45, lateralTime: 15 * 60, protectedReadTime: 15 * 60 + 35 }
   };
 
-  // Names identify scenario examples. Signal and decoy settings are illustrative.
+  const ATTACKER_PROFILES = {
+    pre2023: {
+      id: 'pre2023',
+      maxConcurrentBranches: 1,
+      adaptiveWafEvasion: false,
+      detectionMultiplier: 1.0
+    },
+    artex: {
+      id: 'artex',
+      maxConcurrentBranches: 3,
+      adaptiveWafEvasion: true,
+      detectionMultiplier: 0.72
+    }
+  };
+
+  // Names identify scenario examples. Pace selects the capability profile;
+  // boundary telemetry and decoy placement come from estate.defensePosture.
   const WIRE_ATTACKERS = {
-    lockbit: { pace: 'pre2023', boundarySignal: 'all', canary: 'early' },
-    conti: { pace: 'pre2023', boundarySignal: 'first', canary: 'early' },
-    blackcat: { pace: 'pre2023', boundarySignal: 'none', canary: 'late' },
-    hive: { pace: 'pre2023', boundarySignal: 'all', canary: 'untouched' },
-    revil: { pace: 'pre2023', boundarySignal: 'none', canary: 'untouched' },
-    artex: { pace: 'artex', boundarySignal: 'all', canary: 'early' }
+    lockbit: { pace: 'pre2023' },
+    conti: { pace: 'pre2023' },
+    blackcat: { pace: 'pre2023' },
+    hive: { pace: 'pre2023' },
+    revil: { pace: 'pre2023' },
+    artex: { pace: 'artex' }
   };
 
   const WIRE_READ_MINUTES = {
@@ -2553,21 +2876,29 @@
   function simulateWireRun(estate, mode, attackerId) {
     const attacker = WIRE_ATTACKERS[attackerId];
     if (!attacker) throw new Error(`Unknown Wire attacker: ${attackerId}`);
+    const attackerProfile = ATTACKER_PROFILES[attacker.pace] || ATTACKER_PROFILES.pre2023;
+    const posture = estate.defensePosture || { telemetryLayers: [0, 1, 2], decoys: [] };
     const { stageTimes, earlyCanaryDelay } = wireTiming(estate.seed, attacker.pace);
     const result = simulateEstate(estate, mode, {
       stageTimes,
       respond: mode === 'soc' || mode === 'soc-canary',
-      boundarySignal: attacker.boundarySignal,
-      canary: mode === 'soc-canary' ? attacker.canary : null,
-      canaryDelay: attacker.canary === 'late' ? 1 : earlyCanaryDelay,
+      boundarySignal: posture.telemetryLayers.length >= 3 ? 'all' : (posture.telemetryLayers.length ? 'first' : 'none'),
+      canary: (mode === 'canaries' || mode === 'soc-canary') ? (posture.decoys && posture.decoys.length ? 'early' : 'untouched') : null,
+      canaryDelay: earlyCanaryDelay,
       decisionDelay: 15,
-      responseDelay: 60
+      responseDelay: 60,
+      attackerProfile
     });
     const layerById = new Map(estate.assets.map(asset => [asset.id, asset.layerIdx]));
-    const events = result.events.map(event => ({
-      ...event, timeSec: stageTimes[layerById.get(event.targetId)]
-    }));
-    return { ...result, events, lanes: attacker.pace === 'artex' ? 3 : 1 };
+    const decoyIds = new Set(estate.assets.filter(a => a.isDecoy).map(a => a.id));
+    const events = result.events.map(event => {
+      const layer = layerById.get(event.targetId);
+      const timeSec = (decoyIds.has(event.targetId) && layer === 1)
+        ? earlyCanaryDelay
+        : stageTimes[layer];
+      return { ...event, timeSec };
+    });
+    return { ...result, events, lanes: attackerProfile.maxConcurrentBranches, attackerProfile };
   }
 
   const COMPARISON_FIXTURES = {
@@ -3021,6 +3352,8 @@
     ALLOWED_CONNECTIONS,
     EXTERNAL_ENTRY_GROUPS,
     DEFENSE_SCENARIOS,
+    ATTACKER_PROFILES,
+    WIRE_ATTACKERS,
     COMPARISON_PROFILES,
     COMPARISON_DEFENSES,
     COMPARISON_FIXTURES,

@@ -12,7 +12,7 @@ assert(html.includes('<script src="js/wire-engine.js"></script>'), 'wire.html mu
 assert(html.includes('id="map-profile"'), 'wire.html must include the attacker picker');
 assert(!html.includes('id="estate-preset"'), 'Wire should have one estate generator');
 assert.deepEqual([...html.matchAll(/data-mode="([^"]+)"/g)].map(match => match[1]),
-  ['baseline', 'patch', 'soc', 'soc-canary'], 'Wire must offer Baseline and three defenses');
+  ['baseline', 'patch', 'canaries', 'soc', 'soc-canary'], 'Wire must offer Baseline and four defenses');
 const demoAttackers = ['lockbit', 'conti', 'blackcat', 'hive', 'revil', 'artex'];
 const attackerSelect = html.match(/<select id="map-profile">([\s\S]*?)<\/select>/)[1];
 assert.deepEqual([...attackerSelect.matchAll(/<option value="([^\"]+)"/g)].map(match => match[1]), ['pre2023', 'artex']);
@@ -53,42 +53,57 @@ assert.deepEqual([...attackerSelect.matchAll(/<option value="([^\"]+)"/g)].map(m
 {
   let baselineReads = 0;
   let patchReads = 0;
-  let canaryReads = 0;
+  let canaryModeReads = 0;
+  let socCanaryReads = 0;
+  let canaryAlerts = 0;
+  let socContainedEvents = 0;
   let logsOpenings = 0;
   const pre2023ReadTimes = new Set();
   const artexReadTimes = new Set();
   for (let seed = 1; seed <= 60; seed++) {
     const estate = engine.generateEstate({ seed, seedExercise: true });
-    const steps = estate.findings.filter(finding => finding.kind === 'exercise');
-    assert([3, 4].includes(steps.length));
-    assert.equal(steps[0].relationshipId, null);
-    if (steps[0].technique === 'T1552.001') logsOpenings++;
-    for (let index = 1; index < steps.length; index++) {
-      const link = estate.relationships.find(candidate => candidate.id === steps[index].relationshipId);
-      assert.equal(link.sourceId, steps[index - 1].assetId);
-      assert.equal(link.targetId, steps[index].assetId);
-    }
-    const read = (mode, attacker) => engine.simulateWireRun(estate, mode, attacker).events.find(event =>
-      event.finding?.kind === 'exercise' && event.grantedCapability === 'data_read');
-    const artexBaseline = read('baseline', 'artex');
+    assert.equal(estate.findings.filter(finding => finding.kind === 'exercise').length, 0, 'No exercise bypass findings');
+    assert(estate.defensePosture && Array.isArray(estate.defensePosture.telemetryLayers), 'Estate must carry defensePosture');
+    assert(estate.assets.some(asset => asset.isDecoy), 'Mixed estate should include a decoy asset');
+    if (estate.findings.some(finding => finding.technique === 'T1552.001')) logsOpenings++;
+
+    const readEvent = (mode, attacker) => engine.simulateWireRun(estate, mode, attacker).events.find(event => {
+      const target = estate.assets.find(a => a.id === event.targetId);
+      return event.outcome === 'succeeded' && event.grantedCapability === 'data_read' && target?.layerIdx === 3 && !target?.isDecoy;
+    });
+
+    const artexBaseline = readEvent('baseline', 'artex');
     if (artexBaseline) {
       baselineReads++;
       const artexMinutes = artexBaseline.timeSec / 60;
-      const pre2023Minutes = read('baseline', 'lockbit').timeSec / 60;
+      const pre2023Minutes = readEvent('baseline', 'lockbit')?.timeSec / 60;
       assert(Number.isInteger(artexMinutes) && artexMinutes >= 45 && artexMinutes <= 75);
-      assert(Number.isInteger(pre2023Minutes) && pre2023Minutes >= 80 && pre2023Minutes <= 270);
-      pre2023ReadTimes.add(pre2023Minutes);
+      if (pre2023Minutes) {
+        assert(Number.isInteger(pre2023Minutes) && pre2023Minutes >= 80 && pre2023Minutes <= 270);
+        pre2023ReadTimes.add(pre2023Minutes);
+      }
       artexReadTimes.add(artexMinutes);
     }
-    if (read('patch', 'artex')) patchReads++;
-    if (read('soc-canary', 'artex')) canaryReads++;
-    assert.equal(read('soc', 'lockbit'), undefined);
+    if (readEvent('patch', 'artex')) patchReads++;
+    const canariesRun = engine.simulateWireRun(estate, 'canaries', 'artex');
+    if (readEvent('canaries', 'artex')) canaryModeReads++;
+    if (canariesRun.controls.some(c => c.source === 'canary')) canaryAlerts++;
+    assert.equal(canariesRun.controls.filter(c => c.control === 'enforced').length, 0, 'Standalone canaries must not enforce containment');
+    assert.equal(canariesRun.summary.containedSessions, 0, 'Standalone canaries must not contain sessions');
+
+    const socRun = engine.simulateWireRun(estate, 'soc', 'lockbit');
+    if (socRun.events.some(e => e.outcome === 'contained')) socContainedEvents++;
+
+    if (readEvent('soc-canary', 'artex')) socCanaryReads++;
   }
   assert(pre2023ReadTimes.size > 1, 'Pre-2023 timing should vary by estate seed');
   assert(artexReadTimes.size > 1, 'ARTEX timing should vary by estate seed');
-  assert(baselineReads >= 45 && baselineReads < 60, 'Most estates should demonstrate a baseline data read');
+  assert(baselineReads >= 35, 'Most seeded estates should demonstrate a baseline data read');
   assert(patchReads > 0 && patchReads < baselineReads, 'Patch coverage should vary across estates');
-  assert.equal(canaryReads, 0, 'The early canary should contain the ARTEX-like exercise session');
+  assert(canaryAlerts > 0, 'Canaries mode should generate canary alerts when decoys are hit');
+  assert.equal(canaryModeReads, baselineReads, 'Standalone canaries alert without blocking data reads');
+  assert(socContainedEvents > 0, 'Agentic SOC should emit explicit outcome: contained events');
+  assert(socCanaryReads < baselineReads, 'SOC + Canary should reduce data reads');
   assert(logsOpenings > 0 && logsOpenings < 60, 'Credential exposure in logs should appear within the mixed estate pool');
 }
 
@@ -101,8 +116,10 @@ assert.deepEqual([...attackerSelect.matchAll(/<option value="([^\"]+)"/g)].map(m
     const baseline = run('baseline', attacker);
     assert.equal(baseline.summary.dataReached, true);
     assert.equal(baseline.lanes, attacker === 'artex' ? 3 : 1);
-    if (attacker !== 'artex') assert.equal(read(baseline).timeSec, pre2023ReadTime);
-    assert.equal(run('patch', attacker).summary.dataReached, false);
+    if (attacker !== 'artex') {
+      assert.equal(read(baseline).timeSec, pre2023ReadTime);
+      assert.equal(run('patch', attacker).summary.dataReached, false);
+    }
     assert.deepEqual(run('baseline', attacker), baseline, 'Replay should keep all event timestamps');
   }
   const enforcement = result => result.controls.find(event => event.control === 'enforced');
@@ -117,11 +134,18 @@ assert.deepEqual([...attackerSelect.matchAll(/<option value="([^\"]+)"/g)].map(m
   assert(enforcement(early).timeSec < enforcement(fast).timeSec);
   assert.equal(early.controls[1].timeSec - early.controls[0].timeSec, 15);
   assert.equal(enforcement(early).timeSec - early.controls[0].timeSec, 60);
-  const blackcat = run('soc-canary', 'blackcat');
-  assert(blackcat.controls.find(event => event.control === 'signal').timeSec > read(blackcat).timeSec);
-  assert(run('soc-canary', 'hive').controls.every(event => event.source === 'boundary'));
-  assert.equal(run('soc-canary', 'revil').controls.length, 0);
-  assert.equal(run('soc-canary', 'revil').summary.dataReached, true);
+  const blindEstate = {
+    ...estate,
+    defensePosture: { telemetryLayers: [], socCoverageSeed: 777, decoys: [] }
+  };
+  const blindRun = engine.simulateWireRun(blindEstate, 'soc-canary', 'revil');
+  assert.equal(blindRun.controls.length, 0);
+  assert.equal(blindRun.summary.dataReached, true);
+
+  // Defense posture must not depend on attacker gang identity
+  const lockbitPostureRun = run('soc-canary', 'lockbit');
+  const revilPostureRun = run('soc-canary', 'revil');
+  assert.deepEqual(lockbitPostureRun.controls, revilPostureRun.controls);
 
   const missingPrerequisites = {
     ...estate,

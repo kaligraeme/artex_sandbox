@@ -1,5 +1,7 @@
 # Pre-LLM Cyberattacks (Pre-2023) vs. ARTEX: Timelines, Components, and IOCs
 
+> Historical research notes. The table below mixes breakout, dwell, local lab and response measurements; it must not be used to infer a common speed ratio or a required millisecond response. The current Wire clock and its explicit scenario assumptions are documented in [timing-assumptions.md](timing-assumptions.md). The nominal profile ranges are illustrative, not measured enterprise breach-time distributions.
+
 **Date:** 2026-11-15  
 **Scope:** Comparison of pre-2023 human-operated cybercrime/ransomware operations against the local **ARTEX** autonomous penetration testing system (`E:/work/ARTEX`, `E:/work/artex_sandbox`) and published threat-intelligence reporting (Unit 42, Eye Security, SOCRadar, Mandiant, CrowdStrike, Sophos).
 

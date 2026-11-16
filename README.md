@@ -35,8 +35,8 @@ On macOS or Linux, run `./start.sh` from the repository folder. It looks for `py
 
 ## Run the wire diagram
 
-1. Choose **Pre-2023** or **ARTEX-like** from the **Attacker** menu. Each new estate draws LockBit, Conti, BlackCat, Hive, or REvil in randomized order and keeps that group for replay and defense comparisons. The modeled time from foothold to a sample record read is drawn from **80–270 minutes** for the pre-2023 examples and **45–75 minutes** for ARTEX-like. Each estate keeps both draws for replay and defense comparisons. ARTEX-like shows up to three probes in parallel.
-2. Start with **Baseline**, then choose one of the three defenses. Changing the attacker or defense replays the same topology.
+1. Choose **Pre-2023** or **ARTEX-like** from the **Attacker** menu. Each new estate draws LockBit, Conti, BlackCat, Hive, or REvil in randomized order and keeps that group for replay and defense comparisons. Nominal path-duration assumptions are **80–270 minutes** for conventional examples and **45–75 minutes** for ARTEX-like. Actual completion includes queued work. These illustrative ranges are not measured breach-time distributions; see [timing assumptions and historical sources](docs/timing-assumptions.md). ARTEX-like uses three workers and conventional profiles use one.
+2. Start with **Baseline**, then compare defenses, including **Layered Defense** for virtual patching + SOC + canary together. Changing the attacker or defense replays the same topology.
 3. Use **Replay** to repeat the run or **Results** to jump to its outcome. The **Elapsed** clock shows cumulative modeled time from the assumed edge foothold.
 4. Use **New Infra** to generate a fresh topology and a different mix of five to seven appliance families from the [Layer 1 appliance pool](docs/wire_diagram_logic.md#layer-1-appliance-pool). Most baseline runs include a simulated path to a sample record. Credential exposure in logs can appear as an opening in the same mix.
 
@@ -50,14 +50,18 @@ The estate may also contain an exposure from the [external misconfiguration pool
 | --- | --- |
 | **Baseline** | The estate model evaluates usable paths. Either profile can reach protected data if the generated estate supplies a complete path. |
 | **Virtual Patch** | The WAF stops requests when the modeled rule covers the finding. |
-| **Agentic SOAR** | Matching telemetry starts a 60-second modeled containment window. The run records whether the affected session reads protected data before enforcement. |
+| **Canaries** | Decoy contact alerts; it does not contain the session. |
+| **Agentic SOAR** | Matching telemetry starts the estate's modeled collection, decision and response lifecycle. Coverage, authority, latency and enforcement success determine whether the affected session reads protected data before containment. |
 | **Agentic SOAR + Canary** | Uses the same SOAR response policy. A touched decoy can give SOAR an earlier signal. Timing, signal availability, and session scope determine the outcome. |
+| **Layered Defense** | Virtual patching, the same SOC response lifecycle, and explicit canary alerts together. |
 
 WAF coverage, response timing, and outcomes are synthetic assumptions for this exercise.
 
 ## Infrastructure and tickets
 
-The diagram spans internet-facing access, gateways and security controls, internal applications, and data stores. Dotted lines show simulated checks of candidate entry points and branches from reached assets. ARTEX-like displays up to three probe lanes in parallel. Pre-2023 human-led displays one lane at a time. Solid red lines show the path that succeeds. Click an asset to reveal its adjacent connections.
+The diagram spans internet-facing access, gateways and security controls, internal applications, and data stores. Measured labels are spaced within layer columns; dense estates scroll vertically and narrow screens can scroll horizontally. Click or keyboard-focus an asset to reveal adjacent connections and its complete details. ARTEX-like uses up to three workers; conventional profiles use one. Solid red lines show successful access. Every defense uses the same 1,000 evaluated-transition ceiling; label density never limits modeled access. Pending work at the ceiling is reported as incomplete, including when a read has already occurred.
+
+The HUD distinguishes impact, incomplete exploration and partial or complete session containment. A missing read alone does not earn containment styling. Steps suppressed by effective containment do not count as new blocked attack attempts. Replay preserves the scenario and modeled event history; New Infra generates a new scenario.
 
 An environment may include one network-monitoring system, selected from Cacti, LibreNMS, SolarWinds NPM, Zabbix, PRTG and ManageEngine OpManager. The selection has a 90% inclusion chance before topology filtering. Some products have a mapped historical CVE; others have no CVE assigned.
 

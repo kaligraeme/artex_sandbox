@@ -285,7 +285,12 @@
     'CVE-2022-0543': { waf: { mitigates: false, reason: 'Redis protocol traffic is outside the HTTP WAF.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Simulated monitoring flags unexpected Redis child processes.' } },
     'CVE-2020-0618': { waf: { mitigates: false, reason: 'The internal reporting service is outside the perimeter WAF.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Simulated monitoring flags unexpected reporting-service execution.' } },
     'CVE-2023-46747': { waf: { mitigates: false, reason: 'The BIG-IP management interface is assumed reachable outside the protected application path.' }, ml: { mitigates: false, reason: 'The appliance management plane is outside internal host monitoring.' } },
-    'CVE-2023-32707': { waf: { mitigates: false, reason: 'The Splunk management service is internal.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Simulated monitoring flags anomalous administrative role changes.' } }
+    'CVE-2023-32707': { waf: { mitigates: false, reason: 'The Splunk management service is internal.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Simulated monitoring flags anomalous administrative role changes.' } },
+    'CVE-2020-3452': { waf: { mitigates: true, control: 'NIST SI-2 / SC-7', reason: 'Simulated virtual patch filters directory-traversal requests to the Cisco ASA WebVPN web services when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
+    'CVE-2021-20016': { waf: { mitigates: true, control: 'NIST SI-2 / SC-7', reason: 'Simulated SQL-injection virtual patch inspects and blocks malformed requests to the SonicWall SMA management portal when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
+    'CVE-2022-1040': { waf: { mitigates: true, control: 'NIST SI-2 / SC-7', reason: 'Simulated virtual patch blocks the authentication-bypass request to the Sophos Firewall user portal when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
+    'CVE-2023-28771': { waf: { mitigates: false, reason: 'Zyxel ATP IKE/UDP-500 command injection is outside the L7 HTTP WAF scope.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
+    'CVE-2024-24919': { waf: { mitigates: true, control: 'NIST SI-2 / SC-7', reason: 'Simulated virtual patch filters the pre-auth arbitrary-file-read request to the Check Point remote-access portal when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } }
   };
 
   ['CVE-2025-64446', 'CVE-2018-5412', 'CVE-2021-3827', 'CVE-2018-8340', 'CVE-2020-4888', 'CVE-2026-78597', 'CVE-2026-25769'].forEach(id => {
@@ -526,7 +531,7 @@
   }
 
   function inferConnectionProtocol(sourceAsset, targetAsset) {
-    const tIfaces = targetAsset.interfaces || ['https'];
+    const tIfaces = targetAsset.interfaces;
     if (tIfaces.includes('db-pg')) return 'db-pg';
     if (tIfaces.includes('db-mssql')) return 'db-mssql';
     if (tIfaces.includes('redis')) return 'redis';
@@ -573,11 +578,25 @@
       }
     }
 
+    if (estate.actionOrder != null && !Array.isArray(estate.actionOrder)) errors.push('actionOrder must be an array');
+    if (Array.isArray(estate.actionOrder) && estate.actionOrder.length) {
+      const order = new Set(estate.actionOrder);
+      if (order.size !== estate.actionOrder.length) errors.push('Duplicate actionOrder IDs');
+      for (const id of order) if (!assetIds.has(id)) errors.push(`Unknown actionOrder ID ${id}`);
+      for (const id of assetIds) if (!order.has(id)) errors.push(`Missing actionOrder ID ${id}`);
+    }
+    if (estate.defensePosture?.decoys) {
+      if (!Array.isArray(estate.defensePosture.decoys)) errors.push('Decoys must be an array');
+      else for (const decoy of estate.defensePosture.decoys) {
+        if (!estate.assets.some(a => a.id === decoy.assetId && a.isDecoy)) errors.push(`Undeployed decoy ${decoy.assetId}`);
+      }
+    }
     const findingIds = new Set();
     for (const f of estate.findings) {
       if (!f.id || findingIds.has(f.id)) errors.push(`Duplicate or missing finding id: ${f.id}`);
       findingIds.add(f.id);
       if (!assetIds.has(f.assetId)) errors.push(`Finding ${f.id} references unknown asset ${f.assetId}`);
+      if (f.kind === 'cve' && (!KEV_MITIGATION_RULES[f.cveId]?.waf || !KEV_MITIGATION_RULES[f.cveId]?.ml)) errors.push(`Missing declared control coverage for ${f.cveId}`);
     }
 
     const credIds = new Set();
@@ -906,7 +925,7 @@
       };
     }
 
-    const isHttpSurface = (targetAsset.interfaces || []).some(i => ['https', 'api-https', 'repo-http', 'storage-s3'].includes(i));
+    const isHttpSurface = targetAsset.interfaces.some(i => ['https', 'api-https', 'repo-http', 'storage-s3'].includes(i));
     const nonHttpGroups = new Set(['aws-vpn', 'az-net', 'az-branch', 'partner-gw', 'zyxel-atp']);
     const isNonHttpProtocol = nonHttpGroups.has(targetAsset.groupId) || !isHttpSurface;
     const portalIds = new Set(['forti-vpn', 'pulse-vpn', 'pan-globalprotect']);
@@ -941,10 +960,8 @@
 
     // CVE action
     const cveId = action.finding && action.finding.cveId;
-    const rule = KEV_MITIGATION_RULES[cveId] || {
-      waf: { mitigates: false, reason: 'No specific virtual patch is modeled for this vulnerability.' },
-      ml: { mitigates: false, reason: 'No specific detection and response is modeled for this vulnerability.' }
-    };
+    const rule = KEV_MITIGATION_RULES[cveId];
+    if (!rule) throw new Error(`Missing declared control coverage for ${cveId}`);
     const wafRuleMatches = !isNonHttpProtocol && portalCovered && !!rule.waf?.mitigates;
     const wafEvadedByAdaptive = wafRuleMatches && rule.waf?.ruleStrictness === 'signature_regex' && !!attackerProfile?.adaptiveWafEvasion;
     const wafMitigates = wafRuleMatches && !wafEvadedByAdaptive;
@@ -1016,8 +1033,8 @@
     }
 
     const assetById = new Map(estate.assets.map(a => [a.id, a]));
-    const orderRank = new Map((estate.actionOrder || []).map((id, idx) => [id, idx]));
-    const rankOf = id => (orderRank.has(id) ? orderRank.get(id) : 999999);
+    const orderRank = new Map((estate.actionOrder?.length ? estate.actionOrder : estate.assets.map(a => a.id)).map((id, idx) => [id, idx]));
+    const rankOf = id => orderRank.get(id);
 
     const defensePosture = estate.defensePosture || null;
     const canaryAssets = new Set(
@@ -1025,12 +1042,7 @@
         ? defensePosture.decoys.map(d => d.assetId).filter(Boolean)
         : estate.assets.filter(a => a.isDecoy).map(a => a.id)
     );
-    const canaryAsset = mode === 'combined' && canaryAssets.size === 0
-      ? estate.assets
-          .filter(a => a.layerIdx === 3 && estate.relationships.some(r => r.targetId === a.id))
-          .sort((a, b) => a.id.localeCompare(b.id))[0] || null
-      : null;
-    if (canaryAsset) canaryAssets.add(canaryAsset.id);
+    const canaryAsset = estate.assets.find(a => a.isDecoy && canaryAssets.has(a.id)) ?? null;
 
     const state = {
       reachedAssets: new Map(),
@@ -1039,9 +1051,7 @@
     };
 
     const visitedTransitions = new Set();
-    const succeededPairs = new Set();
     const layerSuccessCount = [0, 0, 0, 0];
-    const onwardSuccessCount = new Map();
     const events = [];
     const controls = [];
     const signals = new Map();
@@ -1061,31 +1071,34 @@
     }
 
     function signal(scope, targetId, source, timeSec, contain = true) {
-      if (signals.has(scope)) {
-        if (source === 'canary') controls.push({ scope, targetId, source, timeSec, control: 'signal' });
-        if (contain) containedSessions.add(scope);
+      const collectionDelay = timing?.collectionDelay ?? 0;
+      const observedAt = timeSec + collectionDelay;
+      controls.push({ scope, targetId, source, timeSec: observedAt, control: 'signal' });
+      if (!contain) return;
+      if (timing?.responseAuthority === false) {
+        controls.push({scope, targetId, source, timeSec: observedAt, control: 'denied'});
         return;
       }
-      if (!contain) {
-        controls.push({ scope, targetId, source, timeSec, control: 'signal' });
-        return;
+      const responseScope = timing?.responseScope ?? scope;
+      const decisionAt = observedAt + (timing?.decisionDelay ?? 0);
+      const effectiveAt = Math.max(decisionAt, observedAt + (timing?.responseDelay ?? 0));
+      if ((signals.get(responseScope) ?? Infinity) <= effectiveAt) return;
+      for (let i = controls.length - 1; i >= 0; i--) {
+        if (controls[i].scope === responseScope && controls[i].timeSec >= observedAt && ['decision', 'enforced', 'failed'].includes(controls[i].control)) controls.splice(i, 1);
       }
-      const effectiveAt = timeSec + (timing?.responseDelay ?? 0);
-      signals.set(scope, effectiveAt);
-      containedSessions.add(scope);
-      controls.push(
-        { scope, targetId, source, timeSec, control: 'signal' },
-        { scope, targetId, source, timeSec: timeSec + (timing?.decisionDelay ?? 0), control: 'decision' },
-        { scope, targetId, source, timeSec: effectiveAt, control: 'enforced' }
-      );
+      controls.push({ scope: responseScope, targetId, source, timeSec: decisionAt, control: 'decision' });
+      controls.push({ scope: responseScope, targetId, source, timeSec: effectiveAt, control: timing?.enforcementSucceeds === false ? 'failed' : 'enforced' });
+      if (timing?.enforcementSucceeds === false) return;
+      signals.set(responseScope, effectiveAt);
+      containedSessions.add(responseScope);
     }
 
     function recordTelemetry(source, target, action, scope, timeSec, isCanary) {
       if (!timing) return;
       if (isCanary) {
-        if ((mode === 'canaries' || mode === 'soc-canary') && !triggeredDecoys.has(target.id)) {
+        if ((mode === 'canaries' || mode === 'soc-canary' || mode === 'combined') && !triggeredDecoys.has(target.id)) {
           triggeredDecoys.add(target.id);
-          signal(scope, target.id, 'canary', timeSec, mode === 'soc-canary');
+          signal(scope, target.id, 'canary', timeSec, mode === 'soc-canary' || mode === 'combined');
         }
         return;
       }
@@ -1107,20 +1120,19 @@
     let ineligibleTransitions = 0;
     let truncated = false;
     let dataReached = false;
+    let activeStep = null;
+    const explorationLimit = timing?.explorationLimit ?? 1000;
+    let evaluatedTransitions = 0;
 
     function processTransition(sourceAsset, targetAsset, relationship) {
-      const isCanaryTarget = canaryAssets.has(targetAsset.id);
-      const timeSec = (isCanaryTarget && timing?.canaryDelay != null && targetAsset.layerIdx === 1)
-        ? timing.canaryDelay
-        : timing?.stageTimes?.[targetAsset.layerIdx];
+      const timeSec = activeStep?.timeSec ?? timing?.stageTimes?.[targetAsset.layerIdx];
+      const startSec = activeStep?.startSec;
       const scope = timing ? (sourceAsset ? scopeFor(sourceAsset) : targetAsset.id) : null;
       const transitionKey = `${sourceAsset ? sourceAsset.id : 'EXTERNAL'}->${targetAsset.id}:${relationship ? relationship.id : 'EXT'}`;
       if (visitedTransitions.has(transitionKey)) return false;
       visitedTransitions.add(transitionKey);
 
       if (scope && containedSessions.has(scope) && (signals.get(scope) ?? Infinity) <= timeSec) {
-        attemptedTransitions++;
-        blockedTransitions++;
         events.push({
           sourceId: sourceAsset ? sourceAsset.id : null,
           targetId: targetAsset.id,
@@ -1139,8 +1151,9 @@
             control: 'NIST SI-4 / AC-3',
             reason: 'Session contained by Agentic SOC before this hop.'
           },
-          outcome: 'contained',
-          reason: 'Session contained by Agentic SOC before this hop.'
+          outcome: 'suppressed',
+          timeSec, startSec,
+          reason: 'Action effect suppressed because session containment was effective at or before completion.'
         });
         return false;
       }
@@ -1149,6 +1162,8 @@
       if ((isCanary || targetAsset.isDecoy) && (!isCanary || (mode !== 'canaries' && mode !== 'soc-canary' && mode !== 'combined'))) {
         return false;
       }
+      if (evaluatedTransitions >= explorationLimit) { truncated = true; return false; }
+      evaluatedTransitions++;
       attemptedTransitions++;
       const candidates = evaluateDistinctActions(state, sourceAsset, targetAsset, relationship, estate);
 
@@ -1189,7 +1204,10 @@
         }
 
         eligibleTransitions++;
-        const mitigation = evaluateDefense(targetAsset, action, mode, estate.seed, isCanary, {
+        // Timed SOC consumes evidence through the response lifecycle, never an instant lookup block.
+        const preventionMode = timing && ['soc', 'soc-canary', 'combined'].includes(mode)
+          ? (isCanary ? 'canaries' : mode === 'combined' ? 'patch' : 'baseline') : mode;
+        const mitigation = evaluateDefense(targetAsset, action, preventionMode, estate.seed, isCanary, {
           attackerProfile,
           defensePosture
         });
@@ -1221,43 +1239,15 @@
           continue;
         }
 
-        // Check demo-design budgets: count each source-target pair once and each reached asset once per layer
+        // Count reached assets; display density never limits modeled access.
         const sourceId = sourceAsset ? sourceAsset.id : null;
         const alreadyReached = !!currentReach;
-        const pairBudgetKey = `${sourceId || 'EXTERNAL'}->${targetAsset.id}`;
-        const pairAlreadyCounted = succeededPairs.has(pairBudgetKey);
-        const srcCount = sourceId ? (onwardSuccessCount.get(sourceId) || 0) : 0;
-        const dataCap = (mode === 'baseline' || mode === 'canaries') ? MAX_SUCCESS_PER_LAYER : 1;
-        const layerCap = targetAsset.layerIdx === 3 ? dataCap : MAX_SUCCESS_PER_LAYER;
-
-        if ((!pairAlreadyCounted && sourceId && srcCount >= MAX_ONWARD_PER_SOURCE) ||
-            (!alreadyReached && layerSuccessCount[targetAsset.layerIdx] >= layerCap)) {
-          truncated = true;
-          events.push({
-            sourceId,
-            targetId: targetAsset.id,
-            relationshipId: relationship ? relationship.id : null,
-            finding: action.finding,
-            credentialUsed: action.credentialUsed,
-            technique: action.technique,
-            requiredAccess: action.requiredAccess,
-            reachability: action.reachability,
-            grantedCapability: null,
-            acquiredCredentials: [],
-            mitigation,
-            outcome: 'truncated',
-            reason: `Demo display budget reached (max ${MAX_ONWARD_PER_SOURCE} onward/source, max ${layerCap} in layer ${targetAsset.layerIdx + 1}).`
-          });
-          continue;
-        }
 
         // Grant capability and update state
         gainedAccess = true;
         succeededTransitions++;
         if (!alreadyReached && !isCanary) layerSuccessCount[targetAsset.layerIdx]++;
-        if (sourceId && !pairAlreadyCounted) onwardSuccessCount.set(sourceId, srcCount + 1);
-        succeededPairs.add(pairBudgetKey);
-        if (action.yieldsCapability === 'data_read' && !isCanary) dataReached = true;
+        if (action.yieldsCapability === 'data_read' && !isCanary && targetAsset.layerIdx === 3) dataReached = true;
 
         let caps;
         if (currentReach) {
@@ -1296,6 +1286,7 @@
           requiredAccess: action.requiredAccess,
           reachability: action.reachability,
           grantedCapability: action.yieldsCapability,
+          isProtectedRead: action.yieldsCapability === 'data_read' && targetAsset.layerIdx === 3 && !isCanary,
           acquiredCredentials: newlyAcquired,
           ...(scope && { scope }),
           mitigation,
@@ -1312,32 +1303,53 @@
       .sort((a, b) => rankOf(a.id) - rankOf(b.id));
 
     if (attackerProfile?.maxConcurrentBranches) {
-      const frontier = entryAssets.map(entry => ({ sourceAsset: null, targetAsset: entry, relationship: null }));
-      const maxWaves = attackerProfile.maxConcurrentBranches === 1 ? 40 : 16;
-      let wave = 0;
-      while (frontier.length > 0 && wave < maxWaves) {
-        const batch = frontier.splice(0, attackerProfile.maxConcurrentBranches);
-        const discovered = [];
-        for (const step of batch) {
-          const ok = processTransition(step.sourceAsset, step.targetAsset, step.relationship);
-          if (ok && step.targetAsset.layerIdx < 3) {
-            const outRels = estate.relationships
-              .filter(r => r.sourceId === step.targetAsset.id)
-              .sort((a, b) => rankOf(a.targetId) - rankOf(b.targetId));
-            for (const rel of outRels) {
-              const tgt = assetById.get(rel.targetId);
-              if (tgt) discovered.push({ sourceAsset: step.targetAsset, targetAsset: tgt, relationship: rel });
-            }
+      // Workers start only from discovered access. Finish/containment ties favor enforcement.
+      const frontier = entryAssets.map(entry => ({ sourceAsset: null, targetAsset: entry, relationship: null, readySec: 0 }));
+      const running = [];
+      const enqueued = new Set(entryAssets.map(a => `EXTERNAL->${a.id}:EXT`));
+      const workers = attackerProfile.maxConcurrentBranches;
+      let clock = 0;
+      while (frontier.length || running.length) {
+        if (evaluatedTransitions >= explorationLimit) { truncated = true; break; }
+        while (frontier.length && running.length < workers) {
+          const step = frontier.shift();
+          const layer = step.targetAsset.layerIdx;
+          const duration = timing.actionDurations?.[layer] ?? Math.max(0, timing.stageTimes[layer] - (layer ? timing.stageTimes[layer - 1] : 0));
+          const startSec = Math.max(clock, step.readySec);
+          const scope = step.sourceAsset ? scopeFor(step.sourceAsset) : step.targetAsset.id;
+          if ((signals.get(scope) ?? Infinity) <= startSec) {
+            activeStep = {...step, startSec, timeSec: startSec};
+            processTransition(step.sourceAsset, step.targetAsset, step.relationship);
+            activeStep = null;
+            continue;
+          }
+          running.push({ ...step, startSec, timeSec: startSec + duration });
+        }
+        if (!running.length) continue;
+        // Confirmed enforcement cancels in-flight effects and frees the worker at that time.
+        for (const step of running) {
+          const scope = step.sourceAsset ? scopeFor(step.sourceAsset) : step.targetAsset.id;
+          step.timeSec = Math.min(step.timeSec, signals.get(scope) ?? Infinity);
+        }
+        running.sort((a, b) => a.timeSec - b.timeSec || rankOf(a.targetAsset.id) - rankOf(b.targetAsset.id));
+        activeStep = running.shift();
+        clock = activeStep.timeSec;
+        const before = events.length;
+        const ok = processTransition(activeStep.sourceAsset, activeStep.targetAsset, activeStep.relationship);
+        for (let i = before; i < events.length; i++) Object.assign(events[i], {timeSec: clock, startSec: activeStep.startSec});
+        if (ok && activeStep.targetAsset.layerIdx < 3) {
+          const out = estate.relationships.filter(r => r.sourceId === activeStep.targetAsset.id)
+            .sort((a,b) => rankOf(a.targetId) - rankOf(b.targetId));
+          for (const rel of out) {
+            if (assetById.get(rel.targetId)?.isDecoy && !['canaries','soc-canary','combined'].includes(mode)) continue;
+            const key = `${rel.sourceId}->${rel.targetId}:${rel.id}`;
+            if (enqueued.has(key)) continue;
+            enqueued.add(key);
+            frontier.push({sourceAsset: activeStep.targetAsset, targetAsset: assetById.get(rel.targetId), relationship: rel, readySec: clock});
           }
         }
-        if (attackerProfile.maxConcurrentBranches === 1) {
-          frontier.unshift(...discovered);
-        } else {
-          frontier.push(...discovered);
-        }
-        wave++;
       }
-      if (frontier.length > 0 && !dataReached) truncated = true;
+      activeStep = null;
     } else {
       // Layer 0 external entries
       for (const entry of entryAssets) {
@@ -1387,6 +1399,10 @@
         blockedTransitions,
         ineligibleTransitions,
         containedSessions: containedSessions.size,
+        evaluatedTransitions,
+        explorationLimit,
+        budgetUnit: 'evaluated transitions',
+        suppressedTransitions: events.filter(e => e.outcome === 'suppressed').length,
         truncated,
         dataReached,
         completeFourLayerPath,
@@ -2090,7 +2106,10 @@
     }
 
     // Estate-owned defensive visibility & decoy placement (invariant across attacker switches)
-    const telemetryLayers = rng() < 0.75 ? [0, 1, 2, 3] : [1, 2, 3];
+    // Independent, reproducible deployment assumptions; actor changes never redraw sensors or response.
+    const telemetryLayers = preset === 'mixed'
+      ? [0,1,2,3].filter(layer => hashNode(seed, `sensor-layer:${layer}`, 0x9e3779b9) < 0.8)
+      : [0,1,2,3];
     const decoys = [];
     const decoyAnchor = (preset === 'demo' && keptAssets.find(a => a.layerIdx === 0 && a.groupId === 'f5-gateway')) ||
       keptAssets.find(a => a.layerIdx === 0 && a.isExternalEntry && findings.some(f => f.assetId === a.id && f.yieldsCapability)) ||
@@ -2163,6 +2182,11 @@
       defensePosture: {
         telemetryLayers,
         socCoverageSeed: seed,
+        collectionDelaySec: Math.round(hashNode(seed, 'soc-collection', 0x9e3779b9) * 30),
+        decisionDelaySec: 15 + Math.round(hashNode(seed, 'soc-decision', 0x9e3779b9) * 45),
+        responseDelaySec: 60 + Math.round(hashNode(seed, 'soc-enforcement-delay', 0x9e3779b9) * 1740),
+        responseAuthority: hashNode(seed, 'soc-authority', 0x9e3779b9) < 0.95,
+        enforcementSucceeds: hashNode(seed, 'soc-enforcement-success', 0x9e3779b9) < 0.95,
         decoys
       },
       assets: keptAssets,
@@ -2858,47 +2882,60 @@
 
   function wireTiming(seed, pace) {
     const { min, max } = WIRE_READ_MINUTES[pace];
-    const draw = hashNode(seed, `wire-timing:${pace}`, 0x9e3779b9);
-    const readTime = (min + Math.floor(draw * (max - min + 1))) * 60;
-
-    if (pace === 'artex') {
-      // Vary the time before the final burst and keep its short gaps for the SOAR exercise.
-      return { stageTimes: [0, readTime - 50, readTime - 35, readTime], earlyCanaryDelay: 120 };
-    }
-
-    // Preserve the proportions of the original 10/75/90/105-minute milestones.
-    return {
-      stageTimes: [0, Math.round(readTime * 75 / 105), Math.round(readTime * 90 / 105), readTime],
-      earlyCanaryDelay: Math.round(readTime * 10 / 105)
-    };
+    const readTime = (min + Math.floor(hashNode(seed, `wire-timing:${pace}`, 0x9e3779b9) * (max - min + 1))) * 60;
+    // Historical total-duration context is retained. Stage weights are explicit synthetic assumptions.
+    const weights = [1, 2, 3].map(layer => 0.15 + hashNode(seed, `stage-weight:${pace}:${layer}`, 0x9e3779b9));
+    const total = weights.reduce((a,b) => a+b,0);
+    const stageTimes = [0, Math.round(readTime * weights[0]/total), Math.round(readTime * (weights[0]+weights[1])/total), readTime];
+    return {stageTimes, actionDurations: stageTimes.map((t,i) => i ? t-stageTimes[i-1] : 0), modeledPathDurationSec: readTime};
   }
 
-  function simulateWireRun(estate, mode, attackerId) {
+  function classifyRun(result) {
+    const impact = result.summary.dataReached;
+    const incomplete = result.summary.truncated;
+    const enforcements = result.controls.filter(e => e.control === 'enforced');
+    const reads = result.events.filter(e => e.outcome === 'succeeded' && e.isProtectedRead);
+    const effective = enforcements.filter(e => result.events.some(a => a.scope === e.scope && a.outcome === 'succeeded'));
+    const activeScopes = new Set(result.events.filter(e => e.scope && e.outcome === 'succeeded').map(e => e.scope));
+    const contained = new Set(effective.map(e => e.scope));
+    const allContained = activeScopes.size > 0 && [...activeScopes].every(scope => contained.has(scope));
+    const late = reads.some(read => effective.some(e => e.scope === read.scope && e.timeSec > read.timeSec));
+    const label = incomplete ? 'Exploration incomplete' : impact ? (late ? 'Record read before containment' : 'Protected record read')
+      : allContained ? 'Contained before protected read' : effective.length ? 'Partial session containment'
+      : result.events.some(e => e.outcome === 'blocked') ? 'Virtual patch blocked attempts; no protected read'
+      : result.controls.some(e => e.control === 'signal') ? 'Alerted; no confirmed containment'
+      : 'No protected read established';
+    return {impact, incomplete, containedSessions: contained.size, allContained, label,
+      style: impact ? 'breached' : !incomplete && allContained ? 'contained' : ''};
+  }
+
+  function simulateWireRun(estate, mode, attackerId, options = {}) {
     const attacker = WIRE_ATTACKERS[attackerId];
     if (!attacker) throw new Error(`Unknown Wire attacker: ${attackerId}`);
-    const attackerProfile = ATTACKER_PROFILES[attacker.pace] || ATTACKER_PROFILES.pre2023;
-    const posture = estate.defensePosture || { telemetryLayers: [0, 1, 2], decoys: [] };
-    const { stageTimes, earlyCanaryDelay } = wireTiming(estate.seed, attacker.pace);
-    const result = simulateEstate(estate, mode, {
-      stageTimes,
-      respond: mode === 'soc' || mode === 'soc-canary',
-      boundarySignal: posture.telemetryLayers.length >= 3 ? 'all' : (posture.telemetryLayers.length ? 'first' : 'none'),
-      canary: (mode === 'canaries' || mode === 'soc-canary') ? (posture.decoys && posture.decoys.length ? 'early' : 'untouched') : null,
-      canaryDelay: earlyCanaryDelay,
-      decisionDelay: 15,
-      responseDelay: 60,
-      attackerProfile
-    });
-    const layerById = new Map(estate.assets.map(asset => [asset.id, asset.layerIdx]));
-    const decoyIds = new Set(estate.assets.filter(a => a.isDecoy).map(a => a.id));
-    const events = result.events.map(event => {
-      const layer = layerById.get(event.targetId);
-      const timeSec = (decoyIds.has(event.targetId) && layer === 1)
-        ? earlyCanaryDelay
-        : stageTimes[layer];
-      return { ...event, timeSec };
-    });
-    return { ...result, events, lanes: attackerProfile.maxConcurrentBranches, attackerProfile };
+    if (!['baseline','patch','canaries','soc','soc-canary','combined'].includes(mode)) throw new Error(`Unknown Wire defense: ${mode}`);
+    const attackerProfile = {...ATTACKER_PROFILES[attacker.pace], ...options.attackerProfile};
+    const timing = {...wireTiming(estate.seed, attacker.pace), respond: ['soc','soc-canary','combined'].includes(mode),
+      collectionDelay: estate.defensePosture?.collectionDelaySec ?? 0,
+      decisionDelay: estate.defensePosture?.decisionDelaySec ?? 15,
+      responseDelay: estate.defensePosture?.responseDelaySec ?? 60,
+      responseAuthority: estate.defensePosture?.responseAuthority ?? true,
+      enforcementSucceeds: estate.defensePosture?.enforcementSucceeds ?? true,
+      ...options, attackerProfile};
+    if (!Array.isArray(timing.actionDurations) || timing.actionDurations.length !== 4 || timing.actionDurations.some(t => !Number.isFinite(t) || t < 0)) throw new Error('Expected four nonnegative action durations');
+    if (!Number.isInteger(attackerProfile.maxConcurrentBranches) || attackerProfile.maxConcurrentBranches < 1) throw new Error('Worker count must be a positive integer');
+    if (timing.explorationLimit != null && (!Number.isInteger(timing.explorationLimit) || timing.explorationLimit < 1)) throw new Error('Exploration limit must be a positive integer');
+    for (const key of ['collectionDelay','decisionDelay','responseDelay']) if (!Number.isFinite(timing[key]) || timing[key] < 0) throw new Error(`Invalid ${key}`);
+    const result = simulateEstate(estate, mode, timing);
+    result.events.sort((a,b) => a.timeSec-b.timeSec);
+    result.controls.sort((a,b) => a.timeSec-b.timeSec);
+    const run = {...result, lanes: attackerProfile.maxConcurrentBranches, attackerProfile,
+      assumptions: {stageDurationsSec: timing.actionDurations, nominalPathDurationSec: timing.modeledPathDurationSec, responseDelaySec: timing.responseDelay,
+        collectionDelaySec: timing.collectionDelay, decisionDelaySec: timing.decisionDelay,
+        telemetryLayers: estate.defensePosture?.telemetryLayers ?? null,
+        responseAuthority: timing.responseAuthority, enforcementSucceeds: timing.enforcementSucceeds,
+        timingBasis: 'Historical-style total duration; synthetic stage allocations, worker queue and response latency'}};
+    run.result = classifyRun(run);
+    return run;
   }
 
   const COMPARISON_FIXTURES = {
@@ -3353,6 +3390,8 @@
     EXTERNAL_ENTRY_GROUPS,
     DEFENSE_SCENARIOS,
     ATTACKER_PROFILES,
+    classifyRun,
+    wireTiming,
     WIRE_ATTACKERS,
     COMPARISON_PROFILES,
     COMPARISON_DEFENSES,

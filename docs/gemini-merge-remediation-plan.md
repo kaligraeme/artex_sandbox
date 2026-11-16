@@ -1,6 +1,6 @@
 # Plan for findings after the Gemini merge
 
-Status: proposed; documentation only. No implementation changes are included.
+Status: implemented for the four merge-review findings; see [implementation and validation](remediation-implementation.md). The sections below preserve the original acceptance plan and broader design intent. Remaining calibration and model boundaries are recorded in the implementation report.
 
 Date: 16 November 2026. Reviewed baseline: `8aeae9b9e12adcf35ae2bd8e7a35e1a36171370c` on local `main` after the fast-forward merge of `artex-gemini`.
 

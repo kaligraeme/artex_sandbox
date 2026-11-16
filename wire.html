@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ARTEX | Wire Diagram Simulation v2.4.0</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
 <style>
@@ -28,7 +28,7 @@
   html, body {
     width: 100vw;
     height: 100vh;
-    overflow: hidden;
+    overflow: auto;
     background-color: var(--bg);
     color: #fff;
     font-family: 'JetBrains Mono', 'Fira Code', 'Segoe UI', Consolas, monospace;
@@ -548,6 +548,17 @@
   }
   .run-row select:focus-visible, .run-row button.trace-control:focus-visible { outline: 2px solid var(--turquoise); }
 
+  html, body { width: 100%; height: auto; min-height: 100vh; overflow: visible; }
+  html { overflow: auto; }
+  #viewport { width: 100%; min-width: 1120px; overflow: visible; }
+  .top-bar { position: sticky; top: 0; left: 0; width: 100vw; padding: 12px; background: #071426; }
+  .node-label { font-size: 12px; max-width: 210px; line-height: 1.35; }
+  .node-kev { display: none; }
+  .node:hover, .node:focus { transform: translate(-50%, -18px); outline: 2px solid var(--turquoise); }
+  #asset-details { position: fixed; left: 8px; bottom: 8px; z-index: 1100; width: min(480px, calc(100vw - 16px)); max-height: 28vh; overflow: auto; white-space: pre-line; padding: 10px; background: #071426; border: 1px solid #00f0ff; font: 12px/1.4 Arial, sans-serif; }
+  #asset-details:empty { display: none; }
+  .run-row { flex-wrap: wrap; justify-content: center; }
+  @media (max-width: 700px) { .top-bar { width: 100vw; } .soc-ticker { display: none; } }
 </style>
 </head>
 <body>
@@ -576,6 +587,10 @@
       <button class="mode-btn" data-mode="soc-canary" aria-pressed="false">
         <span class="mode-title">05 / AGENTIC SOAR + CANARY</span>
         <span class="mode-desc">Containment with a decoy signal</span>
+      </button>
+      <button class="mode-btn" data-mode="combined" aria-pressed="false">
+        <span class="mode-title">06 / LAYERED DEFENSE</span>
+        <span class="mode-desc">Virtual patch + SOC + canary</span>
       </button>
     </div>
 
@@ -607,6 +622,7 @@
 
   <!-- HTML nodes layer for GPU accelerated icon masking and text -->
   <div id="nodes-layer"></div>
+  <aside id="asset-details" aria-label="Selected asset details" aria-live="polite" tabindex="0"></aside>
 </main>
 
 <script src="js/wire-engine.js"></script>
@@ -703,12 +719,10 @@ function formatAssetTooltip(asset, findings, credentials) {
 }
 
 function layoutGraph(estate) {
-  const w = window.innerWidth;
+  const w = Math.max(1120, document.documentElement.clientWidth);
   const h = window.innerHeight;
   const gitExample = estate.findings.find(finding => finding.illustration === 'git-to-idp');
-  const graphTop = Math.min(h * 0.4, document.querySelector('.top-bar').getBoundingClientRect().bottom + 65);
-  const graphBottom = Math.max(graphTop + 1, h - (gitExample ? 155 : 65));
-  const graphHeight = graphBottom - graphTop;
+  const graphTop = document.querySelector('.top-bar').getBoundingClientRect().height + 65;
 
   currentWires.clear();
   nodesLayer.innerHTML = '';
@@ -724,8 +738,8 @@ function layoutGraph(estate) {
       label: displayLabel,
       findings,
       creds,
-      x: asset.x * w,
-      y: graphTop + asset.y * graphHeight,
+      x: (asset.layerIdx + 0.5) * w / 4,
+      y: graphTop,
       downstream: [],
       hit: false,
       defended: false,
@@ -739,13 +753,15 @@ function layoutGraph(estate) {
     const target = currentNodes.get(rel.targetId);
     if (!source || !target) return;
     source.downstream.push(target.id);
-    createWire(source, target, rel);
   });
 
   nodes.forEach(node => {
     const el = document.createElement('div');
     el.className = node.isDecoy ? 'node decoy' : 'node';
     el.id = 'node-' + node.id;
+    el.tabIndex = 0;
+    el.setAttribute('role', 'button');
+    el.setAttribute('aria-label', node.label);
     if (node.referenceCve) el.dataset.appliance = node.groupId;
     el.title = formatAssetTooltip(node, node.findings, node.creds);
     el.style.left = `${node.x}px`;
@@ -763,12 +779,33 @@ function layoutGraph(estate) {
         <span class="vuln-title">${badge.title}</span>
       </div>
     `;
-    el.addEventListener('click', () => revealNodeWires(node, 4000));
+    const selectNode = () => {
+      revealNodeWires(node, 4000);
+      document.getElementById('asset-details').textContent = node.el.title;
+    };
+    el.addEventListener('click', selectNode);
+    el.addEventListener('focus', selectNode);
+    el.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectNode(); } });
     nodesLayer.appendChild(el);
     node.el = el;
   });
 
-  if (gitExample) drawGitIllustration(currentNodes.get(gitExample.assetId), w, h - 127);
+  // Measure rendered text before packing each layer; keep generous spacing for icons and alerts.
+  let bottom = graphTop;
+  for (let layer = 0; layer < 4; layer++) {
+    let y = graphTop;
+    for (const node of nodes.filter(n => n.layerIdx === layer).sort((a,b) => a.id.localeCompare(b.id))) {
+      node.y = y;
+      node.el.style.top = `${y}px`;
+      y += node.el.getBoundingClientRect().height + 55;
+    }
+    bottom = Math.max(bottom, y);
+  }
+  document.getElementById('viewport').style.height = `${Math.max(h, bottom + 160)}px`;
+  document.getElementById('asset-details').textContent = '';
+  estate.relationships.forEach(rel => createWire(currentNodes.get(rel.sourceId), currentNodes.get(rel.targetId), rel));
+
+  if (gitExample) drawGitIllustration(currentNodes.get(gitExample.assetId), w, bottom + 30);
   if (referenceCase) markReferenceFlow(estate, referenceCase);
 }
 
@@ -877,7 +914,7 @@ function animatePulse(wire) {
 
 function showProbes(events, laneCount) {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return 0;
-  const candidates = new Map(events.filter(event => !event.control)
+  const candidates = new Map(events.filter(event => !event.control && !['suppressed', 'ineligible', 'revisit', 'truncated'].includes(event.outcome))
     .map(event => [event.relationshipId ?? event.targetId, event]));
   let index = 0;
   for (const event of candidates.values()) {
@@ -903,7 +940,7 @@ function renderEvent(event, time, animate) {
   const wire = currentWires.get(event.relationshipId);
   const success = event.outcome === 'succeeded';
   const blocked = event.outcome === 'blocked';
-  const contained = event.outcome === 'contained';
+  const contained = event.outcome === 'suppressed';
   const alertOnly = event.outcome === 'alert_only';
   const read = event.grantedCapability === 'data_read' && node.layerIdx === 3 && !node.isDecoy;
   const staging = node.groupId === 'staging-status';
@@ -917,7 +954,7 @@ function renderEvent(event, time, animate) {
 
   let result = 'ACCESS ESTABLISHED';
   if (blocked) result = event.mitigation?.badge || 'BLOCKED';
-  else if (contained) result = 'CONTAINED BY AGENTIC SOC';
+  else if (contained) result = 'ACTION EFFECT SUPPRESSED BY CONTAINMENT';
   else if (alertOnly) result = 'CANARY ALERT (NO CONTAINMENT)';
   else if (read) result = 'PROTECTED RECORD READ';
   else if (diagnostic) result = 'STAGING CREDENTIAL EXPOSED';
@@ -953,7 +990,9 @@ function renderEvent(event, time, animate) {
 
 function renderControl(event) {
   const node = currentNodes.get(event.targetId);
-  const title = event.control === 'enforced' ? 'SOAR containment effective'
+  const title = event.control === 'denied' ? 'SOAR lacks response authority'
+    : event.control === 'failed' ? 'SOAR enforcement failed'
+    : event.control === 'enforced' ? 'SOAR containment effective'
     : event.control === 'decision' ? 'SOAR containment approved'
     : event.source === 'canary' ? 'Canary alerted' : 'Boundary telemetry';
   if (event.control === 'signal' && event.source === 'canary') {
@@ -975,7 +1014,7 @@ function showTime(time) {
 }
 
 function renderPhase(phase, animate = false) {
-  for (const event of phase.events) {
+  for (const event of [...phase.events].sort((a,b) => Number(!a.control)-Number(!b.control))) {
     if (event.control) renderControl(event);
     else renderEvent(event, phase.time, animate);
   }
@@ -1008,27 +1047,31 @@ function finishRun() {
   const result = read ? `Protected record read at ${asset.label} (${formatEstimate(read.timeSec)})`
     : asset ? `Reached ${asset.label} (${formatEstimate(milestone.timeSec)})`
     : 'No access established';
-  const limit = dataReached ? '' : truncated ? 'Exploration limit reached' : 'No protected record read';
+  const limit = truncated ? `Exploration incomplete · ${run.summary.evaluatedTransitions}/${run.summary.explorationLimit} transitions` : '';
   const count = layerSuccessCounts[0];
   const containments = run.controls.filter(event => event.control === 'enforced');
   const canarySignals = run.controls.filter(event => event.control === 'signal' && event.source === 'canary');
   const late = read && containments.some(event => event.scope === read.scope && event.timeSec >= read.timeSec);
   const response = late ? 'SOAR contained after the read'
-    : containments.length ? `${containments.length} ${containments.length === 1 ? 'session' : 'sessions'} contained`
+    : run.result.containedSessions ? `${run.result.containedSessions} ${run.result.containedSessions === 1 ? 'session' : 'sessions'} contained`
     : defense === 'canaries' ? (canarySignals.length ? 'Canary alerted (alert only)' : 'Canary untouched')
-    : defense.startsWith('soc') ? 'No matching signal' : '';
-  runHud.className = dataReached ? 'breached' : 'contained';
+    : run.controls.some(event => event.control === 'failed') ? 'Enforcement failed'
+    : run.controls.some(event => event.control === 'denied') ? 'Response authority unavailable'
+    : run.controls.some(event => event.control === 'signal') ? 'Alert received; no confirmed enforcement'
+    : defense.startsWith('soc') || defense === 'combined' ? 'No matching signal' : '';
+  runHud.className = run.result.style;
   const illustration = run.events.some(event => event.outcome === 'succeeded' && event.finding?.illustration === 'git-to-idp')
     ? 'Illustrative branch ends at IdP admin' : '';
   const group = run.lanes === 1 ? pre2023Groups[pre2023Group] : '';
-  runHud.textContent = [group, result, evidence, limit, sampleLogs?.finding.title, `${count} external ${count === 1 ? 'entry' : 'entries'} reached`,
-    blockedTransitions ? `${blockedTransitions} blocked` : '', containedSessions && !containments.length ? `${containedSessions} contained` : '', response, illustration].filter(Boolean).join(' · ');
+  runHud.textContent = [group, run.result.label, result, evidence, limit, sampleLogs?.finding.title, `${count} external ${count === 1 ? 'entry' : 'entries'} reached`,
+    blockedTransitions ? `${blockedTransitions} blocked` : '', run.summary.suppressedTransitions ? `${run.summary.suppressedTransitions} effects suppressed` : '', response, illustration].filter(Boolean).join(' · ');
 }
 
 function playRun() {
   cancelAnimationFrame(frame);
   const attackerId = mapProfile.value === 'pre2023' ? (pre2023Group ??= drawPre2023Group()) : 'artex';
   run = simulateWireRun(estate, defense, attackerId);
+  clock.title = `Modeled time since foothold. Scenario response latency: ${formatEstimate(run.assumptions.responseDelaySec)} after collection (${run.assumptions.collectionDelaySec}s). Stage allocations and response latency are synthetic assumptions informed by historical context, not measured breach-time distributions.`;
   const grouped = new Map();
   for (const event of [...run.events, ...run.controls]) {
     if (!grouped.has(event.timeSec)) grouped.set(event.timeSec, []);
@@ -1135,7 +1178,7 @@ async function startWire() {
   }
   newInfra();
 }
-startWire();
+document.fonts.ready.then(startWire);
 </script>
 </body>
 </html>

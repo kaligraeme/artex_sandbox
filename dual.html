@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ARTEX | Dual View</title>
+<link rel="stylesheet" href="css/wire.css">
+<style>
+body{height:100vh;overflow:hidden}header{background:var(--panel);padding:12px 20px;border-bottom:1px solid var(--border)}
+.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.controls+.controls{margin-top:10px}
+h1{font-size:18px;color:var(--cyan);margin-right:auto}a{text-decoration:none}select,input{background:var(--card);color:var(--text);border:1px solid var(--border);padding:7px;border-radius:5px}input{width:120px}
+.defense.selected{border-color:var(--cyan);color:var(--cyan)}#status{color:var(--muted)}
+main{display:grid;grid-template-columns:1fr 1fr;height:calc(100vh - 130px)}section{min-width:0;overflow:hidden;border-right:1px solid var(--border)}
+h2{padding:10px 18px;color:var(--cyan);font-size:17px}h2 small{font-size:12px;color:var(--muted);font-weight:400;margin-left:10px}
+.stage{position:relative;overflow:hidden}iframe{width:1440px;border:0;transform-origin:top left;position:absolute;left:0;top:0}
+</style>
+</head><body>
+<header>
+ <div class="controls"><h1>RANGE OPERATIONS · DUAL VIEW</h1><a id="single" class="trace-control" href="wire.html">Single view</a>
+ <button class="trace-control" id="fullscreen">Full screen</button></div>
+ <div class="controls">
+ <label>Seed <input id="seed" type="number" value="1853" min="1" step="1"></label>
+ <button class="trace-control" id="new">New Infra</button>
+ <button class="trace-control defense selected" data-mode="baseline">Baseline</button>
+ <button class="trace-control defense" data-mode="patch">Virtual Patch</button>
+ <button class="trace-control defense" data-mode="soc">Agentic SOAR</button>
+ <button class="trace-control defense" data-mode="combined">Defense-in-Depth</button>
+ <button class="trace-control" id="run" disabled>Run both</button>
+ <label>Playback <select id="duration"><option value="30">30 seconds</option><option value="60" selected>60 seconds</option><option value="120">120 seconds</option></select></label>
+ <span id="status" role="status">Loading renderers…</span>
+ </div>
+</header>
+<main>
+ <section><h2>Pre-LLM <small>LockBit-style · One attacker</small></h2><div class="stage"><iframe title="Pre-LLM infrastructure" src="wire.html?embedded=1"></iframe></div></section>
+ <section><h2>ARTEX <small>Three agents</small></h2><div class="stage"><iframe title="ARTEX infrastructure" src="wire.html?embedded=1"></iframe></div></section>
+</main>
+<script src="js/wire-engine.js"></script><script src="js/dual-view.js"></script>
+</body></html>

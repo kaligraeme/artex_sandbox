@@ -286,19 +286,30 @@
     'CVE-2020-0618': { waf: { mitigates: false, reason: 'The internal reporting service is outside the perimeter WAF.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Simulated monitoring flags unexpected reporting-service execution.' } },
     'CVE-2023-46747': { waf: { mitigates: false, reason: 'The BIG-IP management interface is assumed reachable outside the protected application path.' }, ml: { mitigates: false, reason: 'The appliance management plane is outside internal host monitoring.' } },
     'CVE-2023-32707': { waf: { mitigates: false, reason: 'The Splunk management service is internal.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Simulated monitoring flags anomalous administrative role changes.' } },
-    'CVE-2020-3452': { waf: { mitigates: true, control: 'NIST SI-2 / SC-7', reason: 'Simulated virtual patch filters directory-traversal requests to the Cisco ASA WebVPN web services when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
-    'CVE-2021-20016': { waf: { mitigates: true, control: 'NIST SI-2 / SC-7', reason: 'Simulated SQL-injection virtual patch inspects and blocks malformed requests to the SonicWall SMA management portal when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
-    'CVE-2022-1040': { waf: { mitigates: true, control: 'NIST SI-2 / SC-7', reason: 'Simulated virtual patch blocks the authentication-bypass request to the Sophos Firewall user portal when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
+    'CVE-2020-3452': { waf: { mitigates: true, appliesToGroups: ['cisco-asa'], inspectedProtocols: ['https'], control: 'NIST SI-2 / SC-7', reason: 'Simulated virtual patch filters directory-traversal requests to the Cisco ASA WebVPN web services when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
+    'CVE-2021-20016': { waf: { mitigates: true, appliesToGroups: ['sonicwall-sma'], inspectedProtocols: ['https'], control: 'NIST SI-2 / SC-7', reason: 'Simulated SQL-injection virtual patch inspects and blocks malformed requests to the SonicWall SMA management portal when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
+    'CVE-2022-1040': { waf: { mitigates: true, appliesToGroups: ['sophos-firewall'], inspectedProtocols: ['https'], control: 'NIST SI-2 / SC-7', reason: 'Simulated virtual patch blocks the authentication-bypass request to the Sophos Firewall user portal when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
     'CVE-2023-28771': { waf: { mitigates: false, reason: 'Zyxel ATP IKE/UDP-500 command injection is outside the L7 HTTP WAF scope.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
-    'CVE-2024-24919': { waf: { mitigates: true, control: 'NIST SI-2 / SC-7', reason: 'Simulated virtual patch filters the pre-auth arbitrary-file-read request to the Check Point remote-access portal when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } }
+    'CVE-2024-24919': { waf: { mitigates: true, appliesToGroups: ['checkpoint-quantum'], inspectedProtocols: ['https'], control: 'NIST SI-2 / SC-7', reason: 'Simulated virtual patch filters the pre-auth arbitrary-file-read request to the Check Point remote-access portal when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } }
   };
 
-  ['CVE-2025-64446', 'CVE-2018-5412', 'CVE-2021-3827', 'CVE-2018-8340', 'CVE-2020-4888', 'CVE-2026-78597', 'CVE-2026-25769'].forEach(id => {
+  ['CVE-2025-64446', 'CVE-2018-5412', 'CVE-2021-3827', 'CVE-2018-8340', 'CVE-2020-4888', 'CVE-2026-78597', 'CVE-2026-25769', 'CVE-2022-29712', 'CVE-2021-35225'].forEach(id => {
     KEV_MITIGATION_RULES[id] = {
       waf: { mitigates: false, reason: 'The simulated management or service path is outside the perimeter WAF.' },
       ml: { mitigates: true, control: 'NIST SI-4', reason: 'The scenario assumes independent monitoring detects the anomalous activity.' }
     };
   });
+
+  // Coverage is an explicit declaration, separate from whether a CVE is in KEV.
+  // Legacy declarations are normalized here so every executable control has the
+  // same boundary contract without duplicating state in the renderer.
+  for (const rule of Object.values(KEV_MITIGATION_RULES)) {
+    for (const control of ['waf', 'ml']) {
+      const declaration = rule[control];
+      if (!declaration || typeof declaration.reason !== 'string' || !declaration.reason.trim()) continue;
+      if (!declaration.state) declaration.state = declaration.mitigates ? 'modeled' : 'unsupported';
+    }
+  }
 
   const LAYER_CONFIG = [
     {
@@ -575,6 +586,8 @@
       }
       if (!Array.isArray(a.interfaces) || a.interfaces.length === 0) {
         errors.push(`Asset ${a.id} must declare interfaces`);
+      } else if (a.interfaces.some(iface => typeof iface !== 'string' || !iface.trim() || iface !== iface.trim())) {
+        errors.push(`Asset ${a.id} has an invalid interface identifier`);
       }
     }
 
@@ -596,7 +609,17 @@
       if (!f.id || findingIds.has(f.id)) errors.push(`Duplicate or missing finding id: ${f.id}`);
       findingIds.add(f.id);
       if (!assetIds.has(f.assetId)) errors.push(`Finding ${f.id} references unknown asset ${f.assetId}`);
-      if (f.kind === 'cve' && (!KEV_MITIGATION_RULES[f.cveId]?.waf || !KEV_MITIGATION_RULES[f.cveId]?.ml)) errors.push(`Missing declared control coverage for ${f.cveId}`);
+      if (f.kind === 'cve') {
+        const rule = KEV_MITIGATION_RULES[f.cveId];
+        if (!rule?.waf || !rule?.ml) errors.push(`Missing declared control coverage for ${f.cveId}`);
+        else for (const control of ['waf', 'ml']) {
+          const declaration = rule[control];
+          if (!['modeled', 'not_applicable', 'unsupported', 'unknown'].includes(declaration.state) || !declaration.reason?.trim()) {
+            errors.push(`Invalid ${control} coverage declaration for ${f.cveId}`);
+          }
+          if (declaration.state !== 'modeled' && declaration.mitigates) errors.push(`Non-modeled ${control} coverage cannot mitigate ${f.cveId}`);
+        }
+      }
     }
 
     const credIds = new Set();
@@ -614,6 +637,7 @@
       if (!assetIds.has(r.targetId)) errors.push(`Relationship ${r.id} references unknown targetId ${r.targetId}`);
       if (r.sourceId === r.targetId) errors.push(`Relationship ${r.id} is a self-loop`);
       if (r.direction !== 'outbound') errors.push(`Relationship ${r.id} has invalid direction ${r.direction}`);
+      if (typeof r.protocol !== 'string' || !r.protocol.trim() || r.protocol !== r.protocol.trim()) errors.push(`Relationship ${r.id} must declare a valid protocol`);
     }
 
     return { valid: errors.length === 0, errors };
@@ -881,6 +905,8 @@
   }
 
   function evaluateDefense(targetAsset, action, mode, seed, isCanary, options = {}) {
+    if (!targetAsset || !Array.isArray(targetAsset.interfaces) || targetAsset.interfaces.length === 0) throw new Error('evaluateDefense requires a validated target asset with interfaces');
+    if (!action || typeof action !== 'object') throw new Error('evaluateDefense requires a validated action');
     const attackerProfile = options.attackerProfile || null;
     const defensePosture = options.defensePosture || null;
     const multiplier = attackerProfile?.detectionMultiplier ?? 1;
@@ -962,10 +988,12 @@
     const cveId = action.finding && action.finding.cveId;
     const rule = KEV_MITIGATION_RULES[cveId];
     if (!rule) throw new Error(`Missing declared control coverage for ${cveId}`);
-    const wafRuleMatches = !isNonHttpProtocol && portalCovered && !!rule.waf?.mitigates;
+    const groupCovered = !rule.waf?.appliesToGroups || rule.waf.appliesToGroups.includes(targetAsset.groupId);
+    const protocolCovered = !rule.waf?.inspectedProtocols || targetAsset.interfaces.some(i => rule.waf.inspectedProtocols.includes(i));
+    const wafRuleMatches = !isNonHttpProtocol && portalCovered && groupCovered && protocolCovered && rule.waf?.state === 'modeled' && !!rule.waf?.mitigates;
     const wafEvadedByAdaptive = wafRuleMatches && rule.waf?.ruleStrictness === 'signature_regex' && !!attackerProfile?.adaptiveWafEvasion;
     const wafMitigates = wafRuleMatches && !wafEvadedByAdaptive;
-    const soarMitigates = layerMonitored && !!rule.ml?.mitigates && soarDetects(targetAsset.id, seed, multiplier);
+    const soarMitigates = layerMonitored && rule.ml?.state === 'modeled' && !!rule.ml?.mitigates && soarDetects(targetAsset.id, seed, multiplier);
 
     if (mode === 'patch') {
       if (isNonHttpProtocol) {
@@ -1153,6 +1181,9 @@
           },
           outcome: 'suppressed',
           timeSec, startSec,
+          suppressionPhase: activeStep?.suppressionPhase || 'in_flight',
+          enforcementSec: signals.get(scope),
+          scheduledEffectSec: activeStep?.scheduledEffectSec ?? timeSec,
           reason: 'Action effect suppressed because session containment was effective at or before completion.'
         });
         return false;
@@ -1318,12 +1349,12 @@
           const startSec = Math.max(clock, step.readySec);
           const scope = step.sourceAsset ? scopeFor(step.sourceAsset) : step.targetAsset.id;
           if ((signals.get(scope) ?? Infinity) <= startSec) {
-            activeStep = {...step, startSec, timeSec: startSec};
+            activeStep = {...step, startSec, timeSec: startSec, scheduledEffectSec: startSec + duration, suppressionPhase: 'queued'};
             processTransition(step.sourceAsset, step.targetAsset, step.relationship);
             activeStep = null;
             continue;
           }
-          running.push({ ...step, startSec, timeSec: startSec + duration });
+          running.push({ ...step, startSec, timeSec: startSec + duration, scheduledEffectSec: startSec + duration, suppressionPhase: 'in_flight' });
         }
         if (!running.length) continue;
         // Confirmed enforcement cancels in-flight effects and frees the worker at that time.

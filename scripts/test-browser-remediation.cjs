@@ -74,6 +74,14 @@ async function main(){
         console.log(`PASS browser ${viewport.width}x${viewport.height}, seed ${seed}: layout, 8 combinations, replay, details`);
       }
     }
+    await page.evaluate(()=>{
+      estate=generateEstate({preset:'demo',seed:404,seedExercise:false});
+      estate.findings=[];estate.credentials=[];referenceCase=null;catalogLabel.hidden=true;playRun();finishRun();
+    });
+    const neutral=await page.evaluate(()=>({label:run.result.label,style:runHud.className,text:runHud.textContent}));
+    assert.equal(neutral.label,'No protected read established');
+    assert.equal(neutral.style,'');
+    assert(neutral.text.includes(neutral.label),'Neutral result must be rendered from classifyRun');
     const previous=await page.evaluate(()=>JSON.stringify(estate));
     await page.click('#new-run-btn');
     assert.notEqual(await page.evaluate(()=>JSON.stringify(estate)),previous);

@@ -27,6 +27,16 @@ Source references: Codex `96e504a` and Claude `311c6d8`. Their implementation ba
 | Deterministic action ordering | Claude | Eager validation checks omitted, duplicate and unknown IDs, including single-item cases. Missing or empty order uses asset declaration order. | Add a true one-asset regression fixture and document empty-order semantics. |
 | Realism review and sensitivity analysis | Claude | Findings considered; active-engine sweep added as `review-remediation.cjs`. | Preserve the original review as revision-labelled historical evidence and improve manifests for new probes. |
 
+### Progress after the UI freeze
+
+Estate validation now rejects empty, non-string and whitespace-padded interface identifiers and relationship protocols. The remediation suite covers these cases, a genuine single-asset order containing an unknown ID, and equivalent absent and empty orders. Route protocol compatibility remains an action-level accessibility decision. `evaluateDefense()` documents and enforces its validated-target/action boundary.
+
+The current sweep reports its Git revision and whether the working tree is dirty, its generation and simulation defaults, and emits the full estate and run parameters when an invariant fails. Canary signals are checked against both actual decoys and deployed decoy IDs. Paired probes vary response latency, response scope and telemetry placement. The original Claude review and output are preserved separately and identify reviewed revision `286cf02`; their counts remain historical evidence.
+
+Scheduled suppression events now include `suppressionPhase` (`queued` or `in_flight`), `enforcementSec` and `scheduledEffectSec`. The focused tests exercise both phases. Suppressed work is excluded from both `attemptedTransitions` and `evaluatedTransitions`, including an in-flight effect cancelled after dispatch; `suppressedTransitions` counts those events separately. One allowance unit is charged per unique source, target and relationship transition reaching action evaluation, including an ineligible transition. Multiple candidate actions on that transition share the unit. Duplicate transitions, suppressed transitions and undeployed or disabled decoys do not consume it. The scheduler's common default remains 1,000, independent of worker count and display limits.
+
+All CVEs reachable from the executable catalog and variant mappings now require reasoned WAF and SOC states. The accepted states are `modeled`, `not_applicable`, `unsupported` and `unknown`; only `modeled` can mitigate. Exact fixtures cover matching and unrelated routes for the four imported HTTP examples, plus the non-HTTP Zyxel path. The outcome table is covered directly through `classifyRun()` fixtures, and the browser suite asserts the neutral result as well as the existing defense matrix and replay path.
+
 Already-delivered integration also supplies causal worker scheduling, explicit response failure/authority, real decoy validation, the full layered defense button and readable scrolling layouts. These are dependencies to preserve when completing the work; they should not be replaced with older branch implementations.
 
 ## 3. Work package A — Coverage declarations and applicability

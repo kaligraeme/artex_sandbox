@@ -1,0 +1,61 @@
+{
+  "seedRange": [
+    1,
+    200
+  ],
+  "dataReadCounts": {
+    "lockbit": {
+      "baseline": 164,
+      "patch": 88,
+      "soc": 0,
+      "soc-canary": 0
+    },
+    "conti": {
+      "baseline": 164,
+      "patch": 88,
+      "soc": 4,
+      "soc-canary": 0
+    },
+    "blackcat": {
+      "baseline": 164,
+      "patch": 88,
+      "soc": 164,
+      "soc-canary": 164
+    },
+    "hive": {
+      "baseline": 164,
+      "patch": 88,
+      "soc": 0,
+      "soc-canary": 0
+    },
+    "revil": {
+      "baseline": 164,
+      "patch": 88,
+      "soc": 164,
+      "soc-canary": 164
+    },
+    "artex": {
+      "baseline": 164,
+      "patch": 88,
+      "soc": 164,
+      "soc-canary": 5
+    }
+  },
+  "withoutExerciseReads": 8,
+  "identicalBaselineActions": 200,
+  "exerciseReadsWithImpossibleCapability": 163,
+  "canarySignalsWithoutCanaryAsset": 200,
+  "noSignalSocReducedDataCount": 3,
+  "budgetSample": {
+    "seed": 42,
+    "baselineDataAssets": 2,
+    "socDataAssets": 1,
+    "controlEvents": 0
+  },
+  "sample": {
+    "seed": 1,
+    "readSec": 4440,
+    "signalSec": 4390,
+    "enforcementSec": 4450
+  }
+}

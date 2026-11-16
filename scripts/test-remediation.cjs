@@ -21,10 +21,34 @@ function fixture({decoy = false, secondEntry = false} = {}) {
 const opts = {actionDurations:[0,10,20,30],responseDelay:60,decisionDelay:0};
 const run = (estate,mode,options={}) => e.simulateWireRun(estate,mode,'artex',{...opts,...options});
 const read = r=>r.events.find(x=>x.outcome==='succeeded'&&x.grantedCapability==='data_read');
+const classified=(events=[],controls=[],summary={dataReached:false,truncated:false})=>e.classifyRun({events,controls,summary});
+assert.deepEqual(classified(),{impact:false,incomplete:false,containedSessions:0,allContained:false,label:'No protected read established',style:''});
+assert.equal(classified([{outcome:'blocked'}]).label,'Virtual patch blocked attempts; no protected read');
+assert.equal(classified([],[{control:'signal'}]).label,'Alerted; no confirmed containment');
+assert.equal(classified([{outcome:'succeeded',scope:'a'},{outcome:'succeeded',scope:'b'}],[{control:'enforced',scope:'a',timeSec:2}]).label,'Partial session containment');
+assert.equal(classified([{outcome:'succeeded',scope:'a'}],[{control:'failed',scope:'a',timeSec:2}]).containedSessions,0);
+assert.equal(classified([{outcome:'succeeded',scope:'a'}],[{control:'enforced',scope:'wrong',timeSec:2}]).containedSessions,0);
+assert.equal(classified([{outcome:'succeeded',scope:'a'}],[{control:'enforced',scope:'a',timeSec:2}]).style,'contained');
+assert.equal(classified([{outcome:'succeeded',scope:'a',isProtectedRead:true,timeSec:1}],[{control:'enforced',scope:'a',timeSec:2}],{dataReached:true,truncated:false}).label,'Record read before containment');
+assert.deepEqual(classified([{outcome:'succeeded',scope:'a',isProtectedRead:true,timeSec:1}],[],{dataReached:true,truncated:true}),{impact:true,incomplete:true,containedSessions:0,allContained:false,label:'Exploration incomplete',style:'breached'});
 // Scope, causality, exact ties, failure and latency are independent from actor labels.
 const x=fixture();
 assert(read(run(x,'soc')), 'Late enforcement preserves the read');
 assert(!read(run(x,'soc',{responseDelay:30})), 'Enforcement before the read cancels its effect');
+const cancelled=run(x,'soc',{responseDelay:30});
+const cancelledEffect=cancelled.events.find(event=>event.outcome==='suppressed');
+assert(cancelledEffect);
+assert.equal(cancelledEffect.suppressionPhase,'in_flight');
+assert(cancelledEffect.startSec<=cancelledEffect.enforcementSec);
+assert(cancelledEffect.enforcementSec<=cancelledEffect.scheduledEffectSec);
+assert.equal(cancelledEffect.timeSec,cancelledEffect.enforcementSec);
+const queuedEstate=fixture();
+queuedEstate.assets.push({...queuedEstate.assets[1],id:'a1b'});
+queuedEstate.findings.push({...queuedEstate.findings[1],id:'f-a1b',assetId:'a1b'});
+queuedEstate.relationships.push({...queuedEstate.relationships[0],id:'r1b',targetId:'a1b'});
+queuedEstate.actionOrder.push('a1b');
+const queuedRun=run(queuedEstate,'soc',{responseDelay:5,attackerProfile:{maxConcurrentBranches:1}});
+assert(queuedRun.events.some(event=>event.outcome==='suppressed'&&event.suppressionPhase==='queued'));
 assert(!read(run(x,'soc',{responseDelay:50})), 'Enforcement ties precede action effects');
 assert(read(run(x,'soc',{responseDelay:51})), 'One second after impact is too late');
 assert(read(run(x,'soc',{responseDelay:0,enforcementSucceeds:false})));
@@ -72,6 +96,49 @@ for (const order of [['wrong'],['a0','a0'],['a0']]) {
 const rogue=fixture();rogue.findings[0]={...rogue.findings[0],kind:'cve',cveId:'CVE-9999-0001'};
 assert.throws(()=>run(rogue,'baseline'),/control coverage/);
 const noOrder=fixture();delete noOrder.actionOrder;assert(read(run(noOrder,'baseline')));
+const single=fixture();single.assets=single.assets.slice(0,1);single.findings=single.findings.slice(0,1);single.relationships=[];single.actionOrder=['unrelated'];
+assert.throws(()=>run(single,'baseline'),/Unknown actionOrder/);
+for(const interfaces of [undefined,[],[''],[' https'],[null],[42]]) {
+  const bad=fixture();bad.assets[0].interfaces=interfaces;
+  assert.throws(()=>run(bad,'baseline'),/interface/);
+}
+for(const protocol of [undefined,'',' https',null,42]) {
+  const bad=fixture();bad.relationships[0].protocol=protocol;
+  assert.throws(()=>run(bad,'baseline'),/protocol/);
+}
+const incompatible=fixture();incompatible.relationships[0].protocol='db-pg';
+assert.equal(e.validateEstate(incompatible).valid,true,'A well-formed but incompatible route is structurally valid');
+assert(!read(run(incompatible,'baseline')),'An incompatible route cannot establish access');
+assert.throws(()=>e.evaluateDefense({}, {}, 'patch', 1, false),/validated target asset/);
+const declared=new Set(e.LAYER_KEVS.flat().map(item=>item.id));
+for(const layer of e.LAYER_CONFIG) for(const cluster of layer.clusters) for(const target of cluster.targets) for(const id of target.kevByVariant||[]) if(id) declared.add(id);
+for(const id of declared) {
+  const rule=e.KEV_MITIGATION_RULES[id];
+  assert(rule,`Missing executable coverage declaration for ${id}`);
+  for(const control of ['waf','ml']) {
+    assert(['modeled','not_applicable','unsupported','unknown'].includes(rule[control]?.state),`Missing ${control} coverage state for ${id}`);
+    assert(rule[control].reason,`Missing ${control} coverage reason for ${id}`);
+  }
+}
+for(const [cveId,groupId] of Object.entries({'CVE-2020-3452':'cisco-asa','CVE-2021-20016':'sonicwall-sma','CVE-2022-1040':'sophos-firewall','CVE-2024-24919':'checkpoint-quantum'})) {
+  const action={actionKind:'cve',finding:{kind:'cve',cveId},reason:'fixture'};
+  const covered=e.evaluateDefense({id:`covered-${cveId}`,groupId,layerIdx:0,interfaces:['https']},action,'patch',1,false);
+  const uncovered=e.evaluateDefense({id:`uncovered-${cveId}`,groupId:'unrelated-route',layerIdx:0,interfaces:['https']},action,'patch',1,false);
+  assert.equal(covered.addressed,true,`${cveId} matching route must be covered`);
+  assert.equal(uncovered.addressed,false,`${cveId} unrelated route must remain uncovered`);
+}
+const nonHttpAction={actionKind:'cve',finding:{kind:'cve',cveId:'CVE-2020-3452'},reason:'fixture'};
+assert.equal(e.evaluateDefense({id:'non-http',groupId:'cisco-asa',layerIdx:0,interfaces:['vpn']},nonHttpAction,'patch',1,false).addressed,false);
+const unknownEstate=e.generateEstate({preset:'demo',seed:777});
+const unknownFinding=unknownEstate.findings.find(f=>f.kind==='cve'&&e.KEV_MITIGATION_RULES[f.cveId]?.waf?.mitigates);
+assert(unknownFinding);
+const unknownRule=e.KEV_MITIGATION_RULES[unknownFinding.cveId].waf;
+const savedRule={...unknownRule};Object.assign(unknownRule,{state:'unknown',mitigates:false,reason:'Fixture: effectiveness unresolved.'});
+assert.doesNotThrow(()=>e.simulateWireRun(unknownEstate,'patch','lockbit'));
+assert(!e.simulateWireRun(unknownEstate,'patch','lockbit').events.some(event=>event.finding?.cveId===unknownFinding.cveId&&event.mitigation?.addressed));
+Object.assign(unknownRule,savedRule);
+const emptyOrder=fixture();emptyOrder.actionOrder=[];
+assert.deepEqual(run(emptyOrder,'baseline'),run(noOrder,'baseline'));
 const scopes=run(fixture({secondEntry:true}),'soc',{responseDelay:0});
 assert.equal(scopes.result.allContained,false, 'One enforcement does not contain every established session');
 assert.equal(scopes.result.style,'');

@@ -235,6 +235,12 @@ function layoutGraph(estate) {
     el.addEventListener('focus', selectNode);
     el.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectNode(); } });
     nodesLayer.appendChild(el);
+    if (node.isDecoy && ['combined', 'canaries', 'soc-canary'].includes(defense)) {
+      const marker = document.createElement('span');
+      marker.className = 'canary-marker';
+      marker.textContent = 'Canary deployed';
+      el.appendChild(marker);
+    }
     node.el = el;
   });
 
@@ -467,7 +473,7 @@ function renderControl(event) {
     : event.control === 'decision' ? 'SOAR containment approved'
     : event.source === 'canary' ? 'Canary alerted' : 'Boundary telemetry';
   if (event.control === 'signal' && event.source === 'canary') {
-    const marker = document.createElement('span');
+    const marker = node.el.querySelector('.canary-marker') || document.createElement('span');
     marker.className = 'canary-marker';
     marker.textContent = 'Canary alert';
     node.el.append(marker);

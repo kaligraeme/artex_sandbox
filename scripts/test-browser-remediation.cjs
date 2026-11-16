@@ -45,7 +45,13 @@ async function main(){
           assert.equal(await page.locator(`[data-attacker="${attacker}"]`).getAttribute('aria-pressed'),'true');
           assert.equal(await page.locator('.attacker-marker').count(),attacker==='artex'?3:1);
           for(const mode of ['baseline','patch','soc','combined']){
-            await page.click(`[data-mode="${mode}"]`);await page.click('#map-results-btn');
+            await page.click(`[data-mode="${mode}"]`);
+            if(mode==='combined') {
+              const deployed=await page.evaluate(()=>estate.defensePosture.decoys.length);
+              assert(deployed>0,'Generated estate must deploy a canary');
+              assert.equal(await page.locator('.node.decoy .canary-marker').count(),deployed,'Canary deployment must be visible before Results');
+            }
+            await page.click('#map-results-btn');
             const snapshot=await page.evaluate(()=>({run:JSON.stringify(run),style:runHud.className,expected:run.result.style,text:runHud.textContent,label:run.result.label}));
             assert.equal(snapshot.style,snapshot.expected);assert(snapshot.text.includes(snapshot.label));
             const overlaps=await page.evaluate(()=>{

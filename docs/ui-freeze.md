@@ -17,4 +17,6 @@ Model suites pass. Browser checks pass for 72 combinations across two attackers,
 
 ## Change boundary
 
+Subsequent user-requested correction: canary-enabled modes show `Canary deployed` on an existing decoy from the start, changing to `Canary alert` on a real signal. This uses the existing badge styling and preserves the frozen layout and controls. The full-estate GIF adds a recording overview of all generated assets; it does not replace the application's layout. See [current tool state](current-tool-state.md).
+
 Stop UI work here. Future work must preserve this presentation unless the user explicitly requests reopening UI changes. Model/backend changes do not imply approval to alter the frozen UI. The snapshot tag identifies the local frozen commit; remote publication depends on a successful push.

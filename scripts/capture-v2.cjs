@@ -19,14 +19,15 @@ for(const actor of ['artex','lockbit'])for(const mode of modes){
   for(const control of result.controls)retained.add(control.targetId);
 }
 for(const credential of sourceEstate.credentials)if(retained.has(credential.sourceAssetId))for(const id of credential.targetAssetIds || [])retained.add(id);
-const estate={...sourceEstate,assets:sourceEstate.assets.filter(a=>retained.has(a.id)),findings:sourceEstate.findings.filter(f=>retained.has(f.assetId)),
+const focusedEstate={...sourceEstate,assets:sourceEstate.assets.filter(a=>retained.has(a.id)),findings:sourceEstate.findings.filter(f=>retained.has(f.assetId)),
   relationships:sourceEstate.relationships.filter(r=>retained.has(r.sourceId)&&retained.has(r.targetId)),credentials:sourceEstate.credentials.filter(c=>retained.has(c.sourceAssetId)),
   actionOrder:sourceEstate.actionOrder.filter(id=>retained.has(id)),defensePosture:{...sourceEstate.defensePosture,decoys:sourceEstate.defensePosture.decoys.filter(d=>retained.has(d.assetId))}};
+const estate=process.env.V2_FOCUSED==='1'?focusedEstate:sourceEstate;
 assert(engine.validateEstate(estate).valid);
 async function main(){
   fs.mkdirSync(output,{recursive:true});
   const manifest={title:'ARTEX vs Pre-LLM Attacks — v2',preset:'mixed',seed:1853,viewport:{width:1440,height:1060},
-    note:'Focused nine-asset enterprise derived from generated seed 1853 and re-simulated with normal prerequisites. Actual engine events; accelerated event-driven playback. Model times are not recording time or measured field performance.',
+    note:`${estate.assets.length}-asset enterprise from generated seed 1853. All assets visible from the start; fixed overview across runs. Actual engine events; accelerated event-driven playback. Model times are not recording time or measured field performance.`,
     frames:[],runs:[],estate};
   const server=http.createServer((req,res)=>{
     const url=decodeURIComponent(req.url.split('?')[0]);const file=path.join(root,url==='/'?'index.html':url);
@@ -44,6 +45,9 @@ async function main(){
       const caption=document.createElement('div');caption.id='capture-caption';document.body.appendChild(caption);
       const cover=document.createElement('section');cover.id='capture-cover';document.body.appendChild(cover);
     },estate);
+    const overviewHeight=await page.evaluate(()=>Math.ceil(Math.max(...[...currentNodes.values()].map(n=>n.y))+document.querySelector('.top-bar').getBoundingClientRect().height+350));
+    manifest.viewport.height=Math.max(1060,overviewHeight);
+    await page.setViewportSize(manifest.viewport);
     await page.addStyleTag({content:`
       .soc-ticker{bottom:125px} #asset-details{display:none}
       #capture-caption{position:fixed;bottom:15px;left:20px;right:20px;z-index:3000;background:#101d29f5;border:1px solid #55798b;border-radius:8px;padding:12px 18px;color:#dce6ee;font:14px/1.6 'Segoe UI',Arial;box-shadow:0 10px 30px #0005}
@@ -85,11 +89,7 @@ async function main(){
         const visible=phase.events.filter(e=>e.control||['succeeded','blocked','suppressed','alert_only'].includes(e.outcome));
         const focus=visible.find(e=>!e.control) || visible[0];
         if(visible.length){
-          await page.evaluate(({targetId})=>{
-            const node=currentNodes.get(targetId);if(!node)return;
-            const top=node.el.getBoundingClientRect().top+window.scrollY;
-            window.scrollTo(0,Math.max(0,top-450));
-          },{targetId:focus.targetId});
+          assert.equal(await page.locator('.node').count(),estate.assets.length);
           const names=visible.map(e=>{
             const asset=estate.assets.find(a=>a.id===e.targetId)?.label || e.targetId;
             const verb=e.control?({signal:'Alert received',decision:'Response approved',enforced:'Containment effective',failed:'Enforcement failed',denied:'Response lacks authority'}[e.control] || e.control)

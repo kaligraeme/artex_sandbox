@@ -37,7 +37,7 @@ with Image.open(args.output) as gif:
     for i in range(gif.n_frames):
         gif.seek(i)
         durations.append(gif.info['duration'])
-    assert gif.size == (1440, 1060)
+    assert gif.size == (manifest['viewport']['width'], manifest['viewport']['height'])
     assert gif.info.get('loop') == 0
     assert abs(sum(durations) - sum(i['durationMs'] for i in manifest['frames'])) < 100
     print(json.dumps({'file': str(args.output), 'frames': gif.n_frames, 'size': gif.size, 'duration_seconds': sum(durations)/1000, 'megabytes': round(args.output.stat().st_size/1048576, 2), 'runs': len(manifest['runs'])}))

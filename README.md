@@ -8,6 +8,8 @@ The demo is illustrative: its infrastructure, access paths, alerts and defense o
 
 [Watch the v2 ARTEX versus Pre-LLM animation](assets/ARTEX_vs_PreLLM_v2.gif): eight runs across the four defense options, with moving attacker/agent markers and the modeled stopwatch. [Scenario and capture notes](docs/v2-animation.md).
 
+[Watch the full 54-asset infrastructure recording](assets/ARTEX_vs_PreLLM_full_estate.gif): the entire estate stays visible from the start across eight comparisons. See [current tool state and backend validation](docs/current-tool-state.md) for random generation, logical connections, canary visibility, verification evidence and remaining model limits.
+
 ## Get and start the demo
 
 Clone the current repository:

@@ -5,614 +5,58 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ARTEX | Wire Diagram Simulation v2.4.0</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
-<style>
-  :root {
-    --bg: #071426;
-    --turquoise: #00f0ff;
-    --turquoise-glow: rgba(0, 240, 255, 0.45);
-    --green: #00ff77;
-    --green-glow: rgba(0, 255, 119, 0.65);
-    --green-wire: rgba(0, 255, 119, 0.48);
-    --red: #ff2244;
-    --red-glow: rgba(255, 34, 68, 0.85);
-    --red-wire: #ff2244;
-  }
-
-  * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    user-select: none;
-  }
-
-  html, body {
-    width: 100vw;
-    height: 100vh;
-    overflow: auto;
-    background-color: var(--bg);
-    color: #fff;
-    font-family: 'JetBrains Mono', 'Fira Code', 'Segoe UI', Consolas, monospace;
-  }
-
-  /* Full screen canvas and graph viewport */
-  #viewport {
-    position: relative;
-    width: 100vw;
-    height: 100vh;
-    background: radial-gradient(circle at 50% 45%, #10253b 0%, #071426 75%, #050f1e 100%);
-    overflow: hidden;
-  }
-
-  /* Faint background grid for circuit cyber aesthetic */
-  .circuit-grid {
-    position: absolute;
-    inset: 0;
-    background-image: 
-      linear-gradient(rgba(0, 255, 119, 0.02) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0, 255, 119, 0.02) 1px, transparent 1px);
-    background-size: 50px 50px;
-    pointer-events: none;
-  }
-
-  /* TOP HEADER - Mode selection strip + NEW RUN + Live HUD */
-  .top-bar {
-    position: absolute;
-    top: 14px;
-    left: 0;
-    right: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-    padding: 0 12px;
-    z-index: 1000;
-    pointer-events: none;
-  }
-
-  /* 4 Run Type Scenario Buttons along the top */
-  .mode-strip {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    flex-wrap: wrap;
-    justify-content: center;
-    pointer-events: auto;
-  }
-
-  .mode-btn {
-    background: rgba(9, 16, 24, 0.88);
-    border: 1px solid rgba(88, 217, 219, 0.22);
-    color: #8fa3b8;
-    padding: 4px 8px;
-    border-radius: 4px;
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-    backdrop-filter: blur(8px);
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    outline: none;
-    text-align: left;
-  }
-
-  .mode-btn:hover {
-    border-color: var(--turquoise);
-    color: #e6edf5;
-    background: rgba(14, 28, 38, 0.95);
-    transform: translateY(-1px);
-  }
-
-  .mode-btn.selected {
-    background: rgba(0, 36, 44, 0.95);
-    border-color: var(--turquoise);
-    color: var(--turquoise);
-    box-shadow: 0 0 14px rgba(0, 240, 255, 0.35), inset 0 0 8px rgba(0, 240, 255, 0.15);
-  }
-
-  .mode-btn .mode-title {
-    font-size: 9.5px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: #abbecd;
-  }
-
-  .mode-btn.selected .mode-title {
-    color: var(--turquoise);
-  }
-
-  .mode-btn .mode-desc {
-    font-size: 7.5px;
-    letter-spacing: 0.05em;
-    color: #64788c;
-    white-space: nowrap;
-  }
-
-  .mode-btn.selected .mode-desc {
-    color: #8bebf0;
-  }
-
-  .run-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: center;
-    pointer-events: auto;
-  }
-
-  #catalog-example {
-    color: #a5d8ff;
-    background: rgba(4, 18, 32, 0.88);
-    border: 1px solid rgba(110, 193, 255, 0.35);
-    border-radius: 3px;
-    padding: 3px 8px;
-    font-size: 10px;
-    text-align: center;
-    pointer-events: auto;
-  }
-
-  #run-hud {
-    font-size: 9.5px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--turquoise);
-    background: rgba(0, 16, 22, 0.8);
-    border: 1px solid rgba(0, 240, 255, 0.25);
-    padding: 4px 9px;
-    border-radius: 3px;
-    backdrop-filter: blur(6px);
-    text-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
-    transition: all 0.3s ease;
-    text-align: center;
-  }
-  #run-hud.breached {
-    color: #ff9ba8;
-    border-color: rgba(255, 34, 68, 0.4);
-    text-shadow: 0 0 4px rgba(255, 34, 68, 0.3);
-    background: rgba(26, 4, 8, 0.85);
-  }
-  #run-hud.contained {
-    color: #65d7a5;
-    border-color: rgba(101, 215, 165, 0.4);
-    text-shadow: 0 0 8px rgba(101, 215, 165, 0.6);
-    background: rgba(4, 20, 14, 0.85);
-  }
-
-  /* SVG layer for wires and pulses */
-  #wire-svg {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 10;
-  }
-
-  .wire {
-    fill: none;
-    stroke: var(--green-wire);
-    stroke-width: 1.25;
-    stroke-linecap: round;
-    opacity: 0.22;
-    transition: opacity 0.8s ease, stroke 0.4s ease, stroke-width 0.3s ease, filter 0.3s ease, stroke-opacity 0.4s ease;
-  }
-
-  .wire.revealed, .wire.hit-wire, .wire.defended-wire { opacity: 1; }
-  .wire.contained-wire {
-    opacity: 1;
-    stroke: #f6b93b;
-    stroke-width: 2;
-    stroke-dasharray: 5 4;
-  }
-  .node.catalog-focus .node-label {
-    outline: 1px solid rgba(121, 189, 255, 0.75);
-    outline-offset: 2px;
-  }
-  .node.decoy .node-halo {
-    border-color: #f6b93b;
-    opacity: 0.75;
-  }
-  .node.decoy .node-icon {
-    background-color: #f6b93b;
-    filter: drop-shadow(0 0 6px rgba(246, 185, 59, 0.6));
-  }
-  .node.decoy .node-label {
-    color: #ffe6a3;
-    border: 1px dashed rgba(246, 185, 59, 0.55);
-  }
-  .node.contained .node-halo {
-    border-color: #f6b93b;
-    opacity: 0.9;
-  }
-  .node.contained .node-icon {
-    background-color: #f6b93b;
-    filter: drop-shadow(0 0 8px rgba(246, 185, 59, 0.75));
-  }
-  .node.contained .node-kev,
-  .node.contained .cve {
-    display: block;
-    color: #ffd37a;
-  }
-  .illustrative-wire {
-    fill: none;
-    stroke: #c2a2fa;
-    stroke-width: 1.5;
-    stroke-dasharray: 4 5;
-    opacity: 0.4;
-  }
-  .illustrative-step {
-    position: absolute;
-    transform: translate(-50%, -50%);
-    width: 15vw;
-    max-width: 142px;
-    padding: 5px 3px;
-    border: 1px dashed #9174bd;
-    border-radius: 4px;
-    background: #18142b;
-    color: #e2d2ff;
-    font-size: 10px;
-    text-align: center;
-    pointer-events: auto;
-    opacity: 0.65;
-  }
-  .illustration-active .illustrative-step,
-  .illustration-active .illustrative-wire { opacity: 1; }
-
-  .probe-wire {
-    fill: none;
-    stroke: #ff637b;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-dasharray: 2 6;
-    animation: probeSweep linear both;
-  }
-  .probe-wire[data-lane="2"] { stroke: #ffac7b; }
-  .probe-wire[data-lane="3"] { stroke: #d3a0ff; }
-  @keyframes probeSweep {
-    0% { opacity: 0; }
-    15%, 70% { opacity: 1; }
-    100% { opacity: 0; stroke-dashoffset: -24; }
-  }
-
-  .wire.hit-wire {
-    stroke: var(--red);
-    stroke-opacity: 0.95;
-    stroke-width: 2.2;
-    filter: drop-shadow(0 0 6px var(--red-glow));
-    stroke-dasharray: none;
-  }
-
-  /* Traveling energy packet along wires */
-  .wire-packet {
-    fill: var(--red);
-    filter: drop-shadow(0 0 6px var(--red));
-  }
-
-  /* DOM Nodes Layer */
-  #nodes-layer {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 20;
-    pointer-events: none;
-  }
-
-  /* Smaller, sleek node items */
-  .node {
-    position: absolute;
-    /* Anchor the 36px icon, not the combined icon-and-label box, at x/y. */
-    transform: translate(-50%, -18px);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    pointer-events: auto;
-    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  .node:hover {
-    transform: translate(-50%, -18px) scale(1.15);
-    transform-origin: center 18px;
-    z-index: 100;
-  }
-
-  /* Node Icon Box - Smaller */
-  .node-icon-wrapper {
-    position: relative;
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  /* Ambient glowing ring around icon */
-  .node-halo {
-    position: absolute;
-    inset: -4px;
-    border-radius: 50%;
-    border: 1px dashed var(--green);
-    opacity: 0.35;
-    transition: all 0.4s ease;
-    animation: rotateSlow 25s linear infinite;
-  }
-
-  @keyframes rotateSlow {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-
-  /* The Icon itself using pure CSS Mask: smaller, crisp, transparent */
-  .node-icon {
-    width: 26px;
-    height: 26px;
-    background-color: var(--green);
-    -webkit-mask-size: contain;
-    -webkit-mask-repeat: no-repeat;
-    -webkit-mask-position: center;
-    mask-size: contain;
-    mask-repeat: no-repeat;
-    mask-position: center;
-    filter: drop-shadow(0 0 5px var(--green-glow));
-    transition: background-color 0.4s ease, filter 0.4s ease, transform 0.3s ease;
-  }
-
-  /* Node Label - Very Light Green for maximum legibility */
-  .node-label {
-    margin-top: 4px;
-    font-size: 8.5px;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    color: #d4ffe8;
-    text-shadow: none;
-    background: #071426;
-    border-radius: 2px;
-    padding: 1px 3px;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    text-align: center;
-    width: max-content;
-    max-width: 150px;
-    transition: color 0.4s ease, text-shadow 0.4s ease;
-  }
-
-  /* KEV Title underneath in RED (hidden initially, displays on hit) */
-  .node-kev {
-    margin-top: 3px;
-    font-family: 'Segoe UI', Arial, sans-serif;
-    font-size: 9px;
-    font-weight: 700;
-    color: #ff9ba8;
-    text-shadow: 0 0 3px rgba(255, 34, 68, 0.25);
-    white-space: normal;
-    overflow-wrap: anywhere;
-    text-align: center;
-    width: max-content;
-    max-width: 160px;
-    background: #2d060c;
-    border: 1px solid rgba(255, 34, 68, 0.55);
-    border-radius: 3px;
-    padding: 2px 5px;
-    opacity: 0;
-    transform: translateY(-3px) scale(0.9);
-    transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-    pointer-events: none;
-    box-shadow: 0 0 10px rgba(255, 34, 68, 0.3);
-  }
-
-  .node-kev .cve {
-    font-weight: 800;
-    letter-spacing: 0.01em;
-  }
-
-  .node-kev .vuln-title {
-    display: block;
-    font-size: 8px;
-    opacity: 1;
-    font-weight: 600;
-  }
-
-  .canary-marker {
-    position: absolute;
-    top: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 2px 4px;
-    color: #ffe45c;
-    background: #221a0a;
-    border: 1px solid #ad8333;
-    border-radius: 3px;
-    font-size: 8px;
-    white-space: nowrap;
-  }
-
-  /* HIT STATE: Lit in RED */
-  .node.hit .node-icon {
-    background-color: var(--red);
-    filter: drop-shadow(0 0 12px var(--red-glow)) drop-shadow(0 0 20px var(--red));
-    transform: scale(1.1);
-  }
-
-  .node.hit .node-halo {
-    border-color: var(--red);
-    border-style: solid;
-    opacity: 0.85;
-    box-shadow: 0 0 12px var(--red-glow);
-    animation: hitPulse 1.2s ease-out infinite alternate;
-  }
-
-  .node.hit .node-label {
-    color: #ffadb8;
-    text-shadow: 0 0 4px rgba(255, 34, 68, 0.3);
-  }
-
-  .node.hit, .node.defended {
-    z-index: 10;
-  }
-
-  .node.hit .node-kev {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-
-  /* DEFENDED / BLOCKED STATE */
-  .node.defended .node-icon {
-    background-color: #f3bd64;
-    filter: drop-shadow(0 0 10px rgba(243, 189, 100, 0.8));
-    transform: scale(1.05);
-  }
-  .node.defended .node-halo {
-    border-color: #f3bd64;
-    border-style: double;
-    opacity: 0.85;
-    box-shadow: 0 0 10px rgba(243, 189, 100, 0.5);
-  }
-  .node.defended .node-label {
-    color: #f3bd64;
-    text-shadow: 0 0 6px rgba(243, 189, 100, 0.6);
-  }
-  .node.defended .node-kev {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-    color: #f3bd64;
-    border-color: rgba(243, 189, 100, 0.6);
-    background: #1e1606;
-    text-shadow: 0 0 8px rgba(243, 189, 100, 0.5);
-    box-shadow: 0 0 10px rgba(243, 189, 100, 0.3);
-  }
-
-  /* DATABASE CLUSTER BREACH TARGET */
-  .node.breach-target .node-icon {
-    background-color: #ff003c;
-    filter: drop-shadow(0 0 16px #ff003c) drop-shadow(0 0 28px #ff003c);
-    animation: breachShake 0.4s ease infinite alternate;
-  }
-  .node.breach-target .node-kev {
-    border-color: #ff003c;
-    background: #32000c;
-    box-shadow: 0 0 16px rgba(255, 0, 60, 0.7);
-  }
-
-  @keyframes breachShake {
-    0% { transform: scale(1.12) rotate(-2deg); }
-    100% { transform: scale(1.15) rotate(2deg); }
-  }
-
-  .wire.defended-wire {
-    stroke: #765d34 !important;
-    stroke-opacity: 0.7 !important;
-    stroke-dasharray: 4 4 !important;
-  }
-
-  @keyframes hitPulse {
-    0% { transform: scale(1); opacity: 0.8; }
-    100% { transform: scale(1.22); opacity: 0.3; }
-  }
-
-  /* Small incident-ticket drum in the bottom-right corner. */
-  .soc-ticker { position: fixed; z-index: 30; right: 8px; bottom: 8px; width: clamp(170px, 14vw, 225px); height: 108px; overflow: hidden; pointer-events: none; font: 10px Arial, sans-serif; }
-  .soc-cards { display: flex; flex-direction: column; gap: 0; }
-  .soc-cards { transition: transform 2.8s ease-in-out; }
-  .soc-cards.looping { transition: none; animation: socLoop var(--soc-loop-duration) linear infinite; }
-  @keyframes socLoop { from { transform: translateY(0); } to { transform: translateY(-50%); } }
-  .soc-card { flex: 0 0 36px; height: 36px; box-sizing: border-box; overflow: hidden; background: #fff; border: 1px solid #2871b9; border-left: 3px solid #2871b9; color: #132d48; padding: 2px 5px; }
-  .soc-card-head { display: flex; justify-content: space-between; gap: 4px; font-weight: bold; border-bottom: 1px solid #9cbfe0; padding-bottom: 2px; }
-  .soc-title, .soc-detail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .soc-detail { margin-top: 2px; color: #284967; font-size: 9px; }
-  .soc-severity { flex: none; font-size: 9px; color: #a12e24; }
-  .soc-empty { color: #58728c; }
-  .elapsed-clock {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 6px;
-    color: #a9bfd2;
-    font-size: 10px;
-    white-space: nowrap;
-  }
-  #model-clock { min-width: 12ch; color: #e2f6ff; font-size: 12px; font-variant-numeric: tabular-nums; }
-  @media (prefers-reduced-motion: reduce) { .soc-cards { transition: none; } .soc-cards.looping { animation: none; } }
-
-  .run-row label { display: flex; align-items: center; gap: 6px; color: #a9bfd2; font-size: 11px; }
-  .run-row select, .run-row button.trace-control {
-    padding: 6px 8px;
-    border: 1px solid rgba(88, 217, 219, 0.3);
-    border-radius: 4px;
-    background: #0c1928;
-    color: #d0e4f2;
-    color-scheme: dark;
-    font: inherit;
-    cursor: pointer;
-  }
-  .run-row select:focus-visible, .run-row button.trace-control:focus-visible { outline: 2px solid var(--turquoise); }
-
-  html, body { width: 100%; height: auto; min-height: 100vh; overflow: visible; }
-  html { overflow: auto; }
-  #viewport { width: 100%; min-width: 1120px; overflow: visible; }
-  .top-bar { position: sticky; top: 0; left: 0; width: 100vw; padding: 12px; background: #071426; }
-  .node-label { font-size: 12px; max-width: 210px; line-height: 1.35; }
-  .node-kev { display: none; }
-  .node:hover, .node:focus { transform: translate(-50%, -18px); outline: 2px solid var(--turquoise); }
-  #asset-details { position: fixed; left: 8px; bottom: 8px; z-index: 1100; width: min(480px, calc(100vw - 16px)); max-height: 28vh; overflow: auto; white-space: pre-line; padding: 10px; background: #071426; border: 1px solid #00f0ff; font: 12px/1.4 Arial, sans-serif; }
-  #asset-details:empty { display: none; }
-  .run-row { flex-wrap: wrap; justify-content: center; }
-  @media (max-width: 700px) { .top-bar { width: 100vw; } .soc-ticker { display: none; } }
-</style>
+<link rel="stylesheet" href="css/wire.css">
 </head>
 <body>
 
-<main id="viewport" aria-label="ARTEX Wire Diagram">
-  <div class="circuit-grid"></div>
-
-  <div class="top-bar">
-    <div class="mode-strip" role="group" aria-label="Defense scenario run types">
-      <button class="mode-btn selected" data-mode="baseline" aria-pressed="true">
-        <span class="mode-title">01 / BASELINE</span>
-        <span class="mode-desc">No active controls</span>
-      </button>
-      <button class="mode-btn" data-mode="patch" aria-pressed="false">
-        <span class="mode-title">02 / VIRTUAL PATCH</span>
-        <span class="mode-desc">Edge WAF</span>
-      </button>
-      <button class="mode-btn" data-mode="canaries" aria-pressed="false">
-        <span class="mode-title">03 / CANARIES</span>
-        <span class="mode-desc">Decoy alert only</span>
-      </button>
-      <button class="mode-btn" data-mode="soc" aria-pressed="false">
-        <span class="mode-title">04 / AGENTIC SOAR</span>
-        <span class="mode-desc">Detect and contain</span>
-      </button>
-      <button class="mode-btn" data-mode="soc-canary" aria-pressed="false">
-        <span class="mode-title">05 / AGENTIC SOAR + CANARY</span>
-        <span class="mode-desc">Containment with a decoy signal</span>
-      </button>
-      <button class="mode-btn" data-mode="combined" aria-pressed="false">
-        <span class="mode-title">06 / LAYERED DEFENSE</span>
-        <span class="mode-desc">Virtual patch + SOC + canary</span>
-      </button>
+<header class="top-bar">
+  <div class="brand-row">
+    <div id="map-profile" class="attacker-switch" role="group" aria-label="Attacker profile">
+      <button class="attacker-option selected" data-attacker="artex" aria-pressed="true">ARTEX</button>
+      <span class="switch-divider" aria-hidden="true">/</span>
+      <button class="attacker-option" data-attacker="pre2023" aria-pressed="false">Pre-LLM Attacks</button>
     </div>
-
+    <span class="brand-divider" aria-hidden="true">|</span>
+    <span class="brand-context">RANGE OPERATIONS</span><span class="version">v2.4.0</span>
+  </div>
+  <div class="mode-strip" role="group" aria-label="Defense scenario">
+    <button class="mode-btn selected" data-mode="baseline" aria-pressed="true">
+      <svg class="mode-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4c4 1 7 1 14 0v7c0 4-3 7-7 9-4-2-7-5-7-9V4Z M3 3l18 18"/></svg>
+      <span class="mode-copy"><span class="mode-title">BASELINE</span><span class="mode-desc">Unmitigated · No active controls</span></span>
+    </button>
+    <button class="mode-btn" data-mode="patch" aria-pressed="false">
+      <svg class="mode-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v5c0 5 4 8 8 10 4-2 8-5 8-10V6Z M8 12l3 3 5-6"/></svg>
+      <span class="mode-copy"><span class="mode-title">VIRTUAL PATCH</span><span class="mode-desc">Edge WAF · HTTP virtual patches</span></span>
+    </button>
+    <button class="mode-btn" data-mode="soc" aria-pressed="false">
+      <svg class="mode-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v5c0 5 4 8 8 10 4-2 8-5 8-10V6Z"/><g fill="currentColor" stroke="none"><circle cx="8" cy="11" r="1"/><circle cx="12" cy="11" r="1"/><circle cx="16" cy="11" r="1"/></g></svg>
+      <span class="mode-copy"><span class="mode-title">AGENTIC SOAR</span><span class="mode-desc">Agentic response · Session isolation</span></span>
+    </button>
+    <button class="mode-btn" data-mode="combined" aria-pressed="false">
+      <svg class="mode-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 8V5L9 3 3 6v5c0 4 3 6 6 8l3-2 M16 8l6 3v4c0 3-3 5-6 7-3-2-6-4-6-7v-4Z"/></svg>
+      <span class="mode-copy"><span class="mode-title">DEFENSE-IN-DEPTH</span><span class="mode-desc">WAF · Agentic SOAR · Canary trigger</span></span>
+    </button>
+  </div>
+  <div class="canvas-tools">
     <div class="run-row">
-      <button id="new-run-btn" class="trace-control" type="button" title="Generate a fresh topology">New Infra</button>
-      <label>
-        Attacker
-        <select id="map-profile">
-          <option value="pre2023">Pre-2023</option>
-          <option value="artex" selected>ARTEX-like</option>
-        </select>
-      </label>
+      <div class="search-group">
+        <button id="search-toggle" class="search-toggle" type="button" aria-label="Search infrastructure" aria-expanded="false" aria-controls="asset-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 6 6"/></svg></button>
+        <input id="asset-search" type="search" placeholder="Find an asset…" aria-label="Find an asset" hidden>
+        <span id="search-count" role="status"></span>
+      </div>
+      <button id="new-run-btn" class="trace-control" type="button">New Infra</button>
       <button id="map-replay-btn" class="trace-control" type="button">Replay</button>
       <button id="map-results-btn" class="trace-control" type="button">Results</button>
-      <div class="elapsed-clock" role="timer" aria-label="Modeled elapsed time">
-        <span>Elapsed</span><strong id="model-clock">0 min</strong>
-      </div>
     </div>
-    <div id="catalog-example" hidden></div>
-    <div id="run-hud" role="status"></div>
+    <div class="run-context">
+      <div id="run-status" class="run-status running" role="status">Preparing infrastructure</div>
+      <div class="elapsed-clock" role="timer" aria-label="Modeled elapsed time"><span>Elapsed</span><strong id="model-clock">0 min</strong></div>
+    </div>
   </div>
-
+  <div id="catalog-example" hidden></div>
+  <div id="run-hud" role="status"></div>
+</header>
+<main id="viewport" aria-label="Enterprise attack and defense canvas">
   <div class="soc-ticker" aria-label="Simulated SOC tickets">
     <div id="soc-cards" class="soc-cards" aria-live="off"></div>
   </div>
@@ -622,6 +66,7 @@
 
   <!-- HTML nodes layer for GPU accelerated icon masking and text -->
   <div id="nodes-layer"></div>
+  <div id="attackers-layer" aria-label="Active attackers"></div>
   <aside id="asset-details" aria-label="Selected asset details" aria-live="polite" tabindex="0"></aside>
 </main>
 
@@ -634,12 +79,14 @@ const {
   simulateWireRun
 } = window.WireEngine;
 
-const ICON_BASE = 'assets/diagram-icons/transparent/';
 const svg = document.getElementById('wire-svg');
 const nodesLayer = document.getElementById('nodes-layer');
 const catalogLabel = document.getElementById('catalog-example');
 const runHud = document.getElementById('run-hud');
-const mapProfile = document.getElementById('map-profile');
+const attackerButtons = document.querySelectorAll('[data-attacker]');
+let attackerChoice = 'artex';
+let runNumber = 0;
+let infrastructureNumber = 0;
 const modeButtons = document.querySelectorAll('.mode-btn');
 const clock = document.getElementById('model-clock');
 let currentNodes = new Map();
@@ -655,7 +102,7 @@ function renderSocTickets() {
   const loop = socLooping && tickets.length > 3;
   cards.classList.toggle('looping', loop);
   cards.style.setProperty('--soc-loop-duration', `${Math.max(24, tickets.length * 5)}s`);
-  cards.style.transform = loop ? '' : `translateY(-${Math.max(0, tickets.length - 3) * 36}px)`;
+  cards.style.transform = loop ? '' : `translateY(-${Math.max(0, tickets.length - 3) * 42}px)`;
   const displayed = loop ? [...tickets, ...tickets] : tickets;
   displayed.forEach((ticket, index) => {
     const card = document.createElement('div');
@@ -719,10 +166,10 @@ function formatAssetTooltip(asset, findings, credentials) {
 }
 
 function layoutGraph(estate) {
-  const w = Math.max(1120, document.documentElement.clientWidth);
+  const w = Math.max(1440, document.documentElement.clientWidth - 36);
   const h = window.innerHeight;
   const gitExample = estate.findings.find(finding => finding.illustration === 'git-to-idp');
-  const graphTop = document.querySelector('.top-bar').getBoundingClientRect().height + 65;
+  const graphTop = 80;
 
   currentWires.clear();
   nodesLayer.innerHTML = '';
@@ -771,13 +218,14 @@ function layoutGraph(estate) {
     el.innerHTML = `
       <div class="node-icon-wrapper">
         <div class="node-halo"></div>
-        <div class="node-icon" style="-webkit-mask-image: url('${ICON_BASE}${node.icon}'); mask-image: url('${ICON_BASE}${node.icon}');"></div>
+        <div class="node-icon"></div>
       </div>
       <div class="node-label">${node.label}</div>
       <div class="node-kev">
         <span class="cve">${badge.code}</span>
         <span class="vuln-title">${badge.title}</span>
       </div>
+      <span class="node-state"></span>
     `;
     const selectNode = () => {
       revealNodeWires(node, 4000);
@@ -790,16 +238,32 @@ function layoutGraph(estate) {
     node.el = el;
   });
 
-  // Measure rendered text before packing each layer; keep generous spacing for icons and alerts.
+  // Stagger two lanes within each trust layer. Reserve the largest callout height up front,
+  // so animated badges never require repositioning the enterprise or moving active wires.
   let bottom = graphTop;
+  const band = (w - 100) / 4;
   for (let layer = 0; layer < 4; layer++) {
-    let y = graphTop;
-    for (const node of nodes.filter(n => n.layerIdx === layer).sort((a,b) => a.id.localeCompare(b.id))) {
-      node.y = y;
-      node.el.style.top = `${y}px`;
-      y += node.el.getBoundingClientRect().height + 55;
+    const lanes = [graphTop, graphTop + 72];
+    const ordered = nodes.filter(n => n.layerIdx === layer).sort((a,b) => a.y === b.y ? a.id.localeCompare(b.id) : a.y-b.y);
+    for (const [index, node] of ordered.entries()) {
+      const lane = index % 2;
+      node.x = 50 + layer * band + (lane ? 0.75 : 0.25) * band;
+      node.y = lanes[lane];
+      node.el.style.left = `${node.x}px`;
+      node.el.style.top = `${node.y}px`;
+      const badge = node.el.querySelector('.node-kev');
+      node.el.classList.add('hit');
+      node.el.querySelector('.node-state').textContent = 'PROTECTED READ';
+      badge.style.display = 'block';
+      badge.style.visibility = 'hidden';
+      const reserve = Math.max(180, node.el.getBoundingClientRect().height + 45);
+      badge.style.display = '';
+      badge.style.visibility = '';
+      node.el.classList.remove('hit');
+      node.el.querySelector('.node-state').textContent = '';
+      lanes[lane] += reserve;
     }
-    bottom = Math.max(bottom, y);
+    bottom = Math.max(bottom, ...lanes);
   }
   document.getElementById('viewport').style.height = `${Math.max(h, bottom + 160)}px`;
   document.getElementById('asset-details').textContent = '';
@@ -807,6 +271,8 @@ function layoutGraph(estate) {
 
   if (gitExample) drawGitIllustration(currentNodes.get(gitExample.assetId), w, bottom + 30);
   if (referenceCase) markReferenceFlow(estate, referenceCase);
+  applyAssetSearch();
+  renderAttackers(modeledTime || 0);
 }
 
 function markReferenceFlow(estate, { context, example }) {
@@ -877,8 +343,10 @@ let referenceCase = null;
 const pre2023Groups = { lockbit: 'LockBit', conti: 'Conti', blackcat: 'BlackCat', hive: 'Hive', revil: 'REvil' };
 let pre2023Deck = [];
 let pre2023Group;
+const defenseLabels = {baseline: 'BASELINE', patch: 'VIRTUAL PATCH', soc: 'AGENTIC SOAR', combined: 'DEFENSE-IN-DEPTH'};
 let defense = 'baseline';
 let run;
+let attackerTracks = [];
 let phases = [];
 let phaseIndex = 0;
 let modeledTime = 0;
@@ -941,7 +409,7 @@ function renderEvent(event, time, animate) {
   const success = event.outcome === 'succeeded';
   const blocked = event.outcome === 'blocked';
   const contained = event.outcome === 'suppressed';
-  const alertOnly = event.outcome === 'alert_only';
+  const alertOnly = event.outcome === 'alert_only' || event.grantedCapability === 'decoy_alert';
   const read = event.grantedCapability === 'data_read' && node.layerIdx === 3 && !node.isDecoy;
   const staging = node.groupId === 'staging-status';
   const finding = event.finding;
@@ -955,7 +423,7 @@ function renderEvent(event, time, animate) {
   let result = 'ACCESS ESTABLISHED';
   if (blocked) result = event.mitigation?.badge || 'BLOCKED';
   else if (contained) result = 'ACTION EFFECT SUPPRESSED BY CONTAINMENT';
-  else if (alertOnly) result = 'CANARY ALERT (NO CONTAINMENT)';
+  else if (alertOnly) result = 'CANARY ALERT';
   else if (read) result = 'PROTECTED RECORD READ';
   else if (diagnostic) result = 'STAGING CREDENTIAL EXPOSED';
   else if (finding?.illustration === 'git-to-idp') {
@@ -970,14 +438,17 @@ function renderEvent(event, time, animate) {
   if (success || !node.el.classList.contains('hit')) {
     node.el.classList.toggle('hit', success);
     node.el.classList.toggle('defended', blocked);
-    node.el.classList.toggle('contained', contained || alertOnly);
+    node.el.classList.toggle('contained', contained);
+    node.el.classList.toggle('alerted', alertOnly);
     if (read) node.el.classList.add('breach-target');
-    node.el.querySelector('.cve').textContent = result;
-    node.el.querySelector('.vuln-title').textContent = summary;
+    node.el.querySelector('.cve').textContent = finding?.cveId || event.technique || result;
+    node.el.querySelector('.vuln-title').textContent = finding?.title || result;
+    node.el.querySelector('.node-state').textContent = read ? 'PROTECTED READ' : blocked ? 'PREVENTED' : contained ? 'CONTAINED' : alertOnly ? 'CANARY ALERT' : '';
   }
   if (wire) {
     if (blocked) wire.path.classList.add('defended-wire');
-    else if (contained || alertOnly) wire.path.classList.add('contained-wire');
+    else if (contained) wire.path.classList.add('contained-wire');
+    else if (alertOnly) wire.path.classList.add('alert-wire');
     else wire.path.classList.add('hit-wire');
     if (animate && success) animatePulse(wire);
   }
@@ -1007,8 +478,58 @@ function renderControl(event) {
   socTickets.set(`${event.scope}-${event.control}-${event.source}`, { title, severity: 'HIGH', detail });
 }
 
+function buildAttackerTracks(result) {
+  const tracks = Array.from({length: result.lanes}, () => []);
+  const available = tracks.map(() => 0);
+  const jobs = [...new Map(result.events.filter(e => Number.isFinite(e.startSec) && Number.isFinite(e.timeSec))
+    .map(e => [`${e.sourceId}:${e.targetId}:${e.startSec}:${e.timeSec}`, e])).values()]
+    .sort((a,b) => a.startSec-b.startSec || a.timeSec-b.timeSec);
+  for (const job of jobs) {
+    const worker = available.findIndex(time => time <= job.startSec);
+    if (worker < 0) continue; // Multiple findings on an already represented worker action are not extra agents.
+    tracks[worker].push(job);
+    available[worker] = job.timeSec;
+  }
+  return tracks;
+}
+
+function renderAttackers(time) {
+  const layer = document.getElementById('attackers-layer');
+  if (!run || !layer) return;
+  if (layer.childElementCount !== run.lanes || layer.dataset.actor !== attackerChoice) {
+    layer.replaceChildren();layer.dataset.actor = attackerChoice;
+    for (let index=0; index<run.lanes; index++) {
+      const marker = document.createElement('div');marker.className = 'attacker-marker';
+      marker.setAttribute('aria-label', attackerChoice === 'artex' ? `Agent ${index+1}` : 'Attacker');
+      marker.style.setProperty('--agent-color', ['#83ecfa','#e9bc7c','#c0a8f1'][index % 3]);
+      marker.innerHTML = attackerChoice === 'artex'
+        ? '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="14" rx="4"/><path d="M12 2v4M1 11h3m16 0h3M8 16h8"/><circle cx="8.5" cy="11" r="1"/><circle cx="15.5" cy="11" r="1"/></svg>'
+        : '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3"/></svg>';
+      layer.appendChild(marker);
+    }
+  }
+  for (const [index, track] of attackerTracks.entries()) {
+    const marker = layer.children[index];
+    const job = track.find(e => e.startSec <= time && e.timeSec > time);
+    const last = [...track].reverse().find(e => e.timeSec <= time);
+    const next = track.find(e => e.startSec >= time);
+    const step = job || last || next;
+    const target = step && currentNodes.get(step.targetId);
+    if (!target) { marker.hidden = true; continue; }
+    marker.hidden = false;
+    const source = currentNodes.get(step.sourceId);
+    const fraction = job ? (time-job.startSec)/Math.max(1,job.timeSec-job.startSec) : 1;
+    const start = source || {x: 28, y: target.y};
+    const x = start.x + (target.x-start.x)*fraction;
+    const y = start.y + (target.y-start.y)*fraction;
+    marker.style.left = `${x + (index-1)*8}px`;marker.style.top = `${y-36-index*7}px`;
+    marker.classList.toggle('working', !!job);
+  }
+}
+
 function showTime(time) {
   modeledTime = time;
+  renderAttackers(time);
   const elapsed = time === 0 ? '0 min' : formatEstimate(time);
   if (clock.textContent !== elapsed) clock.textContent = elapsed;
 }
@@ -1029,12 +550,14 @@ function resetGraph() {
 
 function finishRun() {
   cancelAnimationFrame(frame);
+  document.getElementById('run-status').classList.remove('running');
+  document.getElementById('run-status').textContent = `${defenseLabels[defense]} · Run ${String(runNumber).padStart(2, '0')} · Complete on Infra ${infrastructureNumber}`;
   svg.querySelectorAll('.probe-wire').forEach(path => path.remove());
   for (; phaseIndex < phases.length; phaseIndex++) renderPhase(phases[phaseIndex]);
   showTime(phases.at(-1)?.time ?? 0);
   socLooping = true;
   renderSocTickets();
-  const { dataReached, truncated, layerSuccessCounts, blockedTransitions, containedSessions } = run.summary;
+  const { truncated, layerSuccessCounts, blockedTransitions } = run.summary;
   const successes = run.events.filter(event => event.outcome === 'succeeded');
   const read = successes.find(event => {
     const n = currentNodes.get(event.targetId);
@@ -1069,8 +592,13 @@ function finishRun() {
 
 function playRun() {
   cancelAnimationFrame(frame);
-  const attackerId = mapProfile.value === 'pre2023' ? (pre2023Group ??= drawPre2023Group()) : 'artex';
+  const attackerId = attackerChoice === 'pre2023' ? (pre2023Group ??= drawPre2023Group()) : 'artex';
   run = simulateWireRun(estate, defense, attackerId);
+  attackerTracks = buildAttackerTracks(run);
+  runNumber++;
+  const status = document.getElementById('run-status');
+  status.classList.add('running');
+  status.textContent = `${defenseLabels[defense]} · Run ${String(runNumber).padStart(2, '0')} · Same infrastructure ${infrastructureNumber}`;
   clock.title = `Modeled time since foothold. Scenario response latency: ${formatEstimate(run.assumptions.responseDelaySec)} after collection (${run.assumptions.collectionDelaySec}s). Stage allocations and response latency are synthetic assumptions informed by historical context, not measured breach-time distributions.`;
   const grouped = new Map();
   for (const event of [...run.events, ...run.controls]) {
@@ -1083,7 +611,7 @@ function playRun() {
   socLooping = false;
   resetGraph();
   runHud.className = '';
-  runHud.textContent = run.lanes === 3 ? '3 SIMULATED PROBE LANES' : `${pre2023Groups[attackerId]} · 1 SIMULATED PROBE LANE`;
+  runHud.textContent = attackerChoice === 'artex' ? 'Exploring reachable services' : `${pre2023Groups[attackerId]} · Exploring reachable services`;
   showTime(0);
 
   let startedAt = null;
@@ -1123,7 +651,38 @@ modeButtons.forEach(button => {
     playRun();
   });
 });
-mapProfile.addEventListener('change', playRun);
+attackerButtons.forEach(button => button.addEventListener('click', () => {
+  attackerChoice = button.dataset.attacker;
+  attackerButtons.forEach(candidate => {
+    const selected = candidate === button;
+    candidate.classList.toggle('selected', selected);
+    candidate.setAttribute('aria-pressed', String(selected));
+  });
+  playRun();
+}));
+function applyAssetSearch() {
+  const query = document.getElementById('asset-search').value.trim().toLowerCase();
+  const matches = new Set();
+  for (const node of currentNodes.values()) {
+    const match = !!query && `${node.label} ${node.product} ${node.findings.map(f => f.cveId || '').join(' ')}`.toLowerCase().includes(query);
+    node.el.classList.toggle('search-match', match);
+    node.el.classList.toggle('search-dim', !!query && !match);
+    if (match) matches.add(node.id);
+  }
+  for (const wire of currentWires.values()) wire.path.classList.toggle('search-wire', matches.has(wire.source.id) || matches.has(wire.target.id));
+  document.getElementById('search-count').textContent = query ? `${matches.size} matching assets` : '';
+}
+document.getElementById('search-toggle').addEventListener('click', () => {
+  const input = document.getElementById('asset-search');
+  input.hidden = !input.hidden;
+  document.getElementById('search-toggle').setAttribute('aria-expanded', String(!input.hidden));
+  if (!input.hidden) input.focus();
+  else { input.value = ''; applyAssetSearch(); }
+});
+document.getElementById('asset-search').addEventListener('input', applyAssetSearch);
+document.getElementById('asset-search').addEventListener('keydown', event => {
+  if (event.key === 'Escape') document.getElementById('search-toggle').click();
+});
 function applianceRoster(estate) {
   return estate.assets.filter(asset => asset.referenceCve).map(asset => asset.groupId).sort().join();
 }
@@ -1143,6 +702,7 @@ function drawPre2023Group() {
 }
 
 function newInfra() {
+  infrastructureNumber++;
   const previous = applianceRoster(estate);
   referenceCase = drawReferenceCase();
   pre2023Group = drawPre2023Group();

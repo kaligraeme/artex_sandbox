@@ -2,6 +2,8 @@
 
 Date: 16 November 2026. Documentation only; no branch changes applied.
 
+Historical review of the pre-remediation baseline. Selected findings were subsequently addressed in local `main` at `f386794`. Use the [Codex and Claude integration guide](codex-claude-integration-guide.md) for current implementation status, remaining work and acceptance checks.
+
 Compared local `main` / Gemini at `8aeae9b`, Codex at `96e504a`, and Claude at `311c6d8`. These are the fetched local revisions, not a fresh remote audit. Evaluate adoption against the user's six-phase direction in [AGENTS.md](../AGENTS.md) and the [remediation plan](gemini-merge-remediation-plan.md).
 
 ## Recommendation

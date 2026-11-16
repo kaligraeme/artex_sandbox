@@ -12,10 +12,10 @@ assert(html.includes('<script src="js/wire-engine.js"></script>'), 'wire.html mu
 assert(html.includes('id="map-profile"'), 'wire.html must include the attacker picker');
 assert(!html.includes('id="estate-preset"'), 'Wire should have one estate generator');
 assert.deepEqual([...html.matchAll(/data-mode="([^"]+)"/g)].map(match => match[1]),
-  ['baseline', 'patch', 'canaries', 'soc', 'soc-canary', 'combined'], 'Wire must expose the full layered defense');
+  ['baseline', 'patch', 'soc', 'combined'], 'Wire must offer the four reference-design defense cards');
 const demoAttackers = ['lockbit', 'conti', 'blackcat', 'hive', 'revil', 'artex'];
-const attackerSelect = html.match(/<select id="map-profile">([\s\S]*?)<\/select>/)[1];
-assert.deepEqual([...attackerSelect.matchAll(/<option value="([^\"]+)"/g)].map(match => match[1]), ['pre2023', 'artex']);
+assert(!html.includes('<select'), 'Attacker selection belongs in the title toggle');
+assert.deepEqual([...html.matchAll(/data-attacker="([^"]+)"/g)].map(match => match[1]), ['artex', 'pre2023']);
 
 {
   const catalog = require('../assets/wire-defense-catalog.json');

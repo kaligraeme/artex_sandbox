@@ -1,0 +1,14 @@
+const assert=require('assert/strict');
+const {attempted,create,clock}=require('../js/capture-plan');
+const assets=['entry','dead-end','data','unused'].map(id=>({id}));
+const relationships=[{id:'failed',sourceId:'entry',targetId:'dead-end'},{id:'success',sourceId:'entry',targetId:'data'},{id:'unused',sourceId:'entry',targetId:'unused'}];
+const failure={sourceId:'entry',targetId:'dead-end',relationshipId:'failed',outcome:'ineligible',startSec:0,timeSec:60};
+const success={sourceId:'entry',targetId:'data',relationshipId:'success',outcome:'succeeded',startSec:60,timeSec:120,isProtectedRead:true};
+const check={sourceId:null,targetId:'unused',outcome:'ineligible',startSec:0,timeSec:0};
+assert(attempted(failure));assert(!attempted(check));assert(!attempted({...failure,outcome:'truncated'}));
+const estate={assets,relationships};const runs=[{events:[success,check],controls:[]},{events:[failure],controls:[]}];
+runs[0].events.push({sourceId:null,targetId:'unused',outcome:'succeeded',startSec:0,timeSec:0});
+const snapshot=JSON.stringify({estate,runs});const plan=create(estate,runs);
+assert.deepEqual(plan.assetIds,['entry','dead-end','data']);assert.deepEqual(plan.relationshipIds,['failed','success']);assert(plan.entryIds.every(id=>id!=='unused'));assert.deepEqual([...plan.chainIds].sort(),['data','entry']);assert.equal(JSON.stringify({estate,runs}),snapshot);
+for(const [seconds,text] of [[0,'0h:00m'],[59,'0h:00m'],[60,'0h:01m'],[5580,'1h:33m'],[36000,'10h:00m']])assert.equal(clock(seconds),text);
+console.log('PASS: attempted failures survive success-path pruning, panel union, unused findings and isolated entry successes excluded, inputs unchanged, elapsed clock format');

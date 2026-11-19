@@ -749,7 +749,7 @@ document.getElementById('dual-view-link').addEventListener('click', () => {
   sessionStorage.setItem('wire-comparison-estate', JSON.stringify(estate));
 });
 document.fonts.ready.then(() => {
-  if (new URLSearchParams(location.search).has('embedded')) return;
+  if (new URLSearchParams(location.search).has('embedded') || new URLSearchParams(location.search).get('capture') === 'path') return;
   const saved = sessionStorage.getItem('wire-return-estate');
   if (saved) {
     sessionStorage.removeItem('wire-return-estate');
@@ -758,5 +758,7 @@ document.fonts.ready.then(() => {
 });
 </script>
 <script src="js/dual-bridge.js"></script>
+<script src="js/capture-plan.js"></script>
+<script src="js/path-capture.js"></script>
 </body>
 </html>

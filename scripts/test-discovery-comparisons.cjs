@@ -127,7 +127,9 @@ async function main(){
     await page.click('#run');
     await panels[0].evaluate(()=>comparison.advance(Infinity));
     const successfulEntry=await panels[0].evaluate(()=>({done:comparison.done,events:run.events.filter(e=>e.outcome==='succeeded').map(e=>e.technique)}));
-    assert(successfulEntry.done);assert(successfulEntry.events.includes('T1566.001'));assert(successfulEntry.events.includes('T1047'));assert(successfulEntry.events.includes('T1486'));
+    assert(successfulEntry.done);assert(successfulEntry.events.includes('T1566.001'));assert(successfulEntry.events.some(t=>['T1047','T1569.002','T1021.001'].includes(t)));assert(successfulEntry.events.includes('T1486'));
+    assert(await panels[0].evaluate(()=>comparison.activity().some(item=>/Cobalt Strike Beacon/.test(item.title))),
+      'Named Cobalt Strike tool appears in the existing activity feed');
     for(const gang of ['conti','revil']){
       await page.evaluate(gang=>{gangId=gang;estate=WireEngine.generateEstate({seed:1,seedExercise:true});
         estate.findings=estate.findings.filter(f=>f.kind==='phishing_attachment');estate.credentials=[];runBoth();},gang);
@@ -136,7 +138,16 @@ async function main(){
       assert.equal(phish.state,'PHISH EXECUTED');assert.equal(phish.impact,false);
       assert(phish.tickets.some(t=>t.title.includes('Phishing attachment executed')&&t.severity==='HIGH'),`${gang} phishing alert appears without lateral movement`);
       assert(await panels[0].evaluate(()=>{comparison.advance(Infinity);return comparison.done;}),`${gang} isolated phish completes`);
+      const lateral=await panels[0].evaluate(()=>({hud:runHud.textContent,activity:comparison.activity()}));
+      assert.match(lateral.hud,/No lateral movement established|Lateral movement failed/);
+      assert.match(lateral.hud,/No usable outgoing route|No applicable|No supported|No access|credential|permission/i);
+      assert(lateral.activity.some(item=>item.code==='LATERAL MOVEMENT'&&item.detail),`${gang} completion feed explains absent lateral movement`);
     }
+    await page.evaluate(()=>{gangId='conti';estate=WireEngine.generateEstate({seed:99,seedExercise:true});runBoth();});
+    const stopped=await panels[0].evaluate(()=>{comparison.advance(Infinity);return {hud:runHud.textContent,activity:comparison.activity()};});
+    assert.match(stopped.hud,/Lateral movement failed/);
+    assert(stopped.activity.some(item=>item.code==='LATERAL MOVEMENT'&&/credential/i.test(item.detail)),
+      'A failed Conti continuation explains credential prerequisites even when local encryption succeeds');
     await page.evaluate(()=>{estate.findings=[];estate.credentials=[];runBoth();});
     assert(await page.evaluate(()=>frames.every(f=>f.contentWindow.comparison.done)),'Both zero-duration runs complete');
     assert.match(await page.locator('#status').textContent(),/Both complete/);

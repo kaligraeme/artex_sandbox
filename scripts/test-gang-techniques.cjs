@@ -20,8 +20,12 @@ const snapshot = JSON.stringify(estate);
 const conti = run(estate,'conti');
 const revil = run(estate,'revil');
 assert(windows(conti).some(event => event.targetId === 'windows-records'));
-assert(windows(conti).some(event => event.technique === 'T1021.002'));
+assert(windows(conti).some(event => event.tool === 'cobalt_strike' && event.technique === 'T1047'),
+  'Conti prefers its reported Beacon/WMI workflow over the first-listed SMB method');
+assert.equal(e.gangTechniqueEvidence('hive','T1047').basis,'affiliate_reporting');
 assert(windows(revil).some(event => event.technique === 'T1047'));
+assert(windows(revil).filter(event=>event.technique==='T1047').every(event=>event.tool==='cobalt_strike'),
+  'REvil software process-killing evidence cannot license generic remote WMI execution');
 assert(!windows(revil).some(event => event.technique === 'T1021.002'));
 assert(windows(run(estate,'hive')).some(event => event.technique === 'T1566.001'));
 assert(windows(run(estate,'hive')).some(event => event.technique === 'T1021.001'));
@@ -74,7 +78,7 @@ for (let seed=1; seed<=30; seed++) {
     if (gang === 'artex') assert(!success(result).some(event => event.finding?.requiresUserInteraction));
     else for (const event of success(result)) {
       if (['modeled_supporting_access','modeled_decoy_interaction'].includes(event.attackerEvidence?.basis)) assert(event.sourceId);
-      else assert(e.gangTechniqueEvidence(gang,event.technique));
+      else assert(e.gangTechniqueEvidence(gang,event.technique,event.finding));
     }
     assert.equal(result.lanes,gang === 'artex' ? 3 : 1);
   }

@@ -1,0 +1,1216 @@
+{
+  "summary": {
+    "runs": 50,
+    "seeds": "1–50",
+    "actor": "revil",
+    "defense": "baseline",
+    "generation": {
+      "preset": "mixed",
+      "seedExercise": true
+    },
+    "definition": "Successful cross-asset execution (app_exec) over an explicit relationship from an already reached source; excludes external entry, reads, decoys and local encryption.",
+    "footholdRuns": 50,
+    "lateralExecutionRuns": 33,
+    "lateralExecutionPercent": 66,
+    "anyRemoteAccessRuns": 33,
+    "noLateralExecutionSeeds": [
+      4,
+      5,
+      7,
+      13,
+      14,
+      15,
+      17,
+      18,
+      22,
+      23,
+      26,
+      28,
+      29,
+      32,
+      34,
+      38,
+      45
+    ],
+    "runsWithFailedRemoteChecks": 44,
+    "fleetExecutionRuns": 23,
+    "multipleEncryptedEndpointRuns": 21,
+    "truncatedRuns": 0,
+    "techniqueRunCounts": {
+      "T1569.002": 33,
+      "T1047": 9
+    }
+  },
+  "rows": [
+    {
+      "seed": 1,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-file-server",
+        "windows-fleet-finance",
+        "windows-fleet-operations"
+      ],
+      "lateralTechniques": [
+        "T1569.002"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 10,
+      "encryptedEndpoints": 66,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "Finding on Spring MVC WAR / Tomcat / JDK 9+ (Checkout) did not match product/version/interface prerequisites. No access established for Confidential Department Share.",
+        "reachedTargets": [
+          "windows-management",
+          "ad-identity-1",
+          "windows-file-server",
+          "windows-fleet-finance",
+          "app-engine-1",
+          "windows-fleet-operations"
+        ]
+      }
+    },
+    {
+      "seed": 2,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management"
+      ],
+      "lateralTechniques": [
+        "T1569.002"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 10,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "No access established for Active Directory Domain Controller. Remote access requires its actual protocol, an authorized credential, enabled login and an established authentication policy.",
+        "reachedTargets": [
+          "windows-management"
+        ]
+      }
+    },
+    {
+      "seed": 3,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-file-server",
+        "windows-fleet-operations",
+        "windows-fleet-engineering"
+      ],
+      "lateralTechniques": [
+        "T1569.002",
+        "T1047"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 9,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "Department user credential lacks service_execute permission. Department user credential lacks execute permission. RDP access requires MFA.",
+        "reachedTargets": [
+          "windows-management",
+          "ad-identity-1",
+          "windows-file-server",
+          "windows-records",
+          "windows-fleet-operations",
+          "app-engine-1",
+          "windows-fleet-engineering"
+        ]
+      }
+    },
+    {
+      "seed": 4,
+      "foothold": true,
+      "lateralExecution": false,
+      "lateralTargets": [],
+      "lateralTechniques": [],
+      "anyRemoteAccess": false,
+      "failedRemoteChecks": 3,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "Lateral movement failed; no host reached laterally",
+        "detail": "Remote access requires its actual protocol, an authorized credential, enabled login and an established authentication policy.",
+        "reachedTargets": []
+      }
+    },
+    {
+      "seed": 5,
+      "foothold": true,
+      "lateralExecution": false,
+      "lateralTargets": [],
+      "lateralTechniques": [],
+      "anyRemoteAccess": false,
+      "failedRemoteChecks": 0,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "No lateral movement established",
+        "detail": "No usable outgoing route was available from the established foothold.",
+        "reachedTargets": []
+      }
+    },
+    {
+      "seed": 6,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-file-server"
+      ],
+      "lateralTechniques": [
+        "T1569.002"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 9,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "Deployment service credential is expired or has the wrong audience. Local admin credential is expired or has the wrong audience. RDP access requires MFA.",
+        "reachedTargets": [
+          "windows-management",
+          "ad-identity-1",
+          "windows-file-server",
+          "windows-records"
+        ]
+      }
+    },
+    {
+      "seed": 7,
+      "foothold": true,
+      "lateralExecution": false,
+      "lateralTargets": [],
+      "lateralTechniques": [],
+      "anyRemoteAccess": false,
+      "failedRemoteChecks": 0,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "No lateral movement established",
+        "detail": "No usable outgoing route was available from the established foothold.",
+        "reachedTargets": []
+      }
+    },
+    {
+      "seed": 8,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-file-server"
+      ],
+      "lateralTechniques": [
+        "T1569.002"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 7,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "No access established for Confidential Department Share. Domain admin credential is expired or has the wrong audience. Helpdesk credential is expired or has the wrong audience. RDP access requires MFA.",
+        "reachedTargets": [
+          "windows-management",
+          "ad-identity-1",
+          "windows-file-server"
+        ]
+      }
+    },
+    {
+      "seed": 9,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-fleet-operations"
+      ],
+      "lateralTechniques": [
+        "T1569.002"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 7,
+      "encryptedEndpoints": 28,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "No supported lateral method in the attacker profile. Finding on Spring MVC WAR / Tomcat / JDK 9+ (Billing) did not match product/version/interface prerequisites. Remote access requires its actual protocol, an authorized credential, enabled login and an established authentication policy. Helpdesk credential lacks service_execute permission.",
+        "reachedTargets": [
+          "windows-management",
+          "windows-fleet-operations"
+        ]
+      }
+    },
+    {
+      "seed": 10,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-file-server",
+        "windows-fleet-finance"
+      ],
+      "lateralTechniques": [
+        "T1569.002"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 6,
+      "encryptedEndpoints": 9,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "No supported lateral method in the attacker profile. Department user credential lacks service_execute permission. Department user credential lacks execute permission. RDP access requires MFA.",
+        "reachedTargets": [
+          "windows-management",
+          "windows-file-server",
+          "windows-records",
+          "windows-fleet-finance",
+          "app-engine-1"
+        ]
+      }
+    },
+    {
+      "seed": 11,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-fleet-finance",
+        "windows-fleet-operations"
+      ],
+      "lateralTechniques": [
+        "T1569.002"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 2,
+      "encryptedEndpoints": 69,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "No access established for Spring MVC WAR / Tomcat / JDK 9+ (Billing). No access established for Spring MVC WAR / Tomcat / JDK 9+ (Core).",
+        "reachedTargets": [
+          "windows-management",
+          "ad-identity-1",
+          "windows-fleet-finance",
+          "windows-fleet-operations"
+        ]
+      }
+    },
+    {
+      "seed": 12,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-file-server",
+        "windows-fleet-finance",
+        "windows-fleet-engineering"
+      ],
+      "lateralTechniques": [
+        "T1569.002",
+        "T1047"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 8,
+      "encryptedEndpoints": 20,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "Finding on Spring MVC WAR / Tomcat / JDK 9+ (Billing) did not match product/version/interface prerequisites. Helpdesk credential lacks service_execute permission. Remote access requires its actual protocol, an authorized credential, enabled login and an established authentication policy.",
+        "reachedTargets": [
+          "windows-management",
+          "ad-identity-1",
+          "windows-file-server",
+          "windows-records",
+          "windows-fleet-finance",
+          "windows-fleet-engineering"
+        ]
+      }
+    },
+    {
+      "seed": 13,
+      "foothold": true,
+      "lateralExecution": false,
+      "lateralTargets": [],
+      "lateralTechniques": [],
+      "anyRemoteAccess": false,
+      "failedRemoteChecks": 3,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "Lateral movement failed; no host reached laterally",
+        "detail": "Remote access requires its actual protocol, an authorized credential, enabled login and an established authentication policy.",
+        "reachedTargets": []
+      }
+    },
+    {
+      "seed": 14,
+      "foothold": true,
+      "lateralExecution": false,
+      "lateralTargets": [],
+      "lateralTechniques": [],
+      "anyRemoteAccess": false,
+      "failedRemoteChecks": 3,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "Lateral movement failed; no host reached laterally",
+        "detail": "Remote access requires its actual protocol, an authorized credential, enabled login and an established authentication policy.",
+        "reachedTargets": []
+      }
+    },
+    {
+      "seed": 15,
+      "foothold": true,
+      "lateralExecution": false,
+      "lateralTargets": [],
+      "lateralTechniques": [],
+      "anyRemoteAccess": false,
+      "failedRemoteChecks": 3,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "Lateral movement failed; no host reached laterally",
+        "detail": "Remote access requires its actual protocol, an authorized credential, enabled login and an established authentication policy.",
+        "reachedTargets": []
+      }
+    },
+    {
+      "seed": 16,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management"
+      ],
+      "lateralTechniques": [
+        "T1569.002"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 6,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "Remote access requires its actual protocol, an authorized credential, enabled login and an established authentication policy.",
+        "reachedTargets": [
+          "windows-management",
+          "ad-identity-1"
+        ]
+      }
+    },
+    {
+      "seed": 17,
+      "foothold": true,
+      "lateralExecution": false,
+      "lateralTargets": [],
+      "lateralTechniques": [],
+      "anyRemoteAccess": false,
+      "failedRemoteChecks": 3,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "Lateral movement failed; no host reached laterally",
+        "detail": "Remote access requires its actual protocol, an authorized credential, enabled login and an established authentication policy.",
+        "reachedTargets": []
+      }
+    },
+    {
+      "seed": 18,
+      "foothold": true,
+      "lateralExecution": false,
+      "lateralTargets": [],
+      "lateralTechniques": [],
+      "anyRemoteAccess": false,
+      "failedRemoteChecks": 3,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "Lateral movement failed; no host reached laterally",
+        "detail": "Remote access requires its actual protocol, an authorized credential, enabled login and an established authentication policy.",
+        "reachedTargets": []
+      }
+    },
+    {
+      "seed": 19,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management"
+      ],
+      "lateralTechniques": [
+        "T1569.002"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 10,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "No access established for Active Directory Domain Controller. Deployment service credential is expired or has the wrong audience. Department user credential is expired or has the wrong audience. RDP access requires MFA.",
+        "reachedTargets": [
+          "windows-management"
+        ]
+      }
+    },
+    {
+      "seed": 20,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-file-server",
+        "windows-fleet-finance",
+        "windows-fleet-operations",
+        "windows-fleet-engineering"
+      ],
+      "lateralTechniques": [
+        "T1569.002",
+        "T1047"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 4,
+      "encryptedEndpoints": 37,
+      "truncated": false,
+      "continuation": null
+    },
+    {
+      "seed": 21,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-file-server",
+        "windows-fleet-finance",
+        "windows-fleet-operations"
+      ],
+      "lateralTechniques": [
+        "T1569.002"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 6,
+      "encryptedEndpoints": 54,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "No access established for Spring MVC WAR / Tomcat / JDK 9+ (Core). No access established for Spring MVC WAR / Tomcat / JDK 9+ (Billing). No access established for Confidential Department Share. Remote access requires its actual protocol, an authorized credential, enabled login and an established authentication policy.",
+        "reachedTargets": [
+          "windows-management",
+          "ad-identity-1",
+          "windows-file-server",
+          "windows-fleet-finance",
+          "windows-fleet-operations"
+        ]
+      }
+    },
+    {
+      "seed": 22,
+      "foothold": true,
+      "lateralExecution": false,
+      "lateralTargets": [],
+      "lateralTechniques": [],
+      "anyRemoteAccess": false,
+      "failedRemoteChecks": 0,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "No lateral movement established",
+        "detail": "No usable outgoing route was available from the established foothold.",
+        "reachedTargets": []
+      }
+    },
+    {
+      "seed": 23,
+      "foothold": true,
+      "lateralExecution": false,
+      "lateralTargets": [],
+      "lateralTechniques": [],
+      "anyRemoteAccess": false,
+      "failedRemoteChecks": 3,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "Lateral movement failed; no host reached laterally",
+        "detail": "Remote access requires its actual protocol, an authorized credential, enabled login and an established authentication policy.",
+        "reachedTargets": []
+      }
+    },
+    {
+      "seed": 24,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-fleet-finance",
+        "windows-fleet-engineering"
+      ],
+      "lateralTechniques": [
+        "T1569.002"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 8,
+      "encryptedEndpoints": 48,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "No access established for Active Directory Domain Controller. Department user credential lacks service_execute permission. Department user credential lacks execute permission.",
+        "reachedTargets": [
+          "windows-management",
+          "windows-fleet-finance",
+          "app-engine-1",
+          "windows-fleet-engineering"
+        ]
+      }
+    },
+    {
+      "seed": 25,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-file-server"
+      ],
+      "lateralTechniques": [
+        "T1569.002"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 6,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "No supported lateral method in the attacker profile. Department user credential is expired or has the wrong audience. Deployment service credential is expired or has the wrong audience. RDP access requires MFA.",
+        "reachedTargets": [
+          "windows-management",
+          "windows-file-server",
+          "windows-records"
+        ]
+      }
+    },
+    {
+      "seed": 26,
+      "foothold": true,
+      "lateralExecution": false,
+      "lateralTargets": [],
+      "lateralTechniques": [],
+      "anyRemoteAccess": false,
+      "failedRemoteChecks": 0,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "No lateral movement established",
+        "detail": "No usable outgoing route was available from the established foothold.",
+        "reachedTargets": []
+      }
+    },
+    {
+      "seed": 27,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-file-server",
+        "windows-fleet-finance"
+      ],
+      "lateralTechniques": [
+        "T1569.002",
+        "T1047"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 6,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "Department user credential lacks service_execute permission. Department user credential lacks execute permission.",
+        "reachedTargets": [
+          "windows-management",
+          "ad-identity-1",
+          "windows-file-server",
+          "windows-records",
+          "windows-fleet-finance",
+          "app-engine-2"
+        ]
+      }
+    },
+    {
+      "seed": 28,
+      "foothold": true,
+      "lateralExecution": false,
+      "lateralTargets": [],
+      "lateralTechniques": [],
+      "anyRemoteAccess": false,
+      "failedRemoteChecks": 3,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "Lateral movement failed; no host reached laterally",
+        "detail": "Remote access requires its actual protocol, an authorized credential, enabled login and an established authentication policy.",
+        "reachedTargets": []
+      }
+    },
+    {
+      "seed": 29,
+      "foothold": true,
+      "lateralExecution": false,
+      "lateralTargets": [],
+      "lateralTechniques": [],
+      "anyRemoteAccess": false,
+      "failedRemoteChecks": 3,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "Lateral movement failed; no host reached laterally",
+        "detail": "Remote access requires its actual protocol, an authorized credential, enabled login and an established authentication policy.",
+        "reachedTargets": []
+      }
+    },
+    {
+      "seed": 30,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-file-server"
+      ],
+      "lateralTechniques": [
+        "T1569.002"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 9,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "Deployment service credential is expired or has the wrong audience. Domain admin credential is expired or has the wrong audience. RDP access requires MFA.",
+        "reachedTargets": [
+          "windows-management",
+          "ad-identity-1",
+          "windows-file-server",
+          "windows-records"
+        ]
+      }
+    },
+    {
+      "seed": 31,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-fleet-finance",
+        "windows-fleet-engineering"
+      ],
+      "lateralTechniques": [
+        "T1569.002",
+        "T1047"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 9,
+      "encryptedEndpoints": 31,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "Remote access requires its actual protocol, an authorized credential, enabled login and an established authentication policy.",
+        "reachedTargets": [
+          "windows-management",
+          "ad-identity-1",
+          "windows-fleet-finance",
+          "windows-fleet-engineering",
+          "app-engine-1"
+        ]
+      }
+    },
+    {
+      "seed": 32,
+      "foothold": true,
+      "lateralExecution": false,
+      "lateralTargets": [],
+      "lateralTechniques": [],
+      "anyRemoteAccess": false,
+      "failedRemoteChecks": 0,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "No lateral movement established",
+        "detail": "No usable outgoing route was available from the established foothold.",
+        "reachedTargets": []
+      }
+    },
+    {
+      "seed": 33,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-file-server"
+      ],
+      "lateralTechniques": [
+        "T1569.002"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 7,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "No access established for Confidential Department Share. Remote access requires its actual protocol, an authorized credential, enabled login and an established authentication policy.",
+        "reachedTargets": [
+          "windows-management",
+          "ad-identity-1",
+          "windows-file-server"
+        ]
+      }
+    },
+    {
+      "seed": 34,
+      "foothold": true,
+      "lateralExecution": false,
+      "lateralTargets": [],
+      "lateralTechniques": [],
+      "anyRemoteAccess": false,
+      "failedRemoteChecks": 3,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "Lateral movement failed; no host reached laterally",
+        "detail": "Remote access requires its actual protocol, an authorized credential, enabled login and an established authentication policy.",
+        "reachedTargets": []
+      }
+    },
+    {
+      "seed": 35,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-file-server",
+        "windows-fleet-operations",
+        "windows-fleet-engineering"
+      ],
+      "lateralTechniques": [
+        "T1569.002"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 13,
+      "encryptedEndpoints": 17,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "No access established for Spring MVC WAR / Tomcat / JDK 9+ (Billing). No access established for Confidential Department Share. Department user credential lacks service_execute permission. Department user credential lacks execute permission.",
+        "reachedTargets": [
+          "windows-management",
+          "ad-identity-1",
+          "windows-file-server",
+          "windows-fleet-operations",
+          "windows-fleet-engineering",
+          "app-engine-3"
+        ]
+      }
+    },
+    {
+      "seed": 36,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-file-server",
+        "windows-fleet-finance",
+        "windows-fleet-operations"
+      ],
+      "lateralTechniques": [
+        "T1569.002",
+        "T1047"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 5,
+      "encryptedEndpoints": 62,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "Department user credential is expired or has the wrong audience. Department user credential lacks service_execute permission. Department user credential lacks execute permission.",
+        "reachedTargets": [
+          "windows-management",
+          "ad-identity-1",
+          "windows-file-server",
+          "windows-records",
+          "windows-fleet-finance",
+          "windows-fleet-operations"
+        ]
+      }
+    },
+    {
+      "seed": 37,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-file-server",
+        "windows-fleet-finance",
+        "windows-fleet-operations"
+      ],
+      "lateralTechniques": [
+        "T1569.002"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 6,
+      "encryptedEndpoints": 65,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "Department user credential is expired or has the wrong audience. No access established for Confidential Department Share.",
+        "reachedTargets": [
+          "windows-management",
+          "ad-identity-1",
+          "windows-file-server",
+          "windows-fleet-finance",
+          "windows-fleet-operations"
+        ]
+      }
+    },
+    {
+      "seed": 38,
+      "foothold": true,
+      "lateralExecution": false,
+      "lateralTargets": [],
+      "lateralTechniques": [],
+      "anyRemoteAccess": false,
+      "failedRemoteChecks": 0,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "No lateral movement established",
+        "detail": "No usable outgoing route was available from the established foothold.",
+        "reachedTargets": []
+      }
+    },
+    {
+      "seed": 39,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-file-server",
+        "windows-fleet-finance",
+        "windows-fleet-engineering"
+      ],
+      "lateralTechniques": [
+        "T1569.002"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 5,
+      "encryptedEndpoints": 5,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "No access established for Spring MVC WAR / Tomcat / JDK 9+ (Billing). Helpdesk credential lacks service_execute permission. Remote access requires its actual protocol, an authorized credential, enabled login and an established authentication policy.",
+        "reachedTargets": [
+          "windows-management",
+          "ad-identity-1",
+          "windows-file-server",
+          "windows-records",
+          "windows-fleet-finance",
+          "windows-fleet-engineering"
+        ]
+      }
+    },
+    {
+      "seed": 40,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-fleet-operations"
+      ],
+      "lateralTechniques": [
+        "T1569.002"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 5,
+      "encryptedEndpoints": 29,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "Finding on Spring MVC WAR / Tomcat / JDK 9+ (Core) did not match product/version/interface prerequisites. Helpdesk credential is expired or has the wrong audience. Department user credential lacks service_execute permission. Department user credential lacks execute permission.",
+        "reachedTargets": [
+          "windows-management",
+          "windows-fleet-operations"
+        ]
+      }
+    },
+    {
+      "seed": 41,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-fleet-finance",
+        "windows-fleet-operations"
+      ],
+      "lateralTechniques": [
+        "T1569.002"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 5,
+      "encryptedEndpoints": 22,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "Department user credential is expired or has the wrong audience. No access established for Spring MVC WAR / Tomcat / JDK 9+ (Core). Remote access requires its actual protocol, an authorized credential, enabled login and an established authentication policy.",
+        "reachedTargets": [
+          "windows-management",
+          "ad-identity-1",
+          "windows-fleet-finance",
+          "windows-fleet-operations"
+        ]
+      }
+    },
+    {
+      "seed": 42,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-file-server",
+        "windows-fleet-finance",
+        "windows-fleet-operations"
+      ],
+      "lateralTechniques": [
+        "T1569.002",
+        "T1047"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 10,
+      "encryptedEndpoints": 20,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "No access established for Confidential Department Share.",
+        "reachedTargets": [
+          "windows-management",
+          "ad-identity-1",
+          "windows-file-server",
+          "windows-fleet-finance",
+          "app-engine-2",
+          "windows-fleet-operations"
+        ]
+      }
+    },
+    {
+      "seed": 43,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-file-server"
+      ],
+      "lateralTechniques": [
+        "T1569.002"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 9,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "Remote access requires its actual protocol, an authorized credential, enabled login and an established authentication policy.",
+        "reachedTargets": [
+          "windows-management",
+          "ad-identity-1",
+          "windows-file-server",
+          "windows-records"
+        ]
+      }
+    },
+    {
+      "seed": 44,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-file-server",
+        "windows-fleet-operations"
+      ],
+      "lateralTechniques": [
+        "T1569.002"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 7,
+      "encryptedEndpoints": 16,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "No access established for Spring MVC WAR / Tomcat / JDK 9+ (Core). Department user credential lacks service_execute permission. Department user credential lacks execute permission.",
+        "reachedTargets": [
+          "windows-management",
+          "ad-identity-1",
+          "windows-file-server",
+          "windows-records",
+          "windows-fleet-operations"
+        ]
+      }
+    },
+    {
+      "seed": 45,
+      "foothold": true,
+      "lateralExecution": false,
+      "lateralTargets": [],
+      "lateralTechniques": [],
+      "anyRemoteAccess": false,
+      "failedRemoteChecks": 3,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "Lateral movement failed; no host reached laterally",
+        "detail": "Remote access requires its actual protocol, an authorized credential, enabled login and an established authentication policy.",
+        "reachedTargets": []
+      }
+    },
+    {
+      "seed": 46,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-file-server",
+        "windows-fleet-finance",
+        "windows-fleet-operations"
+      ],
+      "lateralTechniques": [
+        "T1569.002"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 6,
+      "encryptedEndpoints": 121,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "Helpdesk credential is expired or has the wrong audience.",
+        "reachedTargets": [
+          "windows-management",
+          "windows-file-server",
+          "windows-records",
+          "windows-fleet-finance",
+          "app-engine-1",
+          "windows-fleet-operations"
+        ]
+      }
+    },
+    {
+      "seed": 47,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-file-server",
+        "windows-fleet-finance",
+        "windows-fleet-operations",
+        "windows-fleet-engineering"
+      ],
+      "lateralTechniques": [
+        "T1569.002",
+        "T1047"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 4,
+      "encryptedEndpoints": 19,
+      "truncated": false,
+      "continuation": null
+    },
+    {
+      "seed": 48,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-file-server",
+        "windows-fleet-finance",
+        "windows-fleet-operations",
+        "windows-fleet-engineering"
+      ],
+      "lateralTechniques": [
+        "T1569.002",
+        "T1047"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 9,
+      "encryptedEndpoints": 34,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "No supported lateral method in the attacker profile.",
+        "reachedTargets": [
+          "windows-management",
+          "windows-file-server",
+          "windows-records",
+          "windows-fleet-finance",
+          "app-engine-2",
+          "windows-fleet-operations",
+          "app-engine-1",
+          "windows-fleet-engineering"
+        ]
+      }
+    },
+    {
+      "seed": 49,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-file-server",
+        "windows-fleet-operations"
+      ],
+      "lateralTechniques": [
+        "T1569.002"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 8,
+      "encryptedEndpoints": 9,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "Department user credential lacks service_execute permission. Department user credential lacks execute permission. RDP access requires MFA.",
+        "reachedTargets": [
+          "windows-management",
+          "ad-identity-1",
+          "windows-file-server",
+          "windows-records",
+          "windows-fleet-operations",
+          "app-engine-1"
+        ]
+      }
+    },
+    {
+      "seed": 50,
+      "foothold": true,
+      "lateralExecution": true,
+      "lateralTargets": [
+        "windows-management",
+        "windows-file-server"
+      ],
+      "lateralTechniques": [
+        "T1569.002"
+      ],
+      "anyRemoteAccess": true,
+      "failedRemoteChecks": 9,
+      "encryptedEndpoints": 1,
+      "truncated": false,
+      "continuation": {
+        "summary": "Further lateral movement failed on remaining routes",
+        "detail": "Department user credential lacks service_execute permission. Department user credential lacks execute permission. RDP access requires MFA.",
+        "reachedTargets": [
+          "windows-management",
+          "ad-identity-1",
+          "windows-file-server",
+          "windows-records"
+        ]
+      }
+    }
+  ]
+}

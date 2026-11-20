@@ -61,7 +61,8 @@ for (const mode of ['baseline','patch','canaries','soc','soc-canary','combined']
   const a=run(x,mode,{responseAuthority:false});
   assert.deepEqual(a,run(x,mode,{responseAuthority:false}), 'Replay is deterministic');
   assert.equal(a.summary.explorationLimit,1000);
-  assert.equal(a.summary.evaluatedTransitions,4, 'No defense-dependent exploration allowance');
+  assert.equal(a.summary.evaluatedTransitions,run(x,'baseline',{responseAuthority:false}).summary.evaluatedTransitions,
+    'No defense-dependent exploration allowance, including the scheduled data-export check');
   assert(read(a));
 }
 // Equal total duration, different final allocation changes the outcome without changing actor identity.

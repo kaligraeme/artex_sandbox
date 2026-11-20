@@ -633,8 +633,10 @@ function finishRun() {
   const group = run.lanes === 1 ? pre2023Groups[pre2023Group] : '';
   const entryFailure = run.lanes === 1 && !successes.length && run.events.find(event => !event.sourceId && event.outcome === 'ineligible' &&
     event.finding?.kind === 'phishing_attachment' && WireEngine.gangTechniqueEvidence(pre2023Group,event.finding.technique));
+  const lateral = RunDiscovery.lateralStatus(estate,run);
   runHud.textContent = [group, run.result.label, result, evidence, limit, sampleLogs?.finding.title, `${count} external ${count === 1 ? 'entry' : 'entries'} reached`,
     entryFailure?.reason,
+    lateral && `${lateral.summary}: ${lateral.detail}`,
     run.summary.encryptedEndpointIds?.length ? `${run.summary.encryptedEndpointIds.length} endpoints encrypted` : '',
     run.summary.exfiltratedDatasets?.length ? (run.summary.exfiltratedDatasets.some(d=>d.records==null)
       ? 'Data exfiltrated · total record count unknown'

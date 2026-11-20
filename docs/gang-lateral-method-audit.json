@@ -1,0 +1,81 @@
+{
+  "seeds": "1–50",
+  "preset": "mixed",
+  "seedExercise": true,
+  "mode": "baseline",
+  "interpretation": "Synthetic coverage check; method orders are authored choices, not observed prevalence.",
+  "summaries": {
+    "lockbit": {
+      "runs": 50,
+      "footholdRuns": 50,
+      "lateralRuns": 41,
+      "firstWindowsMethodRuns": {
+        "psexec": 25,
+        "T1021.002": 11
+      },
+      "selectedMethodRuns": {
+        "T1190": 31,
+        "psexec": 35,
+        "T1021.002": 17
+      },
+      "truncatedRuns": 0
+    },
+    "conti": {
+      "runs": 50,
+      "footholdRuns": 50,
+      "lateralRuns": 35,
+      "firstWindowsMethodRuns": {
+        "cobalt_strike:wmi": 34,
+        "T1021.001": 1
+      },
+      "selectedMethodRuns": {
+        "cobalt_strike:wmi": 35,
+        "T1021.001": 1
+      },
+      "truncatedRuns": 0
+    },
+    "blackcat": {
+      "runs": 50,
+      "footholdRuns": 44,
+      "lateralRuns": 32,
+      "firstWindowsMethodRuns": {
+        "psexec": 3,
+        "T1021.001": 5
+      },
+      "selectedMethodRuns": {
+        "T1190": 31,
+        "psexec": 7,
+        "T1021.001": 5
+      },
+      "truncatedRuns": 0
+    },
+    "hive": {
+      "runs": 50,
+      "footholdRuns": 50,
+      "lateralRuns": 42,
+      "firstWindowsMethodRuns": {
+        "T1021.001": 36
+      },
+      "selectedMethodRuns": {
+        "T1021.001": 36,
+        "T1047": 9,
+        "T1190": 31,
+        "T1059": 2
+      },
+      "truncatedRuns": 0
+    },
+    "revil": {
+      "runs": 50,
+      "footholdRuns": 50,
+      "lateralRuns": 33,
+      "firstWindowsMethodRuns": {
+        "cobalt_strike:smb": 33
+      },
+      "selectedMethodRuns": {
+        "cobalt_strike:smb": 33,
+        "cobalt_strike:wmi": 9
+      },
+      "truncatedRuns": 0
+    }
+  }
+}

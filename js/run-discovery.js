@@ -34,5 +34,28 @@
     const known=new Set(assetIds);
     return {assetIds,relationshipIds:started?plan.relationshipIds.filter(id=>plan.relationshipTimes[id]<=time):[],known};
   }
-  return {observed,create,at};
+  // Explain continuation failures without treating a route review as a target probe.
+  function lateralStatus(estate,run) {
+    const assets=new Map(estate.assets.map(a=>[a.id,a]));
+    const execution=run.events.filter(e=>e.outcome==='succeeded' && e.grantedCapability==='app_exec');
+    if(!execution.length)return null;
+    const controlled=new Set(execution.map(e=>e.targetId));
+    const remote=run.events.filter(e=>controlled.has(e.sourceId) && e.sourceId!==e.targetId &&
+      !assets.get(e.targetId)?.isDecoy && !e.actionKind);
+    const reached=new Set(remote.filter(e=>e.outcome==='succeeded').map(e=>e.targetId));
+    const failures=remote.filter(e=>['ineligible','blocked','suppressed'].includes(e.outcome) && !reached.has(e.targetId));
+    if(reached.size && !failures.length)return null;
+    const reasons=[...new Set(failures.map(e=>e.policySkipped
+      ? 'No supported lateral method in the attacker profile.' : e.reason).filter(Boolean))];
+    if(!reasons.length)reasons.push(run.summary?.truncated
+      ? 'Exploration ended before further movement could be established.'
+      : run.summary?.containedSessions ? 'The established session was contained before further movement.'
+      : 'No usable outgoing route was available from the established foothold.');
+    const summary=reached.size ? 'Further lateral movement failed on remaining routes'
+      : run.summary?.truncated ? 'No lateral movement established; exploration incomplete'
+      : failures.some(e=>observed(e)) ? 'Lateral movement failed; no host reached laterally'
+      : 'No lateral movement established';
+    return {summary,detail:reasons.join(' '),reachedTargets:[...reached]};
+  }
+  return {observed,create,at,lateralStatus};
 });

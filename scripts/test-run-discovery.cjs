@@ -28,6 +28,22 @@ assert(!d.observed({...run.events[2],outcome:'revisit'}));
 assert.equal(JSON.stringify({estate,run}),snapshot);
 const empty=d.create(estate,{events:[],controls:run.controls});
 assert.deepEqual(empty.assetIds,['entry','public-unused'],'Public surfaces remain known; a control cannot disclose untouched internals');
+const foothold={targetId:'entry',outcome:'succeeded',grantedCapability:'app_exec'};
+const denied={sourceId:'entry',targetId:'app',outcome:'ineligible',startSec:1,timeSec:2,reason:'Credential lacks execute permission.'};
+assert.equal(d.lateralStatus(estate,{events:[]}),null,'No foothold must not be described as failed lateral movement');
+assert.match(d.lateralStatus(estate,{events:[foothold]}).detail,/No usable outgoing route/);
+const failed=d.lateralStatus(estate,{events:[foothold,denied]});
+assert.match(failed.summary,/Lateral movement failed/);assert.match(failed.detail,/lacks execute permission/);
+assert.match(d.lateralStatus(estate,{events:[foothold,{...denied,policySkipped:true}]}).detail,/No supported lateral method/);
+const moved={...denied,outcome:'succeeded',grantedCapability:'app_exec'};
+assert.equal(d.lateralStatus(estate,{events:[foothold,denied,moved]}),null,'Recovered credentials can resolve an earlier failure');
+assert.match(d.lateralStatus(estate,{events:[foothold,moved,{...denied,targetId:'failed'}]}).summary,/Further lateral movement failed/);
+assert.match(d.lateralStatus(estate,{events:[foothold],summary:{truncated:true}}).summary,/exploration incomplete/);
+assert.match(d.lateralStatus(estate,{events:[foothold],summary:{containedSessions:1}}).detail,/contained/);
+assert.match(d.lateralStatus(estate,{events:[foothold,{...denied,sourceId:'entry',targetId:'entry',actionKind:'encryption',outcome:'succeeded'}]}).summary,/No lateral movement established/);
+assert.match(d.lateralStatus(estate,{events:[foothold,{...foothold,targetId:'public-unused',technique:'T1133'},denied,
+  {...foothold,actionKind:'encryption',technique:'T1486'}]}).summary,/Lateral movement failed/,
+  'Separate external RDP entry and successful local encryption do not establish lateral movement');
 for(let seed=1;seed<=15;seed++) {
   const scenario=e.generateEstate({seed,seedExercise:true});
   const before=JSON.stringify(scenario);

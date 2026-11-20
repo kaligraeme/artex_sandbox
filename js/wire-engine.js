@@ -18,22 +18,66 @@
   // Affiliate initial access is not described by ransomware-software entries alone.
   // These are separately sourced supplements, never attributed to Threat Vision.
   const GANG_SUPPLEMENTS = {
-    lockbit: { techniques: ['T1189','T1190','T1133','T1566','T1078','T1003','T1555.003','T1567.002'],
+    lockbit: { techniques: ['T1189','T1190','T1133','T1566','T1078','T1003','T1555.003','T1567.002','T1021.001'],
       source: 'https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-165a' },
-    conti: { techniques: ['T1078','T1133','T1566.001','T1566.002','T1110','T1558.003','T1567.002'],
-      analystMapped: ['T1567.002'],
-      techniqueSources: {'T1567.002':'https://www.cyber.gov.au/advisory/2021-010-asds-acsc-ransomware-profile-conti'},
+    conti: { techniques: ['T1078','T1133','T1566.001','T1566.002','T1110','T1558.003','T1567.002','T1021.001'],
+      analystMapped: ['T1567.002','T1021.001'],
+      techniqueSources: {'T1567.002':'https://www.cyber.gov.au/advisory/2021-010-asds-acsc-ransomware-profile-conti',
+        'T1021.001':'https://thedfirreport.com/2021/11/29/continuing-the-bazar-ransomware-story/'},
       source: 'https://www.cisa.gov/news-events/cybersecurity-advisories/aa21-265a' },
-    blackcat: { techniques: ['T1078','T1133','T1190','T1567.002'],
-      analystMapped: ['T1078','T1133','T1190','T1567.002'],
+    blackcat: { techniques: ['T1078','T1133','T1190','T1567.002','T1021.001'],
+      analystMapped: ['T1078','T1133','T1190','T1567.002','T1021.001'],
+      techniqueSources: {'T1021.001':'https://www.sygnia.co/blog/blackcat-ransomware/'},
       source: 'https://www.microsoft.com/en-us/security/blog/2022/06/13/the-many-lives-of-blackcat-ransomware/' },
-    hive: { techniques: ['T1133','T1190','T1566.001','T1059','T1070','T1112','T1562','T1537','T1486','T1490','T1021.001'],
-      analystMapped: ['T1021.001'],
-      techniqueSources: { 'T1021.001': 'https://www.ic3.gov/CSA/2021/210825.pdf' },
+    hive: { techniques: ['T1133','T1190','T1566.001','T1059','T1070','T1112','T1562','T1537','T1486','T1490','T1021.001','T1047'],
+      analystMapped: ['T1021.001','T1047'],
+      techniqueSources: { 'T1021.001': 'https://www.ic3.gov/CSA/2021/210825.pdf',
+        'T1047':'https://www.trendmicro.com/vinfo/us/security/news/ransomware-spotlight/ransomware-spotlight-hive' },
       source: 'https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-321a' },
-    revil: { techniques: ['T1567.002'], analystMapped: ['T1567.002'],
+    revil: { techniques: ['T1567.002','T1021.001'], analystMapped: ['T1567.002','T1021.001'],
       source: 'https://unit42.paloaltonetworks.com/revil-threat-actors/' }
   };
+  // Tool use is attributed separately from the ransomware software's technique list.
+  const COBALT_STRIKE_SOURCES = {
+    lockbit:'https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-165a',
+    conti:'https://thedfirreport.com/2021/11/29/continuing-the-bazar-ransomware-story/',
+    blackcat:'https://www.sygnia.co/blog/blackcat-ransomware/',
+    hive:'https://www.hhs.gov/sites/default/files/ransomware-trends-q1-2022.pdf',
+    revil:'https://unit42.paloaltonetworks.com/revil-threat-actors/'
+  };
+  const COBALT_STRIKE_METHOD_SOURCE = 'https://hstechdocs.helpsystems.com/manuals/cobaltstrike/current/userguide/content/topics/post-exploitation_lateral-movement.htm';
+  const PSEXEC_SOURCES = {
+    lockbit:'https://www.cyber.gov.au/advisory/understanding-ransomware-threat-actors-lockbit',
+    conti:'https://www.hhs.gov/sites/default/files/ransomware-trends-q1-2022.pdf',
+    blackcat:'https://www.microsoft.com/en-us/security/blog/2022/06/13/the-many-lives-of-blackcat-ransomware/',
+    hive:'https://www.trendmicro.com/vinfo/us/security/news/ransomware-spotlight/ransomware-spotlight-hive',
+    revil:'https://unit42.paloaltonetworks.com/revil-threat-actors/'
+  };
+  const PSEXEC_METHOD_SOURCE = 'https://learn.microsoft.com/en-us/sysinternals/downloads/psexec';
+  const LATERAL_TOOL_METHODS = [
+    {tool:'cobalt_strike',protocol:'smb',technique:'T1569.002',permission:'service_execute',label:'Cobalt Strike Beacon · remote service',source:COBALT_STRIKE_METHOD_SOURCE},
+    {tool:'cobalt_strike',protocol:'wmi',technique:'T1047',permission:'execute',label:'Cobalt Strike Beacon · WMI remote execution',source:COBALT_STRIKE_METHOD_SOURCE},
+    {tool:'psexec',protocol:'smb',technique:'T1569.002',permission:'service_execute',label:'PsExec · SMB remote-service execution',source:PSEXEC_METHOD_SOURCE}
+  ];
+  // Scenario preferences among reported methods, not measured prevalence or a universal playbook.
+  // REvil retains its preceding tool order; this review changes the other four profiles.
+  const GANG_LATERAL_ORDER = {
+    lockbit:['psexec','cobalt_strike:smb','T1021.002','T1021.001','cobalt_strike:wmi','T1047'],
+    conti:['cobalt_strike:wmi','cobalt_strike:smb','psexec','T1021.001','T1021.002','T1047'],
+    blackcat:['psexec','T1021.001','cobalt_strike:smb','cobalt_strike:wmi','T1021.002','T1047'],
+    hive:['T1021.001','T1047','psexec','cobalt_strike:wmi','cobalt_strike:smb'],
+    revil:['cobalt_strike:smb','cobalt_strike:wmi','T1021.001','psexec']
+  };
+  function lateralMethod(action) {
+    return action.finding?.tool === 'cobalt_strike' ? `cobalt_strike:${action.finding.requiredInterface}`
+      : action.finding?.tool || action.technique;
+  }
+  function lateralRank(action,profile) {
+    const order=GANG_LATERAL_ORDER[profile?.gangId];
+    if(!order || action.finding?.kind!=='remote_service')return 0;
+    const rank=order.indexOf(lateralMethod(action));
+    return rank<0?order.length:rank;
+  }
   const DATA_EXPORT_METHODS = {
     lockbit:{technique:'T1567.002',tool:'Rclone',destination:'External cloud storage'},
     conti:{technique:'T1567.002',tool:'Rclone',destination:'External cloud file-sharing account'},
@@ -53,7 +97,14 @@
     return documented === actionTechnique || actionTechnique?.startsWith(`${documented}.`);
   }
 
-  function gangTechniqueEvidence(gangId, technique) {
+  function gangTechniqueEvidence(gangId, technique, context = {}) {
+    if(context?.tool === 'psexec')return PSEXEC_SOURCES[gangId] && technique === 'T1569.002'
+      ? {basis:'affiliate_reporting',technique,tool:'psexec',analystMapped:true,
+        source:PSEXEC_SOURCES[gangId],methodSource:PSEXEC_METHOD_SOURCE} : null;
+    if(context?.tool === 'cobalt_strike')return COBALT_STRIKE_SOURCES[gangId] && ['T1047','T1569.002'].includes(technique)
+      ? {basis:'affiliate_reporting',technique,tool:'cobalt_strike',analystMapped:true,
+        source:COBALT_STRIKE_SOURCES[gangId],methodSource:COBALT_STRIKE_METHOD_SOURCE,
+        interpretation:'Reported affiliate tool use; transport is an authored choice from documented tool capabilities.'} : null;
     const profile = gangCatalogue.gangs[gangId];
     if (!profile || !technique) return null;
     const mapped = Object.keys(profile.techniques).find(id => techniqueMatches(id, technique));
@@ -70,6 +121,17 @@
     if (action.finding?.requiresUserInteraction && profile?.allowsUserInteraction !== true) return null;
     if (action.actionKind === 'encryption' && profile?.allowsRansomwareImpact !== true) return null;
     if (action.actionKind === 'persistence' && profile?.allowsPersistence !== true) return null;
+    if(action.finding?.tool) {
+      const tool=action.finding.tool;
+      const supported=LATERAL_TOOL_METHODS.some(method=>method.tool===tool && method.technique===action.technique &&
+        method.protocol===action.finding.requiredInterface && method.permission===action.finding.requiredPermission);
+      if(!supported || action.finding.kind !== 'remote_service' || !profile?.availableTools?.includes(tool))return null;
+      if(!profile.gangId)return {basis:'modeled_action',tool,source:tool==='psexec'?PSEXEC_METHOD_SOURCE:COBALT_STRIKE_METHOD_SOURCE,
+        interpretation:'Explicitly configured tool inventory; not evidence of historical ARTEX tool use.'};
+      return gangTechniqueEvidence(profile.gangId,action.technique,action.finding);
+    }
+    // REvil's software WMI entry concerns local process termination, not remote execution.
+    if(profile?.gangId === 'revil' && action.finding?.kind === 'remote_service' && action.technique === 'T1047')return null;
     if (!profile?.gangId) return { basis: 'modeled_action' };
     const evidence = gangTechniqueEvidence(profile.gangId, action.technique);
     if (evidence) return evidence;
@@ -792,6 +854,11 @@
         continue;
       }
       if (f.kind === 'remote_service') {
+        const sourceCapability = ['cobalt_strike','psexec'].includes(f.tool) ? 'app_exec' : f.requiredSourceCapability;
+        if(sourceCapability && !state.reachedAssets.get(sourceAsset?.id)?.capabilities.has(sourceCapability)) {
+          lastReason = 'Required source capability for the lateral tool is not established.';
+          continue;
+        }
         const protocol = relationship?.protocol || f.requiredInterface;
         const credentialCheck = diagnoseCredentialForTarget(state, targetAsset, f.requiredPermission, protocol);
         const credential = credentialCheck.credential;
@@ -803,6 +870,7 @@
           continue;
         }
         actions.push({ eligible: true, actionKind: f.kind, finding: f, technique: f.technique,
+          ...(f.tool && {tool:f.tool}),
           credentialUsed: credential, requiredAccess: `Scoped ${f.requiredPermission} credential`, reachability,
           grantedPermissions: credential.permissions || [],
           endpointScope: targetAsset.endpointIds?.filter(id => credential.endpointScope?.includes(id)) || [],
@@ -1377,7 +1445,8 @@
       attemptedTransitions++;
       const feasible = localFinding ? [evaluatePostCompromiseAction(state, targetAsset, localFinding, estate)]
         : evaluateDistinctActions(state, sourceAsset, targetAsset, relationship, estate);
-      const allowed = feasible.filter(action => action.eligible && actionPolicy(action, sourceAsset, targetAsset, attackerProfile));
+      const allowed = feasible.filter(action => action.eligible && actionPolicy(action, sourceAsset, targetAsset, attackerProfile))
+        .sort((a,b)=>lateralRank(a,attackerProfile)-lateralRank(b,attackerProfile));
       const candidates = activeStep?.plannedActionKeys ? allowed.filter(action=>activeStep.plannedActionKeys.includes(actionKey(action))) : allowed;
       if(allowed.length && !candidates.length){
         ineligibleTransitions++;
@@ -1397,15 +1466,20 @@
 
       if (!candidates.length) {
         ineligibleTransitions++;
+        const supportedFinding = !localFinding && relationship && estate.findings.filter(f=>f.assetId===targetAsset.id &&
+          f.requiredInterface===relationship.protocol && actionPolicy({finding:f,technique:f.technique},sourceAsset,targetAsset,attackerProfile))
+          .sort((a,b)=>lateralRank({finding:a,technique:a.technique},attackerProfile)-lateralRank({finding:b,technique:b.technique},attackerProfile))[0];
+        const failure = supportedFinding ? evaluateDistinctActions(state,sourceAsset,targetAsset,relationship,
+          {...estate,findings:estate.findings.filter(f=>f.assetId!==targetAsset.id || f.id===supportedFinding.id)})[0] : feasible[0];
         events.push({
           sourceId: sourceAsset ? sourceAsset.id : null,
           targetId: targetAsset.id,
           relationshipId: relationship ? relationship.id : null,
-          finding: feasible[0].finding || null,
+          finding: failure.finding || null,
           ...(localFinding && {actionKind:localFinding.kind,dataTransfer:localFinding.dataTransfer}),
-          analysisKind:/source capability|No directed relationship|Protocol mismatch|Relationship direction/i.test(feasible[0].reason || '')?'route_review':'failed_probe',
+          analysisKind:/source capability|No directed relationship|Protocol mismatch|Relationship direction/i.test(failure.reason || '')?'route_review':'failed_probe',
           outcome: 'ineligible',
-          reason: feasible[0].reason
+          reason: failure.reason
         });
         return;
       }
@@ -1429,6 +1503,10 @@
       let gainedAccess = false;
       for (const action of distinctActions) {
         const attackerEvidence = actionPolicy(action, sourceAsset, targetAsset, attackerProfile);
+        if(attackerProfile?.gangId && action.finding?.kind==='remote_service' && sourceAsset) {
+          attackerEvidence.selectionPreference={method:lateralMethod(action),rank:lateralRank(action,attackerProfile),
+            basis:'authored_order_among_reported_methods'};
+        }
         const currentReach = state.reachedAssets.get(targetAsset.id);
         if (currentReach && currentReach.capabilities.has(action.yieldsCapability)) {
           continue;
@@ -1530,6 +1608,7 @@
           requiredAccess: action.requiredAccess,
           reachability: action.reachability,
           grantedCapability: action.yieldsCapability,
+          ...(action.tool && {tool:action.tool}),
           isProtectedRead: action.yieldsCapability === 'data_read' && targetAsset.layerIdx === 3 && !isCanary,
           ...(action.yieldsCapability==='data_read' && targetAsset.dataHandling && {dataFound:targetAsset.dataHandling}),
           ...(action.dataTransfer && {dataTransfer:action.dataTransfer}),
@@ -1565,7 +1644,8 @@
         const feasible=step.localFinding ? [evaluatePostCompromiseAction(state,step.targetAsset,step.localFinding,estate)]
           : evaluateDistinctActions(state, step.sourceAsset, step.targetAsset, step.relationship, estate);
         const candidates = feasible
-          .filter(action => action.eligible && actionPolicy(action, step.sourceAsset, step.targetAsset, attackerProfile));
+          .filter(action => action.eligible && actionPolicy(action, step.sourceAsset, step.targetAsset, attackerProfile))
+          .sort((a,b)=>lateralRank(a,attackerProfile)-lateralRank(b,attackerProfile));
         const distinct=candidates.filter(action=>!state.reachedAssets.get(step.targetAsset.id)?.capabilities.has(action.yieldsCapability));
         const duplicateInFlight=distinct.length>0 && distinct.every(action=>running.some(job=>
           job.targetAsset.id===step.targetAsset.id && job.plannedCapabilities.includes(action.yieldsCapability)));
@@ -1596,7 +1676,10 @@
         if (evaluatedTransitions >= explorationLimit) { truncated = true; break; }
         while (frontier.length && running.length < workers) {
           const assessments=new Map(frontier.map(step=>[step,assess(step)]));
-          frontier.sort((a, b) => priority(a,assessments.get(a)) - priority(b,assessments.get(b)) || rankOf(a.targetAsset.id) - rankOf(b.targetAsset.id));
+          const methodRank=step=>assessments.get(step).candidates.length
+            ? Math.min(...assessments.get(step).candidates.map(action=>lateralRank(action,attackerProfile))) : 0;
+          frontier.sort((a, b) => priority(a,assessments.get(a)) - priority(b,assessments.get(b)) ||
+            rankOf(a.targetAsset.id) - rankOf(b.targetAsset.id) || methodRank(a)-methodRank(b));
           // Wait for an in-flight attempt before spending another worker on the
           // same capability. If it fails, the alternate route remains available.
           const index=frontier.findIndex(step=>!assessments.get(step).duplicateInFlight);
@@ -1950,7 +2033,7 @@
     const remoteFinding = (asset, id, technique, requiredInterface, permission, capability) => {
       findings.push({ ...base, id, assetId: asset.id, kind: 'remote_service', technique,
         requiredInterface, requiredPermission: permission, yieldsCapability: capability,
-        title: `${technique} · ${requiredInterface.toUpperCase()} authorized access`,
+        title: `${technique} · ${technique === 'T1021.001' ? 'Internal RDP lateral access' : `${requiredInterface.toUpperCase()} authorized access`}`,
         description: `${requiredInterface.toUpperCase()} access to ${asset.label} requires an acquired, unrevoked credential with ${permission} permission.` });
     };
     remoteFinding(remote, 'finding-windows-rdp', 'T1133', 'rdp', 'authenticate', 'account_session');
@@ -1969,9 +2052,9 @@
     };
     // A broker-supplied credential exists only on seeds that explicitly model one.
     if (chance('stolen-remote-account', .65)) credential(remote, remote, 'account_session', ['authenticate'], true);
-    if (chance('desktop-admin-credential', .7)) credential(desktop, admin, 'app_exec', ['authenticate','execute']);
-    if (chance('remote-admin-credential', .65)) credential(remote, admin, 'account_session', ['authenticate','execute']);
-    if (chance('admin-files-credential', .8)) credential(admin, fileServer, 'app_exec', ['authenticate','execute']);
+    if (chance('desktop-admin-credential', .7)) credential(desktop, admin, 'app_exec', ['authenticate','execute','service_execute']);
+    if (chance('remote-admin-credential', .65)) credential(remote, admin, 'account_session', ['authenticate','execute','service_execute']);
+    if (chance('admin-files-credential', .8)) credential(admin, fileServer, 'app_exec', ['authenticate','execute','service_execute']);
     if (chance('share-read-credential', .8)) credential(fileServer, records, 'app_exec', ['read']);
     const connect = (source, target, protocol, capability) => relationships.push({
       id: `rel-${source.id}-${target.id}-${protocol}`, sourceId: source.id, targetId: target.id,
@@ -2020,9 +2103,9 @@
     const roles = {
       department_user: ['authenticate','read'],
       helpdesk: ['authenticate','execute'],
-      local_admin: ['authenticate','execute','write_local_files','persist_user'],
-      deployment_service: ['authenticate','execute','write_local_files'],
-      domain_admin: ['authenticate','execute','write_local_files','persist_user']
+      local_admin: ['authenticate','execute','service_execute','write_local_files','persist_user'],
+      deployment_service: ['authenticate','execute','service_execute','write_local_files'],
+      domain_admin: ['authenticate','execute','service_execute','write_local_files','persist_user']
     };
     const variedCredential = (source,target,role,capability,salt) => {
       const endpointScope = target.endpointIds?.filter(id => chance(`${salt}:${id}`, role === 'domain_admin' ? .9 : role === 'local_admin' ? .25 : .6));
@@ -2064,6 +2147,16 @@
       connect(admin,identity,'ad-rpc','app_exec');
       variedCredential(admin,identity,'helpdesk','app_exec','directory-account');
     }
+    // Authored remote-tool opportunities use the existing routes and credential evaluator.
+    // Tool availability is an explicit profile assumption; no actual Beacon is installed.
+    for(const host of [admin,fileServer,...fleets])for(const method of LATERAL_TOOL_METHODS
+    )findings.push({...base,id:`finding-${host.id}-${method.tool==='cobalt_strike'?'cobalt':method.tool}-${method.protocol}`,assetId:host.id,
+      kind:'remote_service',tool:method.tool,technique:method.technique,
+      requiredInterface:method.protocol,requiredPermission:method.permission,
+      requiredSourceCapability:'app_exec',yieldsCapability:'app_exec',
+      title:method.label,
+      sourceUrl:method.source,
+      description:`Modeled ${method.label} requires source execution, configured tool availability and a scoped ${method.permission} credential over the actual ${method.protocol.toUpperCase()} route.`});
   }
 
   /**
@@ -3440,7 +3533,8 @@
     const attacker = WIRE_ATTACKERS[attackerId];
     if (!attacker) throw new Error(`Unknown Wire attacker: ${attackerId}`);
     if (!['baseline','patch','canaries','soc','soc-canary','combined'].includes(mode)) throw new Error(`Unknown Wire defense: ${mode}`);
-    const attackerProfile = {...ATTACKER_PROFILES[attacker.pace], ...options.attackerProfile,
+    const attackerProfile = {...ATTACKER_PROFILES[attacker.pace],
+      availableTools:[...(COBALT_STRIKE_SOURCES[attackerId]?['cobalt_strike']:[]),...(PSEXEC_SOURCES[attackerId]?['psexec']:[])], ...options.attackerProfile,
       gangId: attacker.pace === 'pre2023' ? attackerId : null};
     const timing = {...wireTiming(estate.seed, attacker.pace), respond: ['soc','soc-canary','combined'].includes(mode),
       collectionDelay: estate.defensePosture?.collectionDelaySec ?? 0,
@@ -3459,6 +3553,7 @@
     const run = {...result, lanes: attackerProfile.maxConcurrentBranches, attackerProfile,
       assumptions: {stageDurationsSec: timing.actionDurations, nominalPathDurationSec: timing.modeledPathDurationSec, responseDelaySec: timing.responseDelay,
         progressionStrategy:attackerProfile.gangId?'Follow a foothold, collect and transfer data, then apply impact':'Parallel access and collection with prompt bulk transfer',
+        lateralMethodPreference:attackerProfile.gangId ? {order:GANG_LATERAL_ORDER[attackerId],basis:'authored_order_among_reported_methods'} : null,
         additionalIngressDurationSec:timing.reentryDurationSec,
         postCompromiseTiming: 'Additional synthetic local-action durations from estate findings; not measured ransomware throughput',
         techniquePolicy: attackerProfile.gangId ? { gangId: attackerId, sources: gangCatalogue.sources,

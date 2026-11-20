@@ -36,7 +36,7 @@ Every new mixed estate includes a Windows email desktop, an internet-facing RDP 
 
 - **Attachment access (T1566.001):** generated **Windows Desktop · Phishable User** surfaces explicitly assume delivered mail, user opening and permitted execution, without mail-filter blocking. Their presence supplies a usable foothold for a profile with a documented attachment technique. These prerequisites remain enforced for protected or custom estates. Later movement, persistence and encryption still require their own permissions and access. ARTEX's current profile has no user-interaction capability and cannot use this route. No actual email or payload is sent.
 - **External RDP (T1133):** requires an explicitly modeled broker-supplied starting credential scoped to that host, enabled remote login, and no unsatisfied MFA. A valid account never bypasses disabled remote login.
-- **SMB, WMI and internal RDP (T1021.002, T1047, T1021.001):** require the actual protocol on a permitted directed route, an established source capability, and a target-scoped credential with execution permission. Conti/LockBit can choose SMB; REvil/BlackCat can choose WMI; Hive can choose its reported RDP method.
+- **SMB, WMI and internal RDP (T1021.002, T1047, T1021.001):** require the actual protocol on a permitted directed route, an established source capability, and a target-scoped credential with execution permission. All five gang profiles can choose internal RDP using their software mapping or separately sourced affiliate reporting. Conti/LockBit retain direct SMB; BlackCat retains direct WMI. REvil's software WMI mapping alone no longer licenses remote execution; its tool-backed methods are described below.
 
 MFA is evaluated on the accepting protocol. Generated fleets declare `conditions.mfaProtocols` as either `['rdp']` or `[]`; the existing 25% draw selects an RDP gate, not an account-wide restriction. External RDP retains its explicit login/MFA policy. Legacy `mfaEnforced` and credential `mfaRequired` flags apply only to interactive RDP, VPN or HTTP(S) authentication. They do not impose an MFA challenge on SMB/WMI, share reads, or local actions in an already executing session. An explicit protocol list takes precedence over legacy flags. Revocation, expiry, audience, permissions, endpoint scope and enabled remote login remain independent requirements. Windows Hello for Business's device-bound sign-in factors do not imply an MFA gate on every network use of the account ([Microsoft authentication overview](https://learn.microsoft.com/en-us/windows/security/identity-protection/hello-for-business/hello-how-it-works-authentication)).
 - **Data access:** requires the file server's established execution and an explicitly stored credential with read permission for the exact department share. Access to a desktop does not imply domain administration or data access.
@@ -67,6 +67,35 @@ Events carry the action kind, source evidence and affected endpoint IDs. Run sum
 Switching attackers or defense cards preserves the estate and its exposure assumptions. Replay uses the same identity and event history. Use **New Infra** to generate the new workforce nodes when viewing an older saved estate.
 
 ## Verification and refresh
+
+### Internal RDP and Cobalt Strike additions — 20 November 2026
+
+Phases 1–3 now include named remote-tool opportunities on Windows management, file-server and fleet targets; phases 4–6 preserve queue timing, response suppression and replay. Existing activity titles and result text display these methods without changing layout, controls or animation presentation.
+
+| Profile | Internal RDP | Cobalt Strike tool inventory |
+| --- | --- | --- |
+| LockBit | Enabled | Enabled, attributed affiliate reporting |
+| Conti | Enabled | Enabled, attributed affiliate reporting |
+| BlackCat | Enabled | Enabled, attributed affiliate reporting |
+| Hive | Already enabled | Enabled after the subsequent HHS-backed review below |
+| REvil | Enabled | Enabled, attributed affiliate reporting |
+| ARTEX-like | Already allowed as a modeled action | Empty by default; can be explicitly configured |
+
+RDP supplements use [CISA LockBit reporting](https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-165a), the [Conti incident investigation](https://thedfirreport.com/2021/11/29/continuing-the-bazar-ransomware-story/), [Sygnia's BlackCat investigation](https://www.sygnia.co/blog/blackcat-ransomware/), and [Unit 42's REvil investigation](https://unit42.paloaltonetworks.com/revil-threat-actors/). Existing Hive evidence remains unchanged. These are affiliate capabilities, not claims about every incident.
+
+Cobalt Strike is a tool, not a protocol or a single ATT&CK technique. The engine authors two opportunities from its [documented lateral capabilities](https://hstechdocs.helpsystems.com/manuals/cobaltstrike/current/userguide/content/topics/post-exploitation_lateral-movement.htm): WMI remote execution (T1047) and SMB remote-service execution (T1569.002). The same four gang sources attribute tool use; the specific transport selection is an analyst-authored scenario choice from the tool's capabilities, not a claim that each gang used both transports in those incidents. Evidence records both the affiliate report and tool documentation. The software catalogue is unchanged.
+
+Both require established `app_exec` on the source, a permitted route, target login enabled, an acquired credential with the right audience and permission, and valid endpoint scope. WMI requires `execute`; remote-service execution requires the separate `service_execute` permission. The generated management administrator, local administrator, deployment-service and domain-administrator credentials explicitly grant that service permission; helpdesk and department-user credentials do not. Tool availability models a pre-staged operator capability, not actual Beacon installation, C2 reachability or a payload delivery step. HTTP WAF coverage does not block these Windows protocols. SOC containment can suppress their effects using the existing session lifecycle.
+
+ARTEX-like retains modeled RDP under the same checks. No Cobalt Strike/RDP implementation was found in the referenced ARTEX code, so these are not presented as observed ARTEX behavior. Cobalt Strike is disabled by default for ARTEX-like; a custom experiment may set `simulateWireRun(..., {attackerProfile:{availableTools:['cobalt_strike']}})` and receives `modeled_action` provenance. Setting `availableTools:[]` disables the gang tool assumption. The subsequent research found separate HHS evidence supporting Hive tool use.
+
+### Follow-up review: gang-specific methods and preferences
+
+The [sourced research review](gang-lateral-research.md) supersedes the initial Hive tool omission. It adds Hive's reported direct WMI and Cobalt Strike capabilities, plus named PsExec remote-service execution for all five gang profiles. PsExec requires SMB, source execution, explicit `service_execute` rights, a valid scoped credential and available tool inventory. ARTEX-like still has no default offensive tool inventory; explicitly configured PsExec receives modeled provenance.
+
+LockBit and BlackCat prefer PsExec when eligible, Conti prefers Beacon/WMI, and Hive prefers RDP with direct WMI and tool alternatives. REvil retains its preceding Beacon-first order. These are authored orders among reported methods, not published frequency rankings. Both findings within a route and routes to the same target honor the order; prerequisites and established collection priorities take precedence. Events and run assumptions label the choice accordingly. Full source matrix, limitations and a 250-run coverage check are in the research review.
+
+`node scripts/test-lateral-tools.cjs` verifies each gang's RDP and supported Cobalt Strike methods, explicitly configured ARTEX tools, source execution, service rights, credential validity, routes, RDP MFA, WAF scope, containment and deterministic replay. Browser tests verify named tool activity in the existing feed. Older saved estates need New Infra to acquire the new tool findings and service-right assumptions; replay does not silently change them.
 
 `node scripts/test-gang-techniques.cjs` checks distinct mapped routes, user interaction, RDP/MFA, credential permission/revocation/expiry/audience, network reachability, virtual-patch scope, immutable estates and deterministic replay across 720 attacker/defense combinations. The existing model, remediation and browser checks also apply.
 

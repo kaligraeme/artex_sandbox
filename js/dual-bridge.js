@@ -41,7 +41,7 @@ if (new URLSearchParams(location.search).has('embedded')) {
         if(earlier.some(previous=>previous.isProtectedRead))return ' Earlier data access remains successful; it does not by itself confirm export.';
         return '';
       };
-      return run.events.map((event,index)=>({event,index})).filter(({event})=>
+      const activity = run.events.map((event,index)=>({event,index})).filter(({event})=>
         !event.policySkipped && event.timeSec<=modeledTime &&
         (event.actionKind==='data_exfiltration' ||
           event.outcome==='ineligible' && event.timeSec>event.startSec && (RunDiscovery.observed(event) || event.analysisKind==='route_review'&&event.sourceId) ||
@@ -65,6 +65,11 @@ if (new URLSearchParams(location.search).has('embedded')) {
           asset:estate.assets.find(a=>a.id===(event.analysisKind==='route_review'?event.sourceId:event.targetId))?.label || event.targetId,
           outcome:event.outcome})).sort((a,b)=>
             Number(b.isExport)-Number(a.isExport) || b.time-a.time || b.id-a.id);
+      const lateral=this.done && RunDiscovery.lateralStatus(estate,run);
+      if(lateral)activity.push({id:run.events.length,time:modeledTime,elapsed:formatEstimate(modeledTime),isExport:false,
+        code:'LATERAL MOVEMENT',title:lateral.summary,detail:lateral.detail,
+        asset:lateral.reachedTargets.length?'Other lateral access succeeded':'Established foothold',outcome:'ineligible'});
+      return activity.sort((a,b)=>Number(b.isExport)-Number(a.isExport) || b.time-a.time || b.id-a.id);
     },
     state() {return {estate, events: run.events, time: modeledTime, done: this.done, lanes: run.lanes};}
   };

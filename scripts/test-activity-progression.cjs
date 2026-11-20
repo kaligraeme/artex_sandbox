@@ -41,7 +41,9 @@ assert(firstMove.timeSec<nextEntry.timeSec,'Gang follows the initial foothold be
 const revil=run(e.generateEstate({seed:99,seedExercise:true}),'revil');
 const deadEnd=revil.events.find(event=>event.outcome==='ineligible'&&event.timeSec>event.startSec);
 assert(deadEnd,'An unsuccessful continuation still costs time');
-assert.equal(deadEnd.finding.technique,'T1047','Failure evidence names the actual WMI route, not an unrelated SMB method');
+assert.equal(deadEnd.finding.requiredInterface,e.generateEstate({seed:99,seedExercise:true}).relationships.find(r=>r.id===deadEnd.relationshipId).protocol,
+  'Failure evidence names the actual attempted transport');
+assert(e.gangTechniqueEvidence('revil',deadEnd.finding.technique,deadEnd.finding),'Failure names a supported method');
 const encryption=success(revil).find(event=>event.actionKind==='encryption');
 assert(encryption.startSec>=deadEnd.timeSec,'The gang checks its available continuation before applying local impact');
 

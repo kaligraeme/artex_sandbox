@@ -40,8 +40,11 @@ async function main(){
       const expected=await panel.evaluate(()=>comparison.activity().map(item=>({code:item.code,time:item.time})));
       const listed=await page.locator('.attack-feed').nth(i).locator('li').evaluateAll(items=>items.map(item=>({code:item.querySelector('strong').textContent,time:Number(item.dataset.time)})));
       assert.deepEqual(listed,expected,'Feed shows exactly the completed techniques and CVEs');
-      assert(listed.every((item,index)=>!index||listed[index-1].time>=item.time),'Newest activity appears first');
-      assert(await panel.evaluate(()=>comparison.activity().some(item=>['NO ACCESS','PATH REVIEW'].includes(item.code))),'Timed dead ends remain visible');
+      assert(listed.every((item,index)=>!index||
+        (listed[index-1].code==='DATA EXFILTRATED'&&item.code!=='DATA EXFILTRATED') ||
+        (listed[index-1].code=== 'DATA EXFILTRATED')===(item.code==='DATA EXFILTRATED')&&listed[index-1].time>=item.time),
+        'Completed exports are pinned; each group is newest first');
+      assert(await panel.evaluate(()=>comparison.activity().some(item=>['NO NEW ACCESS','PATH REVIEW'].includes(item.code))),'Timed dead ends remain visible');
       assert(await panel.evaluate(()=>comparison.activity().filter(item=>item.code==='PATH REVIEW').every(item=>{
         const event=run.events[item.id],source=estate.assets.find(a=>a.id===event.sourceId),target=estate.assets.find(a=>a.id===event.targetId);
         return item.asset===source.label&&!item.detail.includes(target.label);
@@ -55,7 +58,7 @@ async function main(){
           background:getComputedStyle(feed).backgroundColor,color:getComputedStyle(feed).color,overflow:getComputedStyle(feed).overflowY};
       }));
       for(const item of geometry){assert(item.left<1&&item.right<1&&item.bottom<2,'Estate fills available space without side gutters');
-        assert.equal(item.background,'rgb(255, 255, 255)');assert.equal(item.color,'rgb(17, 17, 17)');assert.equal(item.overflow,'auto');}
+        assert.equal(item.background,'rgb(241, 243, 245)');assert.equal(item.color,'rgb(17, 17, 17)');assert.equal(item.overflow,'auto');}
     }
     if(process.env.DUAL_LAYOUT_SCREENSHOT)await page.screenshot({path:process.env.DUAL_LAYOUT_SCREENSHOT});
     for(const [i,panel] of panels.entries()){

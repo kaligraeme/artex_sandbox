@@ -451,7 +451,7 @@ function renderEvent(event, time, animate) {
   node.el.title += `\n${formatEstimate(time)} · ${summary} · ${event.reason}`;
   if(event.finding?.sourceUrl)node.el.title+=`\nSource: ${event.finding.sourceUrl}.`;
   for(const credential of event.acquiredCredentials || [])node.el.title+=`\nAcquired credential: ${credential.label} · permissions: ${(credential.permissions || []).join(', ')}`;
-  if(event.outcome==='ineligible' && RunDiscovery.observed(event)) {
+  if(event.outcome==='ineligible' && RunDiscovery.observed(event) && !node.el.classList.contains('hit')) {
     node.el.classList.add('probed');
     node.el.querySelector('.node-state').textContent='PROBED · NO ACCESS';
   }

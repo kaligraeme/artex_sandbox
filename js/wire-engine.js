@@ -743,6 +743,7 @@
     }
     const actions = [];
     let lastReason = null;
+    const accessProtocol = relationship?.protocol || (targetAsset.interfaces.length === 1 ? targetAsset.interfaces[0] : null);
 
     // 1. Reachability check
     let reachability = '';
@@ -792,12 +793,13 @@
       }
       if (f.kind === 'remote_service') {
         const protocol = relationship?.protocol || f.requiredInterface;
-        const credential = diagnoseCredentialForTarget(state, targetAsset, f.requiredPermission).credential;
+        const credentialCheck = diagnoseCredentialForTarget(state, targetAsset, f.requiredPermission, protocol);
+        const credential = credentialCheck.credential;
         if (!f.requiredPermission || !credential || !targetAsset.interfaces.includes(f.requiredInterface) ||
             protocol !== f.requiredInterface || targetAsset.conditions?.remoteLoginEnabled !== true ||
-            targetAsset.conditions?.mfaEnforced !== false ||
+            (protocol === 'rdp' && !Array.isArray(targetAsset.conditions?.mfaProtocols) && typeof targetAsset.conditions?.mfaEnforced !== 'boolean') ||
             (targetAsset.endpointIds && !targetAsset.endpointIds.some(id => credential.endpointScope?.includes(id)))) {
-          lastReason = 'Remote access requires its actual protocol, an authorized credential, enabled login and satisfied MFA.';
+          lastReason = credentialCheck.reason || 'Remote access requires its actual protocol, an authorized credential, enabled login and an established authentication policy.';
           continue;
         }
         actions.push({ eligible: true, actionKind: f.kind, finding: f, technique: f.technique,
@@ -808,7 +810,7 @@
         continue;
       }
       if (f.kind === 'diagnostic_access') {
-        const diagnosticLogin = diagnoseCredentialForTarget(state, targetAsset, 'read_diagnostics');
+        const diagnosticLogin = diagnoseCredentialForTarget(state, targetAsset, 'read_diagnostics', accessProtocol);
         if (!diagnosticLogin.usable) {
           return [{ eligible: false, finding: f, reason: 'Reading diagnostics requires an authorized diagnostics viewer.' }];
         }
@@ -861,7 +863,7 @@
         }
         if (relationship && f.requiredInterface !== relationship.protocol) continue;
         if (f.requiresAuth) {
-          const matchingCred = diagnoseCredentialForTarget(state, targetAsset, f.requiredPermission || 'authenticate').credential;
+          const matchingCred = diagnoseCredentialForTarget(state, targetAsset, f.requiredPermission || 'authenticate', accessProtocol).credential;
           if (!matchingCred) {
             lastReason = `${f.cveId} requires an authorized credential for ${targetAsset.label}.`;
             continue;
@@ -931,7 +933,7 @@
     }
 
     // 3. Check if attacker holds a valid, non-revoked, in-scope credential
-    const credCheck = diagnoseCredentialForTarget(state, targetAsset, targetAsset.layerIdx === 3 ? 'read' : 'authenticate');
+    const credCheck = diagnoseCredentialForTarget(state, targetAsset, targetAsset.layerIdx === 3 ? 'read' : 'authenticate', accessProtocol);
     if (credCheck.usable && targetAsset.accessModel !== 'windows_remote_service' && !targetFindings.some(f => f.kind === 'remote_service')) {
       const action = {
         eligible: true,
@@ -1010,27 +1012,39 @@
       reachability: `Local action on already reached ${asset.label}`, reason: finding.description };
   }
 
-  function diagnoseCredentialForTarget(state, targetAsset, permission = 'authenticate') {
+  function diagnoseCredentialForTarget(state, targetAsset, permission = 'authenticate', protocol = null) {
     let rejectedReason = null;
     for (const cred of state.acquiredCredentials.values()) {
       const groupMatch = Array.isArray(cred.targetGroupIds) && cred.targetGroupIds.includes(targetAsset.groupId);
       const assetMatch = Array.isArray(cred.targetAssetIds) && cred.targetAssetIds.includes(targetAsset.id);
       if (Array.isArray(cred.targetAssetIds) && cred.targetAssetIds.length ? !assetMatch : !groupMatch) continue;
+      const targetSuffix = ` for ${targetAsset.label}`;
+      const label = cred.label || cred.kind?.replaceAll('_', ' ') || 'Account';
+      const shortLabel = label.endsWith(targetSuffix) ? label.slice(0, -targetSuffix.length) : label;
+      const credentialName = /\bcredential\b/i.test(shortLabel) ? shortLabel : `${shortLabel} credential`;
+      const subject = credentialName.charAt(0).toUpperCase() + credentialName.slice(1);
       if (state.revokedCredentials.has(cred.id) || cred.revoked) {
-        rejectedReason = `Credential ${cred.label} for ${targetAsset.label} is revoked.`;
+        rejectedReason = `${subject} is revoked.`;
         continue;
       }
-      if (cred.mfaRequired) {
-        rejectedReason = `Credential ${cred.label} for ${targetAsset.label} requires MFA.`;
+      // MFA belongs to the accepting service, not every use of a domain account.
+      // Legacy account/host flags apply to interactive access only; Windows Hello
+      // on a desktop does not add MFA to SMB/WMI or an already running process.
+      const mfaProtocols = targetAsset.conditions?.mfaProtocols;
+      const interactive = ['rdp', 'vpn', 'http', 'https'].includes(protocol);
+      const requiresMfa = Array.isArray(mfaProtocols) ? mfaProtocols.includes(protocol)
+        : interactive && (targetAsset.conditions?.mfaEnforced === true || cred.mfaRequired === true);
+      if (requiresMfa) {
+        rejectedReason = `${protocol.toUpperCase()} access requires MFA.`;
         continue;
       }
       if (cred.expired || (cred.audience && cred.audience !== targetAsset.id)) {
-        rejectedReason = `Credential ${cred.label} is expired or has the wrong audience.`;
+        rejectedReason = `${subject} is expired or has the wrong audience.`;
         continue;
       }
       const permissions = cred.permissions || (cred.scope ? [cred.scope] : []);
       if (!permissions.includes(permission)) {
-        rejectedReason = `Credential ${cred.label} lacks ${permission} permission.`;
+        rejectedReason = `${subject} lacks ${permission} permission.`;
         continue;
       }
       return { usable: true, credential: cred };
@@ -1947,7 +1961,7 @@
         scope: permissions[0], permissions, sourceAssetId: source.id,
         requiredSourceCapability: capability, targetAssetIds: [target.id], targetGroupIds: [],
         audience: target.id, revoked: false, expired: false,
-        mfaRequired: target.conditions.mfaEnforced === true, startingAccess });
+        mfaRequired: false, startingAccess });
     };
     // A broker-supplied credential exists only on seeds that explicitly model one.
     if (chance('stolen-remote-account', .65)) credential(remote, remote, 'account_session', ['authenticate'], true);
@@ -1986,7 +2000,7 @@
       const id = `windows-fleet-${department.toLowerCase()}`;
       const count = 12 + Math.floor(hashNode(seed, `${id}:size`, 0x98a31) * 69);
       const fleet = addAsset(id, `${department} Desktop Fleet · ${count} endpoints`, 2, ['smb','wmi','rdp'], {
-        remoteLoginEnabled:chance(`${id}-login`, .9), mfaEnforced:chance(`${id}-mfa`, .25),
+        remoteLoginEnabled:chance(`${id}-login`, .9), mfaProtocols:chance(`${id}-mfa`, .25) ? ['rdp'] : [],
         localFilesWritable:chance(`${id}-writable`, .85), startupChangesAllowed:chance(`${id}-startup`, .65)
       }, .18 + index * .2);
       fleet.product='Windows 11 Enterprise';fleet.icon='endpoint.png';fleet.accessModel='windows_remote_service';
@@ -2016,7 +2030,7 @@
         provenance:'synthetic_deployment_assumption', scope:role, permissions:[...roles[role]],
         sourceAssetId:source.id, requiredSourceCapability:capability, targetAssetIds:[target.id],
         targetGroupIds:[], audience:target.id, revoked:status < .1, expired:status >= .1 && status < .2,
-        mfaRequired:target.conditions.mfaEnforced === true, ...(endpointScope && {endpointScope}),
+        mfaRequired:false, ...(endpointScope && {endpointScope}),
         ...(sourceEndpointIds && {sourceEndpointIds}) });
     };
     const roleNames=Object.keys(roles);

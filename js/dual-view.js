@@ -45,7 +45,7 @@ function updateFeeds() {
       const title=document.createElement('span');title.textContent=item.title;
       const asset=document.createElement('span');asset.textContent=item.asset;
       const detail=document.createElement('span');detail.textContent=item.detail || '';
-      const when=document.createElement('time');when.textContent=`${item.elapsed} · ${item.outcome}`;
+      const when=document.createElement('time');when.textContent=`${item.elapsed} elapsed · ${item.outcome==='ineligible'?'no new access':item.outcome}`;
       entry.append(code,title,asset,detail,when);return entry;
     });
     list.replaceChildren(...entries);feed.querySelector('.feed-empty').hidden=activity.length>0;

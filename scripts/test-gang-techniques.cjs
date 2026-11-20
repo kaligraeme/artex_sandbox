@@ -37,7 +37,7 @@ for (const condition of ['userOpensAttachment','attachmentExecutionAllowed','mai
   modified.assets.find(a => a.id === 'windows-desktop').conditions[condition] = condition === 'mailFilterBlocksAttachment';
   assert(!windows(run(modified,'conti')).some(event => event.targetId === 'windows-desktop'), condition);
 }
-for (const change of ['route','credential','permission','revoked','expired','audience','mfa']) {
+for (const change of ['route','credential','permission','revoked','expired','audience']) {
   const modified = structuredClone(estate);
   const credential = modified.credentials.find(c => c.sourceAssetId === 'windows-desktop' && c.audience === 'windows-management');
   assert(credential);
@@ -47,7 +47,6 @@ for (const change of ['route','credential','permission','revoked','expired','aud
   if (change === 'revoked') credential.revoked = true;
   if (change === 'expired') credential.expired = true;
   if (change === 'audience') credential.audience = 'wrong-host';
-  if (change === 'mfa') credential.mfaRequired = true;
   assert(!windows(run(modified,'conti')).some(event => event.targetId === 'windows-records'), change);
 }
 const remoteEstate = e.generateEstate({seed:8});

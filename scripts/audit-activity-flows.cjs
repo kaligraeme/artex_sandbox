@@ -47,7 +47,7 @@ function activity(run){
 function keyEvent(event){
   return event.isProtectedRead?'DATA FOUND':event.actionKind==='data_exfiltration'
     ?event.outcome==='succeeded'?'DATA EXFILTRATED':event.outcome==='blocked'?'EXFILTRATION BLOCKED':'EXFILTRATION STOPPED'
-    :event.analysisKind==='route_review'?'PATH REVIEW':event.outcome==='ineligible'?'NO ACCESS'
+    :event.analysisKind==='route_review'?'PATH REVIEW':event.outcome==='ineligible'?'NO NEW ACCESS'
     :event.actionKind||event.finding?.cveId||event.technique||event.finding?.kind||event.outcome;
 }
 function generateReport(rows){

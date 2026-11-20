@@ -34,14 +34,13 @@ for(const event of baseline.events.filter(event=>['persistence','encryption'].in
 assert.deepEqual(run(x,'patch').summary.encryptedEndpointIds,['ep1','ep2'],'WAF cannot reverse endpoint encryption');
 assert.equal(e.simulateWireRun(x,'baseline','artex').summary.encryptedEndpointIds.length,0);
 assert.equal(e.simulateWireRun(fixture({apiEntry:true}),'baseline','artex').summary.encryptedEndpointIds.length,0,'ARTEX can enter without being assigned a ransomware objective');
-for(const change of ['execute','write','persist','scope','expired','revoked','mfa','route','source-capability','writable','startup']) {
+for(const change of ['execute','write','persist','scope','expired','revoked','route','source-capability','writable','startup']) {
   const modified=structuredClone(x),credential=modified.credentials[1];
   if(change==='execute')credential.permissions=credential.permissions.filter(p=>p!=='execute');
   if(change==='write')credential.permissions=credential.permissions.filter(p=>p!=='write_local_files');
   if(change==='persist')credential.permissions=credential.permissions.filter(p=>p!=='persist_user');
   if(change==='scope')credential.endpointScope=['unrelated-endpoint'];
   if(['expired','revoked'].includes(change))credential[change]=true;
-  if(change==='mfa')credential.mfaRequired=true;
   if(change==='route')modified.relationships.pop();
   if(change==='source-capability')modified.credentials[1].requiredSourceCapability='unestablished';
   if(change==='writable')modified.assets[2].conditions.localFilesWritable=false;
@@ -50,6 +49,36 @@ for(const change of ['execute','write','persist','scope','expired','revoked','mf
   if(!['persist','startup'].includes(change))assert.equal(result.summary.encryptedEndpointIds.length,0,change);
   if(!['write','writable'].includes(change))assert.equal(result.summary.persistentEndpointIds.length,0,change);
 }
+// A desktop sign-in policy does not protect every protocol accepting the account.
+for(const protocol of ['smb','wmi','rdp']) {
+  const modified=structuredClone(x),fleet=modified.assets[2];
+  fleet.interfaces=[protocol];fleet.conditions.mfaProtocols=['rdp'];
+  modified.credentials[1].mfaRequired=true; // Legacy account flag must not gate SMB/WMI.
+  modified.relationships[1].protocol=protocol;
+  Object.assign(modified.findings.find(f=>f.id==='fleet-login'),{
+    requiredInterface:protocol,technique:{smb:'T1021.002',wmi:'T1047',rdp:'T1021.001'}[protocol]});
+  const state={reachedAssets:new Map([['management',{capabilities:new Set(['app_exec'])}]]),
+    acquiredCredentials:new Map([[modified.credentials[1].id,modified.credentials[1]]]),revokedCredentials:new Set()};
+  const routeCheck=()=>e.evaluateAction(state,modified.assets[1],fleet,modified.relationships[1],modified);
+  assert.equal(routeCheck().eligible,protocol!=='rdp',`${protocol} respects its own MFA policy`);
+  if(protocol!=='rdp')assert.equal(run(modified).summary.encryptedEndpointIds.length,2,'Scoped remote execution still enables local encryption');
+  if(protocol==='rdp') {
+    assert.equal(routeCheck().reason,'RDP access requires MFA.');
+    fleet.conditions.mfaProtocols=[];
+    assert.equal(routeCheck().eligible,true,'RDP without an MFA gate accepts scoped credentials');
+  }
+}
+const phished=structuredClone(x);
+phished.assets[0].conditions.mfaEnforced=true;
+phished.assets[0].conditions.mfaProtocols=['rdp'];
+phished.assets[0].conditions.localFilesWritable=true;
+phished.assets[0].conditions.startupChangesAllowed=true;
+phished.assets[0].localUserPermissions=['write_local_files','persist_user'];
+phished.findings.push(...phished.findings.filter(f=>['persistence','encryption'].includes(f.kind))
+  .map(f=>({...f,id:`entry-${f.id}`,assetId:'entry'})));
+const phishRun=run(phished);
+assert(phishRun.summary.encryptedEndpointIds.includes('entry'),'Existing phished execution can encrypt writable files without a new MFA check');
+assert(phishRun.summary.persistentEndpointIds.includes('entry'),'Existing phished execution can install permitted startup persistence');
 const early=run(x,'soc',{responseDelay:10});
 assert.equal(early.summary.encryptedEndpointIds.length,0);assert.equal(early.summary.persistentEndpointIds.length,0);
 const middle=run(x,'soc',{responseDelay:20});
@@ -105,6 +134,7 @@ for(let seed=1;seed<=50;seed++) {
     kinds.add(credential.kind);if(credential.revoked)statuses.add('revoked');if(credential.expired)statuses.add('expired');
     if(credential.mfaRequired)statuses.add('mfa');
   }
+  if(estate.assets.some(a=>a.conditions?.mfaEnforced || a.conditions?.mfaProtocols?.length))statuses.add('mfa');
   for(const actor of ['lockbit','conti','hive','blackcat','revil','artex']) {
     const result=e.simulateWireRun(estate,'baseline',actor);
     assert.deepEqual(e.simulateWireRun(estate,'baseline',actor),result);

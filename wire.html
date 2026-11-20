@@ -440,12 +440,13 @@ function renderEvent(event, time, animate) {
   const read = event.grantedCapability === 'data_read' && node.layerIdx === 3 && !node.isDecoy;
   const encrypted = success && event.actionKind === 'encryption';
   const persistent = success && event.actionKind === 'persistence';
+  const phished = success && event.finding?.kind === 'phishing_attachment';
   const staging = node.groupId === 'staging-status';
   const finding = event.finding;
   const diagnostic = finding?.kind === 'diagnostic_access';
   const reference = finding?.cveId || event.technique;
   const action = finding?.title || (event.credentialUsed ? 'Valid Accounts' : 'Access check');
-  const summary = reference ? `${action} · ${reference}` : action;
+  const summary = phished ? `Phishing attachment executed · ${reference}` : reference ? `${action} · ${reference}` : action;
   node.el.title += `\n${formatEstimate(time)} · ${summary} · ${event.reason}`;
   if(event.finding?.sourceUrl)node.el.title+=`\nSource: ${event.finding.sourceUrl}; deployment and outcome are synthetic.`;
   for(const credential of event.acquiredCredentials || [])node.el.title+=`\nAcquired credential: ${credential.label} · permissions: ${(credential.permissions || []).join(', ')}`;
@@ -480,7 +481,7 @@ function renderEvent(event, time, animate) {
     if (read || encrypted) node.el.classList.add('breach-target');
     node.el.querySelector('.cve').textContent = finding?.cveId || event.technique || result;
     node.el.querySelector('.vuln-title').textContent = finding?.title || result;
-    node.el.querySelector('.node-state').textContent = encrypted ? `${event.affectedEndpointIds.length}/${node.endpointCount || 1} ENCRYPTED (MODELED)` : persistent ? `${event.affectedEndpointIds.length}/${node.endpointCount || 1} PERSISTENT` : read ? 'PROTECTED READ' : blocked ? 'PREVENTED' : contained ? 'CONTAINED' : alertOnly ? 'CANARY ALERT' : '';
+    node.el.querySelector('.node-state').textContent = encrypted ? `${event.affectedEndpointIds.length}/${node.endpointCount || 1} ENCRYPTED (MODELED)` : persistent ? `${event.affectedEndpointIds.length}/${node.endpointCount || 1} PERSISTENT` : phished ? 'PHISH EXECUTED' : read ? 'PROTECTED READ' : blocked ? 'PREVENTED' : contained ? 'CONTAINED' : alertOnly ? 'CANARY ALERT' : '';
   }
   if (wire) {
     if (blocked) wire.path.classList.add('defended-wire');
@@ -491,7 +492,7 @@ function renderEvent(event, time, animate) {
   }
   socTickets.set(`${node.id}-${event.outcome}-${event.actionKind || 'access'}`, {
     title: summary,
-    severity: read || encrypted ? 'CRITICAL' : (persistent || blocked || contained || alertOnly) ? 'HIGH' : 'INFO',
+    severity: read || encrypted ? 'CRITICAL' : (phished || persistent || blocked || contained || alertOnly) ? 'HIGH' : 'INFO',
     detail: `${formatEstimate(time)} · ${result}`
   });
 }
@@ -628,7 +629,10 @@ function finishRun() {
   const illustration = run.events.some(event => event.outcome === 'succeeded' && event.finding?.illustration === 'git-to-idp')
     ? 'Illustrative branch ends at IdP admin' : '';
   const group = run.lanes === 1 ? pre2023Groups[pre2023Group] : '';
+  const entryFailure = run.lanes === 1 && !successes.length && run.events.find(event => !event.sourceId && event.outcome === 'ineligible' &&
+    event.finding?.kind === 'phishing_attachment' && WireEngine.gangTechniqueEvidence(pre2023Group,event.finding.technique));
   runHud.textContent = [group, run.result.label, result, evidence, limit, sampleLogs?.finding.title, `${count} external ${count === 1 ? 'entry' : 'entries'} reached`,
+    entryFailure?.reason,
     run.summary.encryptedEndpointIds?.length ? `${run.summary.encryptedEndpointIds.length} endpoints encrypted (modeled)` : '',
     run.summary.persistentEndpointIds?.length ? `Persistence established on ${run.summary.persistentEndpointIds.length} endpoints` : '',
     blockedTransitions ? `${blockedTransitions} blocked` : '', run.summary.suppressedTransitions ? `${run.summary.suppressedTransitions} effects suppressed` : '', response, illustration].filter(Boolean).join(' · ');

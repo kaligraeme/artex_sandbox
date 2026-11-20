@@ -66,6 +66,8 @@ for (const missing of ['finding','mfa-condition']) {
 
 for (let seed=1; seed<=30; seed++) {
   const scenario = e.generateEstate({seed,seedExercise:true});
+  assert(success(run(scenario,'revil')).some(event=>event.technique==='T1566.001'),
+    `Generated phishable entry must establish REvil foothold: seed ${seed}`);
   const before = JSON.stringify(scenario);
   for (const gang of [...gangs,'artex']) for (const mode of modes) {
     const result = run(scenario,gang,mode);
@@ -80,4 +82,17 @@ for (let seed=1; seed<=30; seed++) {
   assert.equal(JSON.stringify(scenario),before,'Actor/defense switches cannot redraw estate');
 }
 assert.equal(JSON.stringify(estate),snapshot);
+// A phish remains visible/detectable even when it unlocks no other asset.
+for(const gang of ['conti','revil']){
+  const isolated=e.generateEstate({seed:1,seedExercise:true});
+  isolated.findings=isolated.findings.filter(f=>f.kind==='phishing_attachment');
+  isolated.credentials=[];
+  isolated.defensePosture.telemetryLayers=[0];
+  const baseline=run(isolated,gang), monitored=run(isolated,gang,'soc');
+  assert.equal(success(baseline).length,1);assert.equal(success(baseline)[0].targetId,'windows-desktop');
+  assert.equal(baseline.result.impact,false);
+  assert(monitored.controls.some(c=>c.control==='signal'&&c.source==='endpoint'&&c.targetId==='windows-desktop'));
+  isolated.defensePosture.telemetryLayers=[];
+  assert(!run(isolated,gang,'soc').controls.some(c=>c.control==='signal'),'Unmonitored endpoint cannot produce SOC detection');
+}
 console.log('PASS gang policy: sourced filters, distinct SMB/WMI choices, phishing gates, RDP/MFA, credentials, reachability, WAF scope, 720 paired runs and replay');

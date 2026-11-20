@@ -767,7 +767,10 @@
             f.requiresUserInteraction !== true || targetAsset.conditions?.userOpensAttachment !== true ||
             targetAsset.conditions?.attachmentExecutionAllowed !== true ||
             targetAsset.conditions?.mailFilterBlocksAttachment !== false) {
-          lastReason = 'Phishing requires delivered mail, a modeled user opening the attachment, and permitted execution.';
+          lastReason = targetAsset.conditions?.mailFilterBlocksAttachment === true ? 'Mail filtering blocks the phishing attachment.'
+            : targetAsset.conditions?.userOpensAttachment === false ? 'The user does not open the phishing attachment.'
+            : targetAsset.conditions?.attachmentExecutionAllowed === false ? 'Attachment execution is disabled on the Windows desktop.'
+            : 'Phishing requires delivered mail, a modeled user opening the attachment, and permitted execution.';
           continue;
         }
         actions.push({ eligible: true, actionKind: f.kind, finding: f, technique: 'T1566.001',
@@ -1247,6 +1250,10 @@
       if (!timing.respond) return;
       const layerMonitored = !defensePosture?.telemetryLayers || defensePosture.telemetryLayers.includes(target.layerIdx);
       if (!layerMonitored || target.groupId === 'staging-status') return;
+      if (action.actionKind === 'phishing_attachment') {
+        signal(scope, target.id, 'endpoint', timeSec, true);
+        return;
+      }
       const hops = (sessionHops.get(scope) || 0) + 1;
       sessionHops.set(scope, hops);
       // Cross-boundary sequence correlation triggers on >= 2 monitored hops
@@ -1781,10 +1788,12 @@
         variantIdx: 0, x: [0.18,0.4,0.64,0.87][layerIdx], y };
       assets.push(asset); actionOrder.push(id); return asset;
     };
-    const desktop = addAsset('windows-desktop', 'Windows Desktop · Email User', 0, ['email'], {
-      userOpensAttachment: chance('opens-attachment', .75),
-      attachmentExecutionAllowed: chance('attachment-execution', .8),
-      mailFilterBlocksAttachment: chance('mail-filter', .2)
+    // This authored attack surface explicitly includes successful user execution.
+    // Keep evaluator gates for protected/custom estates; do not randomly close it.
+    const desktop = addAsset('windows-desktop', 'Windows Desktop · Phishable User', 0, ['email'], {
+      userOpensAttachment: true,
+      attachmentExecutionAllowed: true,
+      mailFilterBlocksAttachment: false
     }, .84);
     const remote = addAsset('windows-rdp', 'Windows Remote Desktop · Internet Login', 0, ['rdp'], {
       remoteLoginEnabled: chance('remote-login', .9), mfaEnforced: chance('remote-mfa', .4)

@@ -9,17 +9,17 @@ if (new URLSearchParams(location.search).has('embedded')) {
     .comparison-embedded * {transition:none!important}`;
   document.head.append(style);
   window.comparison = {
-    prepare(example, actor, mode) {
+    prepare(example, actor, mode, options = {}) {
       cancelAnimationFrame(frame);
-      estate = structuredClone(example); referenceCase = null; pre2023Group = 'lockbit';
-      infrastructureNumber = 1; attackerChoice = actor; defense = mode;
+      estate = structuredClone(example); referenceCase = null; pre2023Group = options.gangId || 'lockbit';
+      infrastructureNumber = options.infrastructureNumber || 1; attackerChoice = actor; defense = mode;
       playRun(); cancelAnimationFrame(frame);
       this.done = false;
       return {end: phases.at(-1)?.time || 0, lanes: run.lanes};
     },
-    advance(time) {
+    advance(time, {start = false} = {}) {
       if (this.done) return;
-      if(time<=0&&phaseIndex===0){showTime(0);return;}
+      if(time<=0&&phaseIndex===0&&!start){showTime(0);return;}
       while (phaseIndex < phases.length && phases[phaseIndex].time <= time) {
         renderPhase(phases[phaseIndex]); phaseIndex++;
       }

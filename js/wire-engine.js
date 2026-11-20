@@ -88,19 +88,19 @@
       openingType: 'low_exposure',
       title: 'Low exposure',
       requiredCondition: 'unredactedSupportCapture',
-      description: 'An approved support capture retains a synthetic staging status credential visible to the signed-in diagnostics viewer.'
+      description: 'An approved support capture retains a staging status credential visible to the signed-in diagnostics viewer.'
     },
     {
       openingType: 'misconfiguration',
       title: 'Misconfiguration',
       requiredCondition: 'overbroadDiagnosticsSharing',
-      description: 'An overly broad sharing policy lets the signed-in diagnostics viewer see a restricted staging build log containing a synthetic status credential.'
+      description: 'An overly broad sharing policy lets the signed-in diagnostics viewer see a restricted staging build log containing a status credential.'
     },
     {
       openingType: 'low_vulnerability',
       title: 'Low vulnerability',
       requiredCondition: 'limitedDiagnosticReadDefect',
-      description: 'A modeled, read-only defect exposes a synthetic staging status credential to the signed-in diagnostics viewer.'
+      description: 'A read-only defect exposes a staging status credential to the signed-in diagnostics viewer.'
     }
   ];
 
@@ -306,10 +306,10 @@
   ];
 
   const KEV_MITIGATION_RULES = {
-    'CVE-2026-42271': { waf: { mitigates: false, reason: 'The internal LiteLLM proxy is not assumed to be covered by the perimeter WAF.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Scenario assumption: agentic response detects unexpected subprocess execution by the proxy.' } },
+    'CVE-2026-42271': { waf: { mitigates: false, reason: 'The internal LiteLLM proxy is not assumed to be covered by the perimeter WAF.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Agentic response detects unexpected subprocess execution by the proxy.' } },
     'CVE-2024-4577': { waf: { mitigates: true, ruleStrictness: 'signature_regex', control: 'NIST SI-2 / SC-7', reason: 'WAF query regex drops %ad PHP CGI argument injection' }, ml: { mitigates: false, reason: 'Edge CGI exploit bypasses internal behavioral telemetry' } },
     'CVE-2023-46805': { waf: { mitigates: true, ruleStrictness: 'strict_virtual_patch', control: 'NIST SC-7', reason: 'WAF virtual patch restricts unauthenticated /api/v1/cav/client endpoints' }, ml: { mitigates: false, reason: 'Perimeter auth bypass occurs before internal ML baseline can flag session' } },
-    'CVE-2024-3400': { waf: { mitigates: true, ruleStrictness: 'strict_virtual_patch', control: 'NIST SI-2 / SC-7', reason: 'Simulated targeted virtual patch filters malicious HTTP requests to the GlobalProtect portal when covered.' }, ml: { mitigates: false, reason: 'Edge firewall OS injection executes at edge appliance firmware layer' } },
+    'CVE-2024-3400': { waf: { mitigates: true, ruleStrictness: 'strict_virtual_patch', control: 'NIST SI-2 / SC-7', reason: 'Targeted virtual patch filters malicious HTTP requests to the GlobalProtect portal when covered.' }, ml: { mitigates: false, reason: 'Edge firewall OS injection executes at edge appliance firmware layer' } },
     'CVE-2023-3519': { waf: { mitigates: true, ruleStrictness: 'strict_virtual_patch', control: 'NIST SC-7', reason: 'WAF protocol validator drops malformed HTTP Host header buffer overflow' }, ml: { mitigates: false, reason: 'Edge ADC stack overflow executes pre-auth before user identity creation' } },
     'CVE-2023-20198': { waf: { mitigates: false, reason: 'Direct REST management endpoint bypasses edge reverse proxy' }, ml: { mitigates: false, reason: 'Direct network boundary exploitation circumvents internal host ML agents' } },
     'CVE-2024-21887': { waf: { mitigates: false, reason: 'In-line edge gateway exploit triggers prior to internal microservice logs' }, ml: { mitigates: false, reason: 'In-line edge gateway exploit triggers prior to internal microservice logs' } },
@@ -344,25 +344,25 @@
     'CVE-2022-26134': { waf: { mitigates: false, reason: 'OGNL payload executed against internal application server pool' }, ml: { mitigates: true, control: 'NIST IA-5', reason: 'Agentic SOC Mitigation detects memory dumping of database connection credentials' } },
     'CVE-2024-1086': { waf: { mitigates: false, reason: 'Local Linux kernel netfilter double-free exploit is internal to host OS' }, ml: { mitigates: true, control: 'NIST AC-3', reason: 'Agentic SOC Mitigation terminates unauthorized privilege escalation targeting root vault databases' } },
     'CVE-2022-22954': { waf: { mitigates: false, reason: 'SSTI expression inside OAuth client parameters bypasses standard URI filters' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Agentic SOC Mitigation detects lateral dump of embedded identity database secrets' } },
-    'CVE-2018-13379': { waf: { mitigates: true, ruleStrictness: 'strict_virtual_patch', control: 'NIST SI-2 / SC-7', reason: 'Simulated virtual patch filters malicious requests to the FortiOS SSL VPN web portal when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
-    'CVE-2019-11510': { waf: { mitigates: true, ruleStrictness: 'strict_virtual_patch', control: 'NIST SI-2 / SC-7', reason: 'Simulated virtual patch filters malicious requests to the Pulse web portal when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
-    'CVE-2021-42013': { waf: { mitigates: true, ruleStrictness: 'signature_regex', control: 'NIST SI-2', reason: 'Simulated WAF rule blocks traversal requests.' }, ml: { mitigates: false, reason: 'The edge server is outside internal behavioral monitoring.' } },
-    'CVE-2024-29824': { waf: { mitigates: false, reason: 'The EPM core server is on the internal network.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Simulated monitoring flags anomalous EPM database activity.' } },
-    'CVE-2020-14882': { waf: { mitigates: false, reason: 'The internal WebLogic console is outside the perimeter WAF.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Simulated monitoring flags anomalous console access.' } },
-    'CVE-2022-0543': { waf: { mitigates: false, reason: 'Redis protocol traffic is outside the HTTP WAF.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Simulated monitoring flags unexpected Redis child processes.' } },
-    'CVE-2020-0618': { waf: { mitigates: false, reason: 'The internal reporting service is outside the perimeter WAF.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Simulated monitoring flags unexpected reporting-service execution.' } },
+    'CVE-2018-13379': { waf: { mitigates: true, ruleStrictness: 'strict_virtual_patch', control: 'NIST SI-2 / SC-7', reason: 'Virtual patch filters malicious requests to the FortiOS SSL VPN web portal when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
+    'CVE-2019-11510': { waf: { mitigates: true, ruleStrictness: 'strict_virtual_patch', control: 'NIST SI-2 / SC-7', reason: 'Virtual patch filters malicious requests to the Pulse web portal when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
+    'CVE-2021-42013': { waf: { mitigates: true, ruleStrictness: 'signature_regex', control: 'NIST SI-2', reason: 'WAF rule blocks traversal requests.' }, ml: { mitigates: false, reason: 'The edge server is outside internal behavioral monitoring.' } },
+    'CVE-2024-29824': { waf: { mitigates: false, reason: 'The EPM core server is on the internal network.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Monitoring flags anomalous EPM database activity.' } },
+    'CVE-2020-14882': { waf: { mitigates: false, reason: 'The internal WebLogic console is outside the perimeter WAF.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Monitoring flags anomalous console access.' } },
+    'CVE-2022-0543': { waf: { mitigates: false, reason: 'Redis protocol traffic is outside the HTTP WAF.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Monitoring flags unexpected Redis child processes.' } },
+    'CVE-2020-0618': { waf: { mitigates: false, reason: 'The internal reporting service is outside the perimeter WAF.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Monitoring flags unexpected reporting-service execution.' } },
     'CVE-2023-46747': { waf: { mitigates: false, reason: 'The BIG-IP management interface is assumed reachable outside the protected application path.' }, ml: { mitigates: false, reason: 'The appliance management plane is outside internal host monitoring.' } },
-    'CVE-2023-32707': { waf: { mitigates: false, reason: 'The Splunk management service is internal.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Simulated monitoring flags anomalous administrative role changes.' } },
-    'CVE-2020-3452': { waf: { mitigates: true, appliesToGroups: ['cisco-asa'], inspectedProtocols: ['https'], control: 'NIST SI-2 / SC-7', reason: 'Simulated virtual patch filters directory-traversal requests to the Cisco ASA WebVPN web services when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
-    'CVE-2021-20016': { waf: { mitigates: true, appliesToGroups: ['sonicwall-sma'], inspectedProtocols: ['https'], control: 'NIST SI-2 / SC-7', reason: 'Simulated SQL-injection virtual patch inspects and blocks malformed requests to the SonicWall SMA management portal when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
-    'CVE-2022-1040': { waf: { mitigates: true, appliesToGroups: ['sophos-firewall'], inspectedProtocols: ['https'], control: 'NIST SI-2 / SC-7', reason: 'Simulated virtual patch blocks the authentication-bypass request to the Sophos Firewall user portal when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
+    'CVE-2023-32707': { waf: { mitigates: false, reason: 'The Splunk management service is internal.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Monitoring flags anomalous administrative role changes.' } },
+    'CVE-2020-3452': { waf: { mitigates: true, appliesToGroups: ['cisco-asa'], inspectedProtocols: ['https'], control: 'NIST SI-2 / SC-7', reason: 'Virtual patch filters directory-traversal requests to the Cisco ASA WebVPN web services when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
+    'CVE-2021-20016': { waf: { mitigates: true, appliesToGroups: ['sonicwall-sma'], inspectedProtocols: ['https'], control: 'NIST SI-2 / SC-7', reason: 'SQL-injection virtual patch inspects and blocks malformed requests to the SonicWall SMA management portal when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
+    'CVE-2022-1040': { waf: { mitigates: true, appliesToGroups: ['sophos-firewall'], inspectedProtocols: ['https'], control: 'NIST SI-2 / SC-7', reason: 'Virtual patch blocks the authentication-bypass request to the Sophos Firewall user portal when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
     'CVE-2023-28771': { waf: { mitigates: false, reason: 'Zyxel ATP IKE/UDP-500 command injection is outside the L7 HTTP WAF scope.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
-    'CVE-2024-24919': { waf: { mitigates: true, appliesToGroups: ['checkpoint-quantum'], inspectedProtocols: ['https'], control: 'NIST SI-2 / SC-7', reason: 'Simulated virtual patch filters the pre-auth arbitrary-file-read request to the Check Point remote-access portal when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } }
+    'CVE-2024-24919': { waf: { mitigates: true, appliesToGroups: ['checkpoint-quantum'], inspectedProtocols: ['https'], control: 'NIST SI-2 / SC-7', reason: 'Virtual patch filters the pre-auth arbitrary-file-read request to the Check Point remote-access portal when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } }
   };
 
   ['CVE-2025-64446', 'CVE-2018-5412', 'CVE-2021-3827', 'CVE-2018-8340', 'CVE-2020-4888', 'CVE-2026-78597', 'CVE-2026-25769', 'CVE-2022-29712', 'CVE-2021-35225'].forEach(id => {
     KEV_MITIGATION_RULES[id] = {
-      waf: { mitigates: false, reason: 'The simulated management or service path is outside the perimeter WAF.' },
+      waf: { mitigates: false, reason: 'The management or service path is outside the perimeter WAF.' },
       ml: { mitigates: true, control: 'NIST SI-4', reason: 'The scenario assumes independent monitoring detects the anomalous activity.' }
     };
   });
@@ -386,7 +386,7 @@
         {
           name: 'AWS Cloud Perimeter',
           targets: [
-            { id: 'public-s3', icon: 'data.png', interfaces: ['storage-s3', 'https'], attackTechnique: 'T1530', attackDescription: 'Data from Cloud Storage', publicExposure: 'Simulated S3 bucket permits anonymous public read; the contents are not assumed to contain credentials.', variants: ['Amazon S3 · Bucket'] },
+            { id: 'public-s3', icon: 'data.png', interfaces: ['storage-s3', 'https'], attackTechnique: 'T1530', attackDescription: 'Data from Cloud Storage', publicExposure: 'S3 bucket permits anonymous public read; the contents are not assumed to contain credentials.', variants: ['Amazon S3 · Bucket'] },
             { id: 'ivanti-connect', icon: 'remote-access.png', interfaces: ['https', 'vpn'], kevByVariant: ['CVE-2023-46805'], variants: ['Ivanti Connect Secure VPN'] },
             { id: 'f5-gateway', icon: 'network.png', interfaces: ['https'], kevByVariant: ['CVE-2022-1388'], variants: ['F5 BIG-IP Management Interface'] },
             { id: 'forti-vpn', icon: 'remote-access.png', interfaces: ['https', 'vpn'], kevByVariant: ['CVE-2018-13379'], variants: ['Fortinet FortiGate SSL VPN'] },
@@ -396,7 +396,7 @@
         {
           name: 'Azure Enterprise',
           targets: [
-            { id: 'public-blob', icon: 'data.png', interfaces: ['storage-s3', 'https'], attackTechnique: 'T1530', attackDescription: 'Data from Cloud Storage', publicExposure: 'Simulated Azure Blob container permits anonymous public read; the contents are not assumed to contain credentials.', variants: ['Azure Blob Storage · Container'] },
+            { id: 'public-blob', icon: 'data.png', interfaces: ['storage-s3', 'https'], attackTechnique: 'T1530', attackDescription: 'Data from Cloud Storage', publicExposure: 'Azure Blob container permits anonymous public read; the contents are not assumed to contain credentials.', variants: ['Azure Blob Storage · Container'] },
             { id: 'pan-globalprotect', icon: 'network.png', interfaces: ['https', 'vpn'], kevByVariant: ['CVE-2024-3400'], variants: ['PAN-OS GlobalProtect Gateway'] },
             { id: 'sonicwall-sma', icon: 'remote-access.png', interfaces: ['https', 'vpn'], kevByVariant: ['CVE-2021-20016'], variants: ['SonicWall SMA 100'] },
             { id: 'sophos-firewall', icon: 'network.png', interfaces: ['https'], kevByVariant: ['CVE-2022-1040'], variants: ['Sophos Firewall'] }
@@ -405,8 +405,8 @@
         {
           name: 'GCP & Partners',
           targets: [
-            { id: 'public-gitlab', icon: 'code.png', interfaces: ['repo-http', 'https'], attackTechnique: 'T1593.003', attackDescription: 'Search public code repositories', publicExposure: 'Simulated GitLab project is publicly readable contrary to its intended access policy.', variants: ['GitLab · Project'] },
-            { id: 'public-bitbucket', icon: 'code.png', interfaces: ['repo-http', 'https'], attackTechnique: 'T1593.003', attackDescription: 'Search public code repositories', publicExposure: 'Simulated Bitbucket repository is publicly readable contrary to its intended access policy.', variants: ['Bitbucket · Repository'] },
+            { id: 'public-gitlab', icon: 'code.png', interfaces: ['repo-http', 'https'], attackTechnique: 'T1593.003', attackDescription: 'Search public code repositories', publicExposure: 'GitLab project is publicly readable contrary to its intended access policy.', variants: ['GitLab · Project'] },
+            { id: 'public-bitbucket', icon: 'code.png', interfaces: ['repo-http', 'https'], attackTechnique: 'T1593.003', attackDescription: 'Search public code repositories', publicExposure: 'Bitbucket repository is publicly readable contrary to its intended access policy.', variants: ['Bitbucket · Repository'] },
             { id: 'citrix-adc', icon: 'server-infrastructure.png', interfaces: ['https'], kevByVariant: ['CVE-2023-3519'], variants: ['Citrix NetScaler ADC Gateway'] },
             { id: 'zyxel-atp', icon: 'network.png', interfaces: ['vpn'], kevByVariant: ['CVE-2023-28771'], variants: ['Zyxel ATP Firewall'] },
             { id: 'checkpoint-quantum', icon: 'remote-access.png', interfaces: ['https', 'vpn'], kevByVariant: ['CVE-2024-24919'], variants: ['Check Point Quantum Gateway'] },
@@ -781,11 +781,11 @@
           lastReason = targetAsset.conditions?.mailFilterBlocksAttachment === true ? 'Mail filtering blocks the phishing attachment.'
             : targetAsset.conditions?.userOpensAttachment === false ? 'The user does not open the phishing attachment.'
             : targetAsset.conditions?.attachmentExecutionAllowed === false ? 'Attachment execution is disabled on the Windows desktop.'
-            : 'Phishing requires delivered mail, a modeled user opening the attachment, and permitted execution.';
+            : 'Phishing requires delivered mail, a user opening the attachment, and permitted execution.';
           continue;
         }
         actions.push({ eligible: true, actionKind: f.kind, finding: f, technique: 'T1566.001',
-          requiredAccess: 'Delivered attachment + explicit user execution assumption', reachability,
+          requiredAccess: 'Delivered attachment + user execution', reachability,
           grantedPermissions: targetAsset.localUserPermissions || [],
           yieldsCapability: 'app_exec', credentialUsed: null, reason: f.description });
         continue;
@@ -813,7 +813,7 @@
           return [{ eligible: false, finding: f, reason: 'Reading diagnostics requires an authorized diagnostics viewer.' }];
         }
         if (targetAsset.conditions?.[f.requiredCondition] !== true) {
-          return [{ eligible: false, finding: f, reason: 'The modeled diagnostic exposure is absent.' }];
+          return [{ eligible: false, finding: f, reason: 'The diagnostic exposure is absent.' }];
         }
         const action = {
           eligible: true,
@@ -922,7 +922,7 @@
           reachability,
           yieldsCapability: 'account_session',
           exposesCredentialId: f.exposesCredentialId || null,
-          reason: `Modeled password spray succeeded against synthetic account on ${targetAsset.label} (no MFA/lockout).`
+          reason: `Password spray succeeded against account on ${targetAsset.label} (no MFA/lockout).`
         };
         if (options.firstOnly) return [action];
         actions.push(action);
@@ -969,7 +969,7 @@
 
     return [{
       eligible: false,
-      reason: `No modeled access established for ${targetAsset.label}.`
+      reason: `No access established for ${targetAsset.label}.`
     }];
   }
 
@@ -1002,7 +1002,7 @@
     const endpointIds = (asset.endpointIds || [asset.id]).filter(id =>
       reach?.endpointPermissions?.get(id)?.has(permission));
     if (!reach?.capabilities.has('app_exec') || enabled !== true || !endpointIds.length) {
-      return { eligible: false, finding, reason: `Local ${finding.kind} requires established execution, ${permission} rights and the modeled endpoint configuration.` };
+      return { eligible: false, finding, reason: `Local ${finding.kind} requires established execution, ${permission} rights and the endpoint configuration.` };
     }
     return { eligible: true, actionKind: finding.kind, finding, technique: finding.technique,
       credentialUsed: null, yieldsCapability: finding.kind === 'encryption' ? 'encrypted_files' : 'persistence_installed',
@@ -1101,7 +1101,7 @@
 
     if (action.actionKind === 'anonymous_access') {
       if (socEnabled && layerMonitored && soarDetects(targetAsset.id, seed, multiplier)) {
-        return { addressed: true, badge: 'CONTAINED · AGENTIC SOC', control: 'NIST AC-3 / SI-4', reason: 'Simulation assumption: Agentic SOC detects and closes the public exposure.' };
+        return { addressed: true, badge: 'CONTAINED · AGENTIC SOC', control: 'NIST AC-3 / SI-4', reason: 'Agentic SOC detects and closes the public exposure.' };
       }
       return { addressed: false, badge: 'PUBLIC EXPOSURE', reason: action.reason };
     }
@@ -1114,8 +1114,8 @@
           control: 'NIST SI-4 / AC-3',
           revokeCredentialId: action.credentialUsed ? action.credentialUsed.id : null,
           reason: action.actionKind === 'password_spray'
-            ? 'Simulation assumption: Agentic SOC detects password-spray anomaly and locks the target account.'
-            : 'Simulation assumption: Agentic SOC detects anomalous credential use and revokes the token.'
+            ? 'Agentic SOC detects password-spray anomaly and locks the target account.'
+            : 'Agentic SOC detects anomalous credential use and revokes the token.'
         };
       }
       return {
@@ -1149,7 +1149,7 @@
       return {
         addressed: false,
         badge: 'WAF BYPASS',
-        reason: !portalCovered ? 'Simulated public portal is not behind the inline WAF.' : (rule.waf?.reason || 'Vulnerability unaddressed by perimeter WAF.')
+        reason: !portalCovered ? 'Public portal is not behind the inline WAF.' : (rule.waf?.reason || 'Vulnerability unaddressed by perimeter WAF.')
       };
     }
 
@@ -1169,7 +1169,7 @@
       return {
         addressed: false,
         badge: 'ML MISSED',
-        reason: rule.ml?.mitigates ? 'Simulated Agentic SOC detection missed this attack.' : (rule.ml?.reason || 'Activity does not trigger the simulated detection rule.')
+        reason: rule.ml?.mitigates ? 'Agentic SOC detection missed this attack.' : (rule.ml?.reason || 'Activity does not trigger the detection rule.')
       };
     }
 
@@ -1186,7 +1186,7 @@
           reason: rule.ml.reason
         };
       }
-      return { addressed: false, badge: 'UNADDRESSED', reason: 'The attack bypassed the simulated WAF rule and Agentic SOC detection.' };
+      return { addressed: false, badge: 'UNADDRESSED', reason: 'The attack bypassed the WAF rule and Agentic SOC detection.' };
     }
 
     return { addressed: false, badge: 'EXPLOITED', reason: 'Unmitigated.' };
@@ -1374,7 +1374,7 @@
         ineligibleTransitions++;
         events.push({ sourceId: sourceAsset?.id || null, targetId: targetAsset.id,
           relationshipId: relationship?.id || null, outcome: 'ineligible',
-          policySkipped: true, reason: `No applicable action in ${attackerProfile?.gangId || 'this attacker'}'s modeled repertoire; user-interaction prerequisites are enforced.` });
+          policySkipped: true, reason: `No applicable action in ${attackerProfile?.gangId || 'this attacker'}'s repertoire; user-interaction prerequisites are enforced.` });
         return false;
       }
 
@@ -1784,7 +1784,7 @@
           provenance: 'synthetic_assumption',
           technique: 'T1552.001',
           title: 'Credential exposed in sample logs',
-          description: 'Exposed diagnostics/application logs contain a synthetic service token.',
+          description: 'Exposed diagnostics/application logs contain a service token.',
           yieldsCapability: 'file_read'
         });
       }
@@ -1793,7 +1793,7 @@
       credentials.push({
         id: `cred-path-${s0.asset.id}-to-${s1.asset.id}`,
         kind: 'api_token',
-        label: `Synthetic token from ${s0.asset.label}`,
+        label: `Token from ${s0.asset.label}`,
         scope: 'authenticate',
         permissions: ['authenticate'],
         targetGroupIds: [],
@@ -1927,13 +1927,13 @@
     findings.push({ ...base, id: 'finding-windows-phishing', assetId: desktop.id,
       kind: 'phishing_attachment', technique: 'T1566.001', requiresUserInteraction: true,
       title: 'Phishing attachment · user execution required',
-      description: 'Synthetic employee opens a delivered malicious attachment and permits execution on their Windows desktop; no real email or payload is sent.',
+      description: 'Employee opens a delivered malicious attachment and permits execution on their Windows desktop.',
       yieldsCapability: 'app_exec' });
     const remoteFinding = (asset, id, technique, requiredInterface, permission, capability) => {
       findings.push({ ...base, id, assetId: asset.id, kind: 'remote_service', technique,
         requiredInterface, requiredPermission: permission, yieldsCapability: capability,
         title: `${technique} · ${requiredInterface.toUpperCase()} authorized access`,
-        description: `Modeled ${requiredInterface.toUpperCase()} access to ${asset.label} requires an acquired, unrevoked credential with ${permission} permission.` });
+        description: `${requiredInterface.toUpperCase()} access to ${asset.label} requires an acquired, unrevoked credential with ${permission} permission.` });
     };
     remoteFinding(remote, 'finding-windows-rdp', 'T1133', 'rdp', 'authenticate', 'account_session');
     for (const host of [admin, fileServer]) {
@@ -1943,7 +1943,7 @@
     }
     const credential = (source, target, capability, permissions, startingAccess = false) => {
       credentials.push({ id: `cred-${source.id}-${target.id}`, kind: 'domain_account',
-        label: `Synthetic scoped Windows account for ${target.label}`,
+        label: `Scoped Windows account for ${target.label}`,
         scope: permissions[0], permissions, sourceAssetId: source.id,
         requiredSourceCapability: capability, targetAssetIds: [target.id], targetGroupIds: [],
         audience: target.id, revoked: false, expired: false,
@@ -1975,10 +1975,10 @@
     const addLocalFindings = asset => {
       findings.push({ ...base, id:`finding-${asset.id}-persistence`, assetId:asset.id,
         kind:'persistence', technique:'T1547.001', title:'Registry startup persistence',
-        modeledDurationSec:120, description:'Modeled startup entry established only on executed endpoints with explicit startup-write permission; no actual registry is changed.' });
+        modeledDurationSec:120, description:'Startup entry established only on executed endpoints with explicit startup-write permission.' });
       findings.push({ ...base, id:`finding-${asset.id}-encryption`, assetId:asset.id,
         kind:'encryption', technique:'T1486', title:'Endpoint file encryption',
-        modeledDurationSec:300, description:'Modeled encryption affects only locally writable files on endpoints covered by the acquired execution credential; no real files are touched.' });
+        modeledDurationSec:300, description:'Encryption affects only locally writable files on endpoints covered by the acquired execution credential.' });
     };
     addLocalFindings(desktop);
     const fleetRoles = ['Finance','Operations','Engineering'].slice(0, 2 + Number(chance('third-fleet', .5)));
@@ -2012,7 +2012,7 @@
       const sourceEndpointIds = source.endpointIds
         ? [source.endpointIds[Math.floor(hashNode(seed,`${source.id}:${salt}:location`,0x62cd1)*source.endpointIds.length)]] : null;
       credentials.push({ id:`cred-${source.id}-${target.id}-${salt}`, kind:role,
-        label:`Synthetic ${role.replaceAll('_',' ')} credential for ${target.label}`,
+        label:`${role.replaceAll('_',' ')} credential for ${target.label}`,
         provenance:'synthetic_deployment_assumption', scope:role, permissions:[...roles[role]],
         sourceAssetId:source.id, requiredSourceCapability:capability, targetAssetIds:[target.id],
         targetGroupIds:[], audience:target.id, revoked:status < .1, expired:status >= .1 && status < .2,
@@ -2202,7 +2202,7 @@
         if (rel01) {
           rel01.protocol = 'https';
           rel01.requiredSourceCapability = 'file_read';
-          rel01.purpose = 'Assumed internet access to API gateway using synthetic service token recovered from exposed application logs';
+          rel01.purpose = 'Internet access to API gateway using service token recovered from exposed application logs';
         }
       }
       if (logBucket && siblingGw) {
@@ -2301,7 +2301,7 @@
       credentials.push({
         id: credId,
         kind: targetAsset.layerIdx === 3 ? 'db_credential' : 'service_account',
-        label: `Synthetic ${scope} credential for ${targetAsset.groupId}`,
+        label: `${scope} credential for ${targetAsset.groupId}`,
         scope,
         permissions,
         targetGroupIds: [],
@@ -2368,7 +2368,7 @@
             rateLimited: false,
             technique: 'T1110.003',
             title: 'Password spray attempt (MFA enforced)',
-            description: 'Modeled spray attempt against synthetic account; blocked by MFA.',
+            description: 'Spray attempt against account; blocked by MFA.',
             yieldsCapability: 'account_session'
           });
         }
@@ -2392,14 +2392,14 @@
         provenance: 'synthetic_assumption',
         technique: 'T1552.001',
         title: 'Readable application logs expose service token',
-        description: 'Simulated log bucket is publicly readable and contains a synthetic unrevoked service token (no real secret).',
+        description: 'Log bucket is publicly readable and contains an unrevoked service token.',
         yieldsCapability: 'file_read'
       });
 
       credentials.push({
         id: `cred-logs-${a0.id}-to-${a1.id}`,
         kind: 'api_token',
-        label: 'Synthetic service token in application logs',
+        label: 'Service token in application logs',
         scope: 'authenticate',
         permissions: ['authenticate'],
         targetGroupIds: [],
@@ -2418,7 +2418,7 @@
         credentials.push({
           id: `cred-logs-${a0.id}-to-${siblingGw.id}-expired`,
           kind: 'api_token',
-          label: 'Synthetic expired token in application logs',
+          label: 'Expired token in application logs',
           scope: 'authenticate',
           permissions: ['authenticate'],
           targetGroupIds: [],
@@ -2435,7 +2435,7 @@
       credentials.push({
         id: `cred-logs-${a1.id}-to-${a2.id}`,
         kind: 'service_account',
-        label: 'Synthetic downstream service credential on API gateway',
+        label: 'Downstream service credential on API gateway',
         scope: 'authenticate',
         permissions: ['authenticate'],
         targetGroupIds: [],
@@ -2451,7 +2451,7 @@
       credentials.push({
         id: `cred-logs-${a2.id}-to-${a3.id}`,
         kind: 'db_credential',
-        label: 'Synthetic read-only DB credential',
+        label: 'Read-only DB credential',
         scope: 'read',
         permissions: ['read'],
         targetGroupIds: [],
@@ -2477,7 +2477,7 @@
       credentials.push({
         id: 'mixed-diagnostics-viewer',
         kind: 'service_account',
-        label: 'Synthetic diagnostics viewer',
+        label: 'Diagnostics viewer',
         scope: 'read diagnostics',
         permissions: ['read_diagnostics'],
         targetAssetIds: [diagnostics.id],
@@ -2487,7 +2487,7 @@
       }, {
         id: 'mixed-staging-status',
         kind: 'api_token',
-        label: 'Synthetic staging status credential',
+        label: 'Staging status credential',
         scope: 'staging status only',
         permissions: ['authenticate'],
         targetAssetIds: [statusApi.id],
@@ -2508,7 +2508,7 @@
           category: 'external_misconfiguration',
           title: edgeMisconfig.title,
           description: logToken
-            ? 'The exposed synthetic logs contain a Git token.'
+            ? 'The exposed logs contain a Git token.'
             : 'The scenario records access to the exposed edge service only.',
           ...(logToken && { illustration: edgeMisconfig.illustration }),
           historicalReference: edgeMisconfig.reference,
@@ -2522,7 +2522,7 @@
           credentials.push({
             id: 'mixed-external-example',
             kind: 'account',
-            label: 'Synthetic edge-only account',
+            label: 'Edge-only account',
             scope: 'authenticate to this edge service',
             permissions: ['authenticate'],
             targetAssetIds: [id],
@@ -2556,7 +2556,7 @@
               rateLimited: false,
               technique: 'T1110.003',
               title: 'Password spray exposure check',
-              description: 'Synthetic authentication endpoint evaluated for password spray.',
+              description: 'Authentication endpoint evaluated for password spray.',
               yieldsCapability: 'account_session'
             });
             assigned++;
@@ -2714,7 +2714,7 @@
     return {
       ok: false,
       legacy: true,
-      reason: 'Incompatible infrastructure snapshot replaced with a new synthetic estate.'
+      reason: 'Incompatible infrastructure snapshot replaced with a new estate.'
     };
   }
 

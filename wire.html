@@ -58,7 +58,7 @@
   <div id="run-hud" role="status"></div>
 </header>
 <main id="viewport" aria-label="Enterprise attack and defense canvas">
-  <div class="soc-ticker" aria-label="Simulated SOC tickets">
+  <div class="soc-ticker" aria-label="SOC tickets">
     <div id="soc-cards" class="soc-cards" aria-live="off"></div>
   </div>
 
@@ -123,7 +123,7 @@ function renderSocTickets() {
 
 function getDefaultNodeBadge(asset, findings) {
   if (!findings.length) {
-    return { code: 'NO FINDING', title: 'No finding modeled; security status is unknown' };
+    return { code: 'NO FINDING', title: 'No finding recorded; security status is unknown' };
   }
   const f = findings[0];
   if (f.category === 'external_misconfiguration') {
@@ -135,7 +135,7 @@ function getDefaultNodeBadge(asset, findings) {
   if (f.kind === 'diagnostic_access') {
     return { code: f.title.toUpperCase(), title: 'Signed-in diagnostics viewer' };
   }
-  if (f.kind === 'exercise') return { code: f.technique || 'SIMULATED FINDING', title: f.title };
+  if (f.kind === 'exercise') return { code: f.technique || 'FINDING', title: f.title };
   if (f.kind === 'anonymous_access') {
     return { code: `${f.technique} · PUBLIC`, title: f.title };
   }
@@ -152,13 +152,13 @@ function formatAssetTooltip(asset, findings, credentials) {
   ];
   if (asset.endpointCount) lines.push(`Fleet inventory: ${asset.endpointCount} endpoints; effects are limited by acquired endpoint scope.`);
   if (!findings.length) {
-    lines.push('No finding modeled; security status is unknown.');
+    lines.push('No finding recorded; security status is unknown.');
     if (asset.referenceCve) lines.push(`Product advisory reference: ${asset.referenceCve}`);
   } else {
     findings.forEach(f => {
-      lines.push(`Finding [${f.provenance}]: ${f.cveId ? f.cveId + ' · ' : ''}${f.title}`);
+      lines.push(`Finding: ${f.cveId ? f.cveId + ' · ' : ''}${f.title}`);
       if (f.historicalReference) lines.push(`Reference: ${f.historicalReference}`);
-      if (f.sourceUrl) lines.push(`Source: ${f.sourceUrl} (reviewed ${f.sourceReviewed}); deployment and outcome are synthetic.`);
+      if (f.sourceUrl) lines.push(`Source: ${f.sourceUrl} (reviewed ${f.sourceReviewed}).`);
     });
   }
   if (credentials.length) {
@@ -449,7 +449,7 @@ function renderEvent(event, time, animate) {
   const action = finding?.title || (event.credentialUsed ? 'Valid Accounts' : 'Access check');
   const summary = phished ? `Phishing attachment executed · ${reference}` : reference ? `${action} · ${reference}` : action;
   node.el.title += `\n${formatEstimate(time)} · ${summary} · ${event.reason}`;
-  if(event.finding?.sourceUrl)node.el.title+=`\nSource: ${event.finding.sourceUrl}; deployment and outcome are synthetic.`;
+  if(event.finding?.sourceUrl)node.el.title+=`\nSource: ${event.finding.sourceUrl}.`;
   for(const credential of event.acquiredCredentials || [])node.el.title+=`\nAcquired credential: ${credential.label} · permissions: ${(credential.permissions || []).join(', ')}`;
   if(event.outcome==='ineligible' && RunDiscovery.observed(event)) {
     node.el.classList.add('probed');

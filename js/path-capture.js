@@ -38,7 +38,7 @@ if (new URLSearchParams(location.search).get('capture') === 'path') {
   const heading=document.createElement('div');heading.id='capture-heading';document.body.prepend(heading);
   const title=document.createElement('strong');
   const meta=document.createElement('div');meta.className='time';
-  const caption=document.createElement('small');caption.textContent='Modeled elapsed since starting access';
+  const caption=document.createElement('small');caption.textContent='Elapsed since starting access';
   const timeLabel=document.createElement('strong');timeLabel.className='capture-clock';
   meta.append(caption,timeLabel);heading.append(title,meta);
   let plan,sharedPlan;

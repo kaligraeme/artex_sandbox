@@ -104,8 +104,8 @@ async function main(){
         fleets:estate.assets.filter(a=>a.endpointIds).length};
     });
     assert(fleetImpact.fleets>=2);assert(fleetImpact.encrypted>0);
-    assert(fleetImpact.text.includes(`${fleetImpact.encrypted} endpoints encrypted (modeled)`));
-    assert(fleetImpact.states.some(text=>text.includes('ENCRYPTED (MODELED)')));
+    assert(fleetImpact.text.includes(`${fleetImpact.encrypted} endpoints encrypted`));
+    assert(fleetImpact.states.some(text=>text.includes('ENCRYPTED')));
     console.log('PASS browser: fleet membership and scoped encryption appear in node states and final result');
     const initialView=await page.evaluate(()=>{
       estate=generateEstate({seed:3,seedExercise:true});pre2023Group='lockbit';attackerChoice='pre2023';defense='baseline';

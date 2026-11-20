@@ -51,7 +51,7 @@
     </div>
     <div class="run-context">
       <div id="run-status" class="run-status running" role="status">Preparing infrastructure</div>
-      <div class="elapsed-clock" role="timer" aria-label="Modeled elapsed time"><span>Elapsed</span><strong id="model-clock">0 min</strong></div>
+      <div class="elapsed-clock" role="timer" aria-label="Elapsed time"><span>Elapsed</span><strong id="model-clock">0 min</strong></div>
     </div>
   </div>
   <div id="catalog-example" hidden></div>
@@ -174,7 +174,7 @@ function formatAssetTooltip(asset, findings, credentials) {
 }
 
 function layoutGraph(estate) {
-  const w = Math.max(1440, document.documentElement.clientWidth - 36);
+  const w = Math.max(1440, document.documentElement.clientWidth - (new URLSearchParams(location.search).has('embedded') ? 0 : 36));
   const graphTop = 80;
 
   currentWires.clear();
@@ -292,7 +292,7 @@ function updateDiscoveredMap(time) {
     node.el.hidden = !visible;
     node.el.tabIndex = visible ? 0 : -1;
   }
-  const w = Math.max(1440,document.documentElement.clientWidth-36);
+  const w = Math.max(1440,document.documentElement.clientWidth-(new URLSearchParams(location.search).has('embedded') ? 0 : 36));
   const band = (w-100)/4;
   let bottom=80;
   if (new URLSearchParams(location.search).get('capture') !== 'path') {
@@ -441,6 +441,7 @@ function renderEvent(event, time, animate) {
   const encrypted = success && event.actionKind === 'encryption';
   const persistent = success && event.actionKind === 'persistence';
   const phished = success && event.finding?.kind === 'phishing_attachment';
+  const exported = success && event.actionKind === 'data_exfiltration';
   const staging = node.groupId === 'staging-status';
   const finding = event.finding;
   const diagnostic = finding?.kind === 'diagnostic_access';
@@ -461,7 +462,8 @@ function renderEvent(event, time, animate) {
   else if (contained) result = 'ACTION EFFECT SUPPRESSED BY CONTAINMENT';
   else if (alertOnly) result = 'CANARY ALERT';
   else if (read) result = 'PROTECTED RECORD READ';
-  else if (encrypted) result = `MODELED ENCRYPTION · ${event.affectedEndpointIds.length} endpoints`;
+  else if (encrypted) result = `ENCRYPTION · ${event.affectedEndpointIds.length} endpoints`;
+  else if (exported) result = `DATA EXFILTRATED · ${event.dataTransfer.records} records · ${event.dataTransfer.destination}`;
   else if (persistent) result = `PERSISTENCE ESTABLISHED · ${event.affectedEndpointIds.length} endpoints`;
   else if (diagnostic) result = 'STAGING CREDENTIAL EXPOSED';
   else if (finding?.illustration === 'git-to-idp') {
@@ -479,9 +481,9 @@ function renderEvent(event, time, animate) {
     node.el.classList.toggle('contained', contained);
     node.el.classList.toggle('alerted', alertOnly);
     if (read || encrypted) node.el.classList.add('breach-target');
-    node.el.querySelector('.cve').textContent = finding?.cveId || event.technique || result;
+    node.el.querySelector('.cve').textContent = exported ? 'DATA EXFILTRATED' : finding?.cveId || event.technique || result;
     node.el.querySelector('.vuln-title').textContent = finding?.title || result;
-    node.el.querySelector('.node-state').textContent = encrypted ? `${event.affectedEndpointIds.length}/${node.endpointCount || 1} ENCRYPTED (MODELED)` : persistent ? `${event.affectedEndpointIds.length}/${node.endpointCount || 1} PERSISTENT` : phished ? 'PHISH EXECUTED' : read ? 'PROTECTED READ' : blocked ? 'PREVENTED' : contained ? 'CONTAINED' : alertOnly ? 'CANARY ALERT' : '';
+    node.el.querySelector('.node-state').textContent = encrypted ? `${event.affectedEndpointIds.length}/${node.endpointCount || 1} ENCRYPTED` : persistent ? `${event.affectedEndpointIds.length}/${node.endpointCount || 1} PERSISTENT` : phished ? 'PHISH EXECUTED' : exported ? 'DATA EXFILTRATED' : read ? 'DATA FOUND' : blocked ? 'PREVENTED' : contained ? 'CONTAINED' : alertOnly ? 'CANARY ALERT' : '';
   }
   if (wire) {
     if (blocked) wire.path.classList.add('defended-wire');
@@ -492,7 +494,7 @@ function renderEvent(event, time, animate) {
   }
   socTickets.set(`${node.id}-${event.outcome}-${event.actionKind || 'access'}`, {
     title: summary,
-    severity: read || encrypted ? 'CRITICAL' : (phished || persistent || blocked || contained || alertOnly) ? 'HIGH' : 'INFO',
+    severity: read || encrypted || exported ? 'CRITICAL' : (phished || persistent || blocked || contained || alertOnly) ? 'HIGH' : 'INFO',
     detail: `${formatEstimate(time)} · ${result}`
   });
 }
@@ -504,7 +506,7 @@ function renderControl(event) {
     : event.control === 'failed' ? 'SOAR enforcement failed'
     : event.control === 'enforced' ? 'SOAR containment effective'
     : event.control === 'decision' ? 'SOAR containment approved'
-    : event.source === 'canary' ? 'Canary alerted' : event.source === 'endpoint' ? 'Endpoint behavior telemetry' : 'Boundary telemetry';
+    : event.source === 'canary' ? 'Canary alerted' : event.source === 'endpoint' ? 'Endpoint behavior telemetry' : event.source==='data-transfer'?'Data transfer telemetry':'Boundary telemetry';
   if (event.control === 'signal' && event.source === 'canary') {
     const marker = node.el.querySelector('.canary-marker') || document.createElement('span');
     marker.className = 'canary-marker';
@@ -633,7 +635,8 @@ function finishRun() {
     event.finding?.kind === 'phishing_attachment' && WireEngine.gangTechniqueEvidence(pre2023Group,event.finding.technique));
   runHud.textContent = [group, run.result.label, result, evidence, limit, sampleLogs?.finding.title, `${count} external ${count === 1 ? 'entry' : 'entries'} reached`,
     entryFailure?.reason,
-    run.summary.encryptedEndpointIds?.length ? `${run.summary.encryptedEndpointIds.length} endpoints encrypted (modeled)` : '',
+    run.summary.encryptedEndpointIds?.length ? `${run.summary.encryptedEndpointIds.length} endpoints encrypted` : '',
+    run.summary.exfiltratedDatasets?.length ? `${run.summary.exfiltratedDatasets.reduce((n,d)=>n+d.records,0)} records exfiltrated` : '',
     run.summary.persistentEndpointIds?.length ? `Persistence established on ${run.summary.persistentEndpointIds.length} endpoints` : '',
     blockedTransitions ? `${blockedTransitions} blocked` : '', run.summary.suppressedTransitions ? `${run.summary.suppressedTransitions} effects suppressed` : '', response, illustration].filter(Boolean).join(' · ');
 }
@@ -649,7 +652,7 @@ function playRun() {
   const status = document.getElementById('run-status');
   status.classList.add('running');
   status.textContent = `${defenseLabels[defense]} · Run ${String(runNumber).padStart(2, '0')} · Same infrastructure ${infrastructureNumber}`;
-  clock.title = `Modeled time since foothold. Scenario response latency: ${formatEstimate(run.assumptions.responseDelaySec)} after collection (${run.assumptions.collectionDelaySec}s). Stage allocations and response latency are synthetic assumptions informed by historical context, not measured breach-time distributions.`;
+  clock.title = `Elapsed time since foothold. Response latency: ${formatEstimate(run.assumptions.responseDelaySec)} after collection (${run.assumptions.collectionDelaySec}s).`;
   const grouped = new Map();
   for (const event of [...run.events, ...run.controls]) {
     if (!grouped.has(event.timeSec)) grouped.set(event.timeSec, []);

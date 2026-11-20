@@ -21,6 +21,7 @@ async function main(){
     await page.waitForFunction(()=>!document.getElementById('run').disabled);
     const panels=page.frames().filter(frame=>frame.url().includes('wire.html'));
     assert.equal(panels.length,2);
+    assert.equal(await page.locator('.attack-feed li').count(),0,'No future techniques in ready view');
     const before=[];
     for(const panel of panels){
       const initial=await panel.evaluate(()=>({estate:JSON.stringify(estate),run:JSON.stringify(run),
@@ -31,13 +32,57 @@ async function main(){
     assert.deepEqual(before[0].visible,before[1].visible,'Both attackers have identical starting infrastructure');
     assert.deepEqual(before[0].positions,before[1].positions,'Shared starting infrastructure has identical positions');
     await page.click('#run');await page.waitForTimeout(1200);
+    assert(await page.locator('.attack-feed li').count()>0,'Used techniques appear during playback');
+    assert(await page.evaluate(()=>frames.every(f=>f.contentWindow.comparison.activity().every(item=>item.time<=f.contentWindow.comparison.state().time))));
     assert(await page.evaluate(()=>fittedHeights===frames.map(f=>f.contentWindow.comparison.height()).join(',')),'Embedded frames fit the growing views');
-    await page.evaluate(()=>{cancelAnimationFrame(animation);frames.forEach(f=>f.contentWindow.comparison.advance(Infinity));fit();});
+    await page.evaluate(()=>{cancelAnimationFrame(animation);frames.forEach(f=>f.contentWindow.comparison.advance(Infinity));updateFeeds();fit();});
+    for(const [i,panel] of panels.entries()){
+      const expected=await panel.evaluate(()=>comparison.activity().map(item=>({code:item.code,time:item.time})));
+      const listed=await page.locator('.attack-feed').nth(i).locator('li').evaluateAll(items=>items.map(item=>({code:item.querySelector('strong').textContent,time:Number(item.dataset.time)})));
+      assert.deepEqual(listed,expected,'Feed shows exactly the completed techniques and CVEs');
+      assert(listed.every((item,index)=>!index||listed[index-1].time>=item.time),'Newest activity appears first');
+      assert(await panel.evaluate(()=>comparison.activity().some(item=>['NO ACCESS','PATH REVIEW'].includes(item.code))),'Timed dead ends remain visible');
+      assert(await panel.evaluate(()=>comparison.activity().filter(item=>item.code==='PATH REVIEW').every(item=>{
+        const event=run.events[item.id],source=estate.assets.find(a=>a.id===event.sourceId),target=estate.assets.find(a=>a.id===event.targetId);
+        return item.asset===source.label&&!item.detail.includes(target.label);
+      })),'Path reviews name the known source without exposing an inaccessible target');
+    }
+    for(const viewport of [{width:1280,height:720},{width:1920,height:1080},{width:2880,height:1620}]){
+      await page.setViewportSize(viewport);await page.evaluate(()=>fit());
+      const geometry=await page.evaluate(()=>frames.map(f=>{
+        const frame=f.getBoundingClientRect(),canvas=f.parentElement.getBoundingClientRect(),feed=f.parentElement.previousElementSibling;
+        return {left:Math.abs(frame.left-canvas.left),right:Math.abs(frame.right-canvas.right),bottom:Math.abs(frame.bottom-canvas.bottom),
+          background:getComputedStyle(feed).backgroundColor,color:getComputedStyle(feed).color,overflow:getComputedStyle(feed).overflowY};
+      }));
+      for(const item of geometry){assert(item.left<1&&item.right<1&&item.bottom<2,'Estate fills available space without side gutters');
+        assert.equal(item.background,'rgb(255, 255, 255)');assert.equal(item.color,'rgb(17, 17, 17)');assert.equal(item.overflow,'auto');}
+    }
+    if(process.env.DUAL_LAYOUT_SCREENSHOT)await page.screenshot({path:process.env.DUAL_LAYOUT_SCREENSHOT});
     for(const [i,panel] of panels.entries()){
       const final=await panel.evaluate(()=>({estate:JSON.stringify(estate),run:JSON.stringify(run),
         visible:[...currentNodes.values()].filter(n=>!n.el.hidden).map(n=>n.id),expected:discoveryPlan.assetIds}));
       assert.deepEqual(final.visible,final.expected);assert.equal(final.estate,before[i].estate);assert.equal(final.run,before[i].run);
     }
+    // Data discovery must appear before a separately completed bulk transfer.
+    await page.evaluate(()=>prepare());
+    const dataTimes=await panels[1].evaluate(()=>({read:run.events.find(e=>e.isProtectedRead&&e.outcome==='succeeded').timeSec,
+      transfer:run.events.find(e=>e.actionKind==='data_exfiltration'&&e.outcome==='succeeded').timeSec,
+      records:run.summary.exfiltratedDatasets[0].records}));
+    await panels[1].evaluate(time=>comparison.advance(time),dataTimes.read);
+    await page.evaluate(()=>updateFeeds());
+    assert.match(await page.locator('.attack-feed').nth(1).innerText(),/DATA FOUND/);
+    assert.doesNotMatch(await page.locator('.attack-feed').nth(1).innerText(),/DATA EXFILTRATED/);
+    assert(dataTimes.records>3,'Malicious ARTEX exports beyond a proof sample');
+    await panels[1].evaluate(time=>comparison.advance(time),dataTimes.transfer);
+    await page.evaluate(()=>updateFeeds());
+    const bulk=await page.locator('.attack-feed').nth(1).innerText();
+    assert.match(bulk,/DATA EXFILTRATED/);assert(bulk.includes(`${dataTimes.records} records`));
+    assert.match(bulk,/HTTP\/API bulk extraction/);assert.match(bulk,/Attacker-controlled workspace/);
+    assert.doesNotMatch(bulk,/\(modeled\)/i);
+    await page.evaluate(()=>{estate.assets.forEach(a=>{if(a.egress)a.egress.responseExportAllowed=false;});prepare();
+      frames[1].contentWindow.comparison.advance(Infinity);updateFeeds();});
+    const denied=await page.locator('.attack-feed').nth(1).innerText();
+    assert.match(denied,/DATA FOUND/);assert.match(denied,/EXFILTRATION BLOCKED/);assert.doesNotMatch(denied,/DATA EXFILTRATED/);
     // New Infra must update the displayed seed and actual profile, not merely replay.
     let previousSeed=1853, previousGang='lockbit';
     const gangs=new Set([previousGang]);
@@ -59,6 +104,7 @@ async function main(){
       await page.click(selector);
       assert.deepEqual(await page.evaluate(()=>({estate:JSON.stringify(estate),gang:gangId})),scenario);
       assert.equal(await panels[0].evaluate(()=>run.assumptions.techniquePolicy.gangId),scenario.gang);
+      if(selector!=='#run')assert.equal(await page.locator('.attack-feed li').count(),0,'Defense changes clear the activity feeds');
     }
     await page.fill('#seed','1853');await page.press('#seed','Enter');
     assert.equal(await panels[0].evaluate(()=>JSON.stringify(estate)),before[0].estate,'Explicit seed reproduces the estate');

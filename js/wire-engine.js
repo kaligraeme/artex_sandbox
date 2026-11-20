@@ -20,17 +20,28 @@
   const GANG_SUPPLEMENTS = {
     lockbit: { techniques: ['T1189','T1190','T1133','T1566','T1078','T1003','T1555.003','T1567.002'],
       source: 'https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-165a' },
-    conti: { techniques: ['T1078','T1133','T1566.001','T1566.002','T1110','T1558.003'],
+    conti: { techniques: ['T1078','T1133','T1566.001','T1566.002','T1110','T1558.003','T1567.002'],
+      analystMapped: ['T1567.002'],
+      techniqueSources: {'T1567.002':'https://www.cyber.gov.au/advisory/2021-010-asds-acsc-ransomware-profile-conti'},
       source: 'https://www.cisa.gov/news-events/cybersecurity-advisories/aa21-265a' },
-    blackcat: { techniques: ['T1078','T1133','T1190'],
-      analystMapped: ['T1078','T1133','T1190'],
+    blackcat: { techniques: ['T1078','T1133','T1190','T1567.002'],
+      analystMapped: ['T1078','T1133','T1190','T1567.002'],
       source: 'https://www.microsoft.com/en-us/security/blog/2022/06/13/the-many-lives-of-blackcat-ransomware/' },
     hive: { techniques: ['T1133','T1190','T1566.001','T1059','T1070','T1112','T1562','T1537','T1486','T1490','T1021.001'],
       analystMapped: ['T1021.001'],
       techniqueSources: { 'T1021.001': 'https://www.ic3.gov/CSA/2021/210825.pdf' },
       source: 'https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-321a' },
-    revil: { techniques: [], source: null }
+    revil: { techniques: ['T1567.002'], analystMapped: ['T1567.002'],
+      source: 'https://unit42.paloaltonetworks.com/revil-threat-actors/' }
   };
+  const DATA_EXPORT_METHODS = {
+    lockbit:{technique:'T1567.002',tool:'Rclone',destination:'External cloud storage'},
+    conti:{technique:'T1567.002',tool:'Rclone',destination:'External cloud file-sharing account'},
+    blackcat:{technique:'T1567.002',tool:'MEGAsync / Rclone',destination:'External cloud storage'},
+    hive:{technique:'T1537',tool:'Rclone',destination:'External MEGA account'},
+    revil:{technique:'T1567.002',tool:'Rclone',destination:'External cloud storage'}
+  };
+  const ARTEX_EVIDENCE_SOURCE = 'https://github.com/RuoJi6/ARTEX/blob/6997a4661921395072290becc50380db8dacb04e/evidence/store.go';
   // Authored ordering among documented methods, not measured gang probabilities.
   const GANG_ENTRY_ORDER = {
     lockbit: ['T1133','T1190','T1566'], conti: ['T1566','T1133'],
@@ -951,7 +962,7 @@
     if (targetFindings.length > 0) {
       return [{
         eligible: false,
-        finding: targetFindings[0],
+        finding: targetFindings.find(f=>relationship && f.requiredInterface===relationship.protocol) || targetFindings[0],
         reason: lastReason || `Finding on ${targetAsset.label} did not match product/version/interface prerequisites.`
       }];
     }
@@ -970,8 +981,22 @@
     return evaluateDistinctActions(state, sourceAsset, targetAsset, relationship, estate, { firstOnly: true })[0];
   }
 
-  function evaluatePostCompromiseAction(state, asset, finding) {
+  function evaluatePostCompromiseAction(state, asset, finding, estate) {
     const reach = state.reachedAssets.get(asset.id);
+    if(finding.kind==='data_exfiltration') {
+      const collector=estate.assets.find(a=>a.id===finding.collectorId);
+      const controlled=state.reachedAssets.get(finding.collectorId);
+      if(!reach?.capabilities.has('data_read') || !asset.dataHandling || !collector ||
+          !controlled || (!finding.responseExport && !controlled.capabilities.has('app_exec'))) {
+        return {eligible:false,finding,reason:'Data transfer requires readable data and a controlled collection host.'};
+      }
+      return {eligible:true,actionKind:finding.kind,finding,technique:finding.technique,
+        yieldsCapability:'data_exfiltrated',credentialUsed:null,dataTransfer:finding.dataTransfer,
+        egressAllowed:collector.egress?.[finding.responseExport?'responseExportAllowed':'cloudUploadAllowed']===true,
+        requiredAccess:'Previously read data + collection host + permitted outbound channel',
+        reachability:`${asset.label} via ${collector.label} -> ${finding.dataTransfer.destination}`,
+        reason:`${finding.dataTransfer.records} records transferred using ${finding.dataTransfer.tool} to ${finding.dataTransfer.destination}.`};
+    }
     const permission = finding.kind === 'encryption' ? 'write_local_files' : 'persist_user';
     const enabled = finding.kind === 'encryption' ? asset.conditions?.localFilesWritable : asset.conditions?.startupChangesAllowed;
     const endpointIds = (asset.endpointIds || [asset.id]).filter(id =>
@@ -1049,6 +1074,9 @@
     if (action.actionKind === 'diagnostic_access') {
       return { addressed: false, badge: 'SCOPED CREDENTIAL EXPOSED', reason: action.reason };
     }
+    if(action.actionKind==='data_exfiltration')return action.egressAllowed
+      ? {addressed:false,badge:'DATA TRANSFER',reason:action.reason}
+      : {addressed:true,badge:'EGRESS BLOCKED',reason:'Outbound transfer is denied by the collection host egress policy.'};
     if (['phishing_attachment', 'remote_service', 'persistence', 'encryption'].includes(action.actionKind)) {
       return { addressed: false, badge: action.technique,
         reason: `${action.reason} HTTP virtual patching does not cover this Windows endpoint action.` };
@@ -1204,8 +1232,19 @@
     const credentialSignature = target => [...state.acquiredCredentials.values()].filter(cred =>
       cred.targetAssetIds?.length ? cred.targetAssetIds.includes(target.id) : cred.targetGroupIds?.includes(target.groupId))
       .map(cred=>cred.id).sort().join(',');
+    const routeKey = (source,target,relationship) => `${source?.id || 'EXTERNAL'}->${target.id}:${relationship?.id || 'EXT'}:${credentialSignature(target)}:${[...(state.reachedAssets.get(source?.id)?.capabilities || [])].sort().join(',')}`;
+    const actionKey = action => `${action.actionKind}:${action.finding?.id || ''}:${action.credentialUsed?.id || ''}:${action.yieldsCapability}`;
+    const routeUnsupported = (source,target,relationship,localFinding) => {
+      if(!attackerProfile?.gangId)return false;
+      const methods=localFinding?[localFinding]:estate.findings.filter(f=>f.assetId===target.id &&
+        (!relationship || !f.requiredInterface || f.requiredInterface===relationship.protocol));
+      return methods.length>0 && methods.every(finding=>!actionPolicy({finding,technique:finding.technique},source,target,attackerProfile));
+    };
 
-    function scopeFor(source) {
+    function scopeFor(source, capability) {
+      const reach=state.reachedAssets.get(source.id);
+      const owner=reach?.capabilityScopes?.get(capability || (reach.capabilities.has('app_exec')?'app_exec':[...reach.capabilities][0]));
+      if(owner)return owner;
       let entry = source.id;
       let parent = state.reachedAssets.get(entry)?.sourceId;
       while (parent) {
@@ -1277,8 +1316,8 @@
       const localFinding = activeStep?.localFinding;
       const timeSec = activeStep?.timeSec ?? timing?.stageTimes?.[targetAsset.layerIdx];
       const startSec = activeStep?.startSec;
-      const scope = timing ? (sourceAsset ? scopeFor(sourceAsset) : targetAsset.id) : null;
-      const transitionKey = localFinding ? `LOCAL:${localFinding.id}` : `${sourceAsset ? sourceAsset.id : 'EXTERNAL'}->${targetAsset.id}:${relationship ? relationship.id : 'EXT'}:${credentialSignature(targetAsset)}`;
+      const scope = timing ? (localFinding?.transferScope || (sourceAsset ? scopeFor(sourceAsset,relationship?.requiredSourceCapability) : targetAsset.id)) : null;
+      const transitionKey = activeStep?.transitionKey || (localFinding ? `LOCAL:${localFinding.id}` : routeKey(sourceAsset,targetAsset,relationship));
       if (visitedTransitions.has(transitionKey)) return false;
       visitedTransitions.add(transitionKey);
 
@@ -1319,10 +1358,19 @@
       if (evaluatedTransitions >= explorationLimit) { truncated = true; return false; }
       evaluatedTransitions++;
       attemptedTransitions++;
-      const feasible = localFinding ? [evaluatePostCompromiseAction(state, targetAsset, localFinding)]
+      const feasible = localFinding ? [evaluatePostCompromiseAction(state, targetAsset, localFinding, estate)]
         : evaluateDistinctActions(state, sourceAsset, targetAsset, relationship, estate);
-      const candidates = feasible.filter(action => action.eligible && actionPolicy(action, sourceAsset, targetAsset, attackerProfile));
-      if (!candidates.length && feasible.some(action => action.eligible)) {
+      const allowed = feasible.filter(action => action.eligible && actionPolicy(action, sourceAsset, targetAsset, attackerProfile));
+      const candidates = activeStep?.plannedActionKeys ? allowed.filter(action=>activeStep.plannedActionKeys.includes(actionKey(action))) : allowed;
+      if(allowed.length && !candidates.length){
+        ineligibleTransitions++;
+        events.push({sourceId:sourceAsset?.id || null,targetId:targetAsset.id,relationshipId:relationship?.id || null,
+          finding:allowed[0].finding || null,outcome:'ineligible',analysisKind:'failed_probe',
+          reason:'Access prerequisites changed during this check; the newly available method needs a separate attempt.'});
+        return false;
+      }
+      const unsupported=routeUnsupported(sourceAsset,targetAsset,relationship,localFinding);
+      if (!candidates.length && (feasible.some(action => action.eligible)||unsupported)) {
         ineligibleTransitions++;
         events.push({ sourceId: sourceAsset?.id || null, targetId: targetAsset.id,
           relationshipId: relationship?.id || null, outcome: 'ineligible',
@@ -1337,6 +1385,8 @@
           targetId: targetAsset.id,
           relationshipId: relationship ? relationship.id : null,
           finding: feasible[0].finding || null,
+          ...(localFinding && {actionKind:localFinding.kind,dataTransfer:localFinding.dataTransfer}),
+          analysisKind:/source capability|No directed relationship|Protocol mismatch|Relationship direction/i.test(feasible[0].reason || '')?'route_review':'failed_probe',
           outcome: 'ineligible',
           reason: feasible[0].reason
         });
@@ -1392,6 +1442,7 @@
             credentialUsed: action.credentialUsed,
             technique: action.technique,
             attackerEvidence,
+            ...(localFinding && {actionKind:action.actionKind,dataTransfer:action.dataTransfer}),
             requiredAccess: action.requiredAccess,
             reachability: action.reachability,
             grantedCapability: null,
@@ -1429,6 +1480,8 @@
           });
         }
         const reached = state.reachedAssets.get(targetAsset.id);
+        if(!reached.capabilityScopes)reached.capabilityScopes=new Map();
+        reached.capabilityScopes.set(action.yieldsCapability,scope);
         if (!reached.endpointPermissions) reached.endpointPermissions = new Map();
         const accessibleEndpoints = targetAsset.endpointIds ? action.endpointScope || [] : [targetAsset.id];
         for (const id of accessibleEndpoints) {
@@ -1461,6 +1514,8 @@
           reachability: action.reachability,
           grantedCapability: action.yieldsCapability,
           isProtectedRead: action.yieldsCapability === 'data_read' && targetAsset.layerIdx === 3 && !isCanary,
+          ...(action.yieldsCapability==='data_read' && targetAsset.dataHandling && {dataFound:targetAsset.dataHandling}),
+          ...(action.dataTransfer && {dataTransfer:action.dataTransfer}),
           ...(localFinding && { actionKind: action.actionKind, affectedEndpointIds: action.affectedEndpointIds }),
           acquiredCredentials: newlyAcquired,
           ...(scope && { scope }),
@@ -1469,8 +1524,9 @@
           reason: mitigation.alertOnly ? mitigation.reason : action.reason
         });
         if (localFinding) {
-          if (timing?.respond && (!defensePosture?.telemetryLayers || defensePosture.telemetryLayers.includes(targetAsset.layerIdx))) {
-            signal(scope, targetAsset.id, 'endpoint', timeSec, true);
+          const monitoredAsset=action.actionKind==='data_exfiltration'?assetById.get(localFinding.collectorId):targetAsset;
+          if (timing?.respond && (!defensePosture?.telemetryLayers || defensePosture.telemetryLayers.includes(monitoredAsset?.layerIdx))) {
+            signal(scope, targetAsset.id, action.actionKind==='data_exfiltration'?'data-transfer':'endpoint', timeSec, true);
           }
         } else recordTelemetry(sourceAsset, targetAsset, action, scope, timeSec, isCanary);
       }
@@ -1485,45 +1541,74 @@
       // Workers start only from discovered access. Finish/containment ties favor enforcement.
       const frontier = entryAssets.map(entry => ({ sourceAsset: null, targetAsset: entry, relationship: null, readySec: 0 }));
       const running = [];
-      const enqueued = new Set(entryAssets.map(a => `EXTERNAL->${a.id}:EXT`));
+      const enqueued = new Set(entryAssets.map(a => routeKey(null,a,null)));
       const workers = attackerProfile.maxConcurrentBranches;
-      let clock = 0;
-      const priority = step => {
-        if (!attackerProfile.gangId) return 0;
-        if (step.localFinding) {
-          if (!evaluatePostCompromiseAction(state,step.targetAsset,step.localFinding).eligible) return 1000;
-          return step.localFinding.kind === 'persistence' ? 80 : 200;
-        }
-        const candidates = evaluateDistinctActions(state, step.sourceAsset, step.targetAsset, step.relationship, estate)
+      let clock = 0, initialAccessReserved = false, preferredScope = null;
+      const assess = step => {
+        const feasible=step.localFinding ? [evaluatePostCompromiseAction(state,step.targetAsset,step.localFinding,estate)]
+          : evaluateDistinctActions(state, step.sourceAsset, step.targetAsset, step.relationship, estate);
+        const candidates = feasible
           .filter(action => action.eligible && actionPolicy(action, step.sourceAsset, step.targetAsset, attackerProfile));
-        if (!candidates.length) return 1000;
-        const order = GANG_ENTRY_ORDER[attackerProfile.gangId];
-        return Math.min(...candidates.map(action => {
-          const rank = order.findIndex(id => techniqueMatches(id, action.technique));
-          return rank < 0 ? 100 : rank;
-        }));
+        const distinct=candidates.filter(action=>!state.reachedAssets.get(step.targetAsset.id)?.capabilities.has(action.yieldsCapability));
+        const duplicateInFlight=distinct.length>0 && distinct.every(action=>running.some(job=>
+          job.targetAsset.id===step.targetAsset.id && job.plannedCapabilities.includes(action.yieldsCapability)));
+        // Decisions about an unsupported method or an already obtained capability
+        // do not represent another timed attack. Real failed probes retain time.
+        const unsupported=routeUnsupported(step.sourceAsset,step.targetAsset,step.relationship,step.localFinding);
+        const noWork=candidates.length>0&&!distinct.length || !candidates.length&&(feasible.some(action=>action.eligible)||unsupported) ||
+          !step.localFinding&&visitedTransitions.has(routeKey(step.sourceAsset,step.targetAsset,step.relationship));
+        return {feasible,candidates,distinct,duplicateInFlight,noWork};
+      };
+      const priority = (step, assessment) => {
+        if(assessment.noWork)return -100;
+        if(step.localFinding){
+          if(step.localFinding.kind==='encryption')return 1000; // collection/exfiltration and dead-end checks precede impact
+          return step.localFinding.kind==='persistence'?5:10;
+        }
+        const sameFoothold=step.sourceAsset && scopeFor(step.sourceAsset,step.relationship?.requiredSourceCapability)===preferredScope;
+        if(!step.sourceAsset){
+          const order=GANG_ENTRY_ORDER[attackerProfile.gangId] || [];
+          const ranks=assessment.candidates.map(action=>order.findIndex(id=>techniqueMatches(id,action.technique))).filter(rank=>rank>=0);
+          return attackerProfile.gangId ? (preferredScope?200:0)+(ranks.length?Math.min(...ranks):10) : 60;
+        }
+        if(!assessment.candidates.length)return sameFoothold?100:150;
+        const dataRead=assessment.candidates.some(action=>action.yieldsCapability==='data_read');
+        return attackerProfile.gangId ? (sameFoothold?20:50)+(dataRead?0:10) : dataRead?20:40;
       };
       while (frontier.length || running.length) {
         if (evaluatedTransitions >= explorationLimit) { truncated = true; break; }
         while (frontier.length && running.length < workers) {
-          frontier.sort((a, b) => priority(a) - priority(b) || rankOf(a.targetAsset.id) - rankOf(b.targetAsset.id));
-          const step = frontier.shift();
+          const assessments=new Map(frontier.map(step=>[step,assess(step)]));
+          frontier.sort((a, b) => priority(a,assessments.get(a)) - priority(b,assessments.get(b)) || rankOf(a.targetAsset.id) - rankOf(b.targetAsset.id));
+          // Wait for an in-flight attempt before spending another worker on the
+          // same capability. If it fails, the alternate route remains available.
+          const index=frontier.findIndex(step=>!assessments.get(step).duplicateInFlight);
+          if(index<0)break;
+          const step = frontier.splice(index,1)[0], assessment=assessments.get(step);
+          step.transitionKey=step.localFinding?`LOCAL:${step.localFinding.id}`:routeKey(step.sourceAsset,step.targetAsset,step.relationship);
           const layer = step.targetAsset.layerIdx;
-          const duration = step.localFinding?.modeledDurationSec ?? timing.actionDurations?.[layer] ?? Math.max(0, timing.stageTimes[layer] - (layer ? timing.stageTimes[layer - 1] : 0));
+          let duration = step.localFinding?.modeledDurationSec ?? timing.actionDurations?.[layer] ?? Math.max(0, timing.stageTimes[layer] - (layer ? timing.stageTimes[layer - 1] : 0));
+          if(assessment.noWork)duration=0;
+          else if(!step.sourceAsset&&assessment.distinct.length){
+            if(initialAccessReserved)duration=Math.max(duration,timing.reentryDurationSec || 0);
+            initialAccessReserved=true;
+          }
           const startSec = Math.max(clock, step.readySec);
-          const scope = step.sourceAsset ? scopeFor(step.sourceAsset) : step.targetAsset.id;
+          const scope = step.localFinding?.transferScope || (step.sourceAsset ? scopeFor(step.sourceAsset,step.relationship?.requiredSourceCapability) : step.targetAsset.id);
           if ((signals.get(scope) ?? Infinity) <= startSec) {
             activeStep = {...step, startSec, timeSec: startSec, scheduledEffectSec: startSec + duration, suppressionPhase: 'queued'};
             processTransition(step.sourceAsset, step.targetAsset, step.relationship);
             activeStep = null;
             continue;
           }
-          running.push({ ...step, startSec, timeSec: startSec + duration, scheduledEffectSec: startSec + duration, suppressionPhase: 'in_flight' });
+          running.push({ ...step, plannedCapabilities:assessment.distinct.map(action=>action.yieldsCapability),
+            plannedActionKeys:assessment.candidates.map(actionKey),
+            startSec, timeSec: startSec + duration, scheduledEffectSec: startSec + duration, suppressionPhase: 'in_flight' });
         }
         if (!running.length) continue;
         // Confirmed enforcement cancels in-flight effects and frees the worker at that time.
         for (const step of running) {
-          const scope = step.sourceAsset ? scopeFor(step.sourceAsset) : step.targetAsset.id;
+          const scope = step.localFinding?.transferScope || (step.sourceAsset ? scopeFor(step.sourceAsset,step.relationship?.requiredSourceCapability) : step.targetAsset.id);
           step.timeSec = Math.min(step.timeSec, signals.get(scope) ?? Infinity);
         }
         running.sort((a, b) => a.timeSec - b.timeSec || rankOf(a.targetAsset.id) - rankOf(b.targetAsset.id));
@@ -1532,6 +1617,31 @@
         const before = events.length;
         const ok = processTransition(activeStep.sourceAsset, activeStep.targetAsset, activeStep.relationship);
         for (let i = before; i < events.length; i++) Object.assign(events[i], {timeSec: clock, startSec: activeStep.startSec});
+        const newAccess=events.slice(before).find(event=>event.outcome==='succeeded'&&!event.sourceId);
+        if(newAccess && !preferredScope)preferredScope=newAccess.scope;
+        for(const read of events.slice(before).filter(event=>event.outcome==='succeeded'&&event.isProtectedRead&&
+          Number.isSafeInteger(event.dataFound?.records)&&event.dataFound.records>0&&
+          Number.isSafeInteger(event.dataFound?.bytes)&&event.dataFound.bytes>0)) {
+          const target=assetById.get(read.targetId), responseExport=!attackerProfile.gangId;
+          const method=DATA_EXPORT_METHODS[attackerProfile.gangId];
+          if(!responseExport&&!method)continue;
+          // Follow the established read path to a host the session controls.
+          let collectorId=read.sourceId || read.targetId;
+          if(!responseExport)while(collectorId&&!state.reachedAssets.get(collectorId)?.capabilities.has('app_exec'))
+            collectorId=state.reachedAssets.get(collectorId)?.sourceId;
+          const key=`EXFIL:${target.id}`;
+          if(enqueued.has(key))continue;
+          enqueued.add(key);
+          const {records,bytes}=target.dataHandling;
+          const finding={id:key,kind:'data_exfiltration',assetId:target.id,collectorId,responseExport,transferScope:read.scope,
+            technique:method?.technique || null,title:responseExport?'HTTP/API bulk data export':'Data exfiltration',
+            sourceUrl:responseExport?ARTEX_EVIDENCE_SOURCE:gangTechniqueEvidence(attackerProfile.gangId,method.technique)?.source,
+            modeledDurationSec:120+Math.ceil(bytes/(512*1024)),
+            dataTransfer:{datasetId:target.id,dataset:target.dataHandling.label,records,bytes,
+              tool:responseExport?'HTTP/API bulk extraction':method.tool,
+              destination:responseExport?'Attacker-controlled workspace':method.destination}};
+          frontier.push({sourceAsset:target,targetAsset:target,relationship:null,localFinding:finding,readySec:clock});
+        }
         if (ok && !activeStep.localFinding && state.reachedAssets.get(activeStep.targetAsset.id)?.capabilities.has('app_exec')) {
           for (const finding of estate.findings.filter(f => f.assetId === activeStep.targetAsset.id && ['persistence','encryption'].includes(f.kind))) {
             const probe = {actionKind: finding.kind, finding, technique: finding.technique};
@@ -1548,7 +1658,7 @@
             .sort((a,b) => rankOf(a.targetId) - rankOf(b.targetId));
           for (const rel of out) {
             if (assetById.get(rel.targetId)?.isDecoy && !['canaries','soc-canary','combined'].includes(mode)) continue;
-            const key = `${rel.sourceId}->${rel.targetId}:${rel.id}:${credentialSignature(assetById.get(rel.targetId))}`;
+            const key = routeKey(activeStep.targetAsset,assetById.get(rel.targetId),rel);
             if (enqueued.has(key)) continue;
             enqueued.add(key);
             frontier.push({sourceAsset: activeStep.targetAsset, targetAsset: assetById.get(rel.targetId), relationship: rel, readySec: clock});
@@ -1560,7 +1670,7 @@
             if (!state.reachedAssets.has(rel.sourceId)) continue;
             const target=assetById.get(rel.targetId);
             if (!recovered.some(cred=>cred.targetAssetIds?.includes(target.id) || (!cred.targetAssetIds?.length && cred.targetGroupIds?.includes(target.groupId)))) continue;
-            const key=`${rel.sourceId}->${rel.targetId}:${rel.id}:${credentialSignature(target)}`;
+            const key=routeKey(assetById.get(rel.sourceId),target,rel);
             if(enqueued.has(key))continue;
             enqueued.add(key);
             frontier.push({sourceAsset:assetById.get(rel.sourceId),targetAsset:target,relationship:rel,readySec:clock});
@@ -1598,6 +1708,8 @@
       events,
       controls,
       summary: {
+        discoveredDatasets:events.filter(e=>e.outcome==='succeeded'&&e.isProtectedRead).map(e=>e.targetId),
+        exfiltratedDatasets:events.filter(e=>e.outcome==='succeeded'&&e.actionKind==='data_exfiltration').map(e=>e.dataTransfer),
         encryptedEndpointIds: [...new Set(events.filter(e => e.outcome === 'succeeded' && e.actionKind === 'encryption').flatMap(e => e.affectedEndpointIds))],
         persistentEndpointIds: [...new Set(events.filter(e => e.outcome === 'succeeded' && e.actionKind === 'persistence').flatMap(e => e.affectedEndpointIds))],
         layerSuccessCounts: layerSuccessCount,
@@ -1862,10 +1974,10 @@
 
     const addLocalFindings = asset => {
       findings.push({ ...base, id:`finding-${asset.id}-persistence`, assetId:asset.id,
-        kind:'persistence', technique:'T1547.001', title:'Registry startup persistence (modeled)',
+        kind:'persistence', technique:'T1547.001', title:'Registry startup persistence',
         modeledDurationSec:120, description:'Modeled startup entry established only on executed endpoints with explicit startup-write permission; no actual registry is changed.' });
       findings.push({ ...base, id:`finding-${asset.id}-encryption`, assetId:asset.id,
-        kind:'encryption', technique:'T1486', title:'Endpoint file encryption (modeled)',
+        kind:'encryption', technique:'T1486', title:'Endpoint file encryption',
         modeledDurationSec:300, description:'Modeled encryption affects only locally writable files on endpoints covered by the acquired execution credential; no real files are touched.' });
     };
     addLocalFindings(desktop);
@@ -2544,6 +2656,15 @@
       actionOrder.unshift(decoyId);
     }
 
+    // Estate-owned datasets and egress assumptions are shared across all actors.
+    for(const asset of keptAssets.filter(a=>!a.isDecoy)) {
+      asset.egress={cloudUploadAllowed:hashNode(seed,`cloud-egress:${asset.id}`,0x531f)>0.2,
+        responseExportAllowed:hashNode(seed,`response-egress:${asset.id}`,0x531f)>0.1};
+      if(asset.layerIdx===3){
+        const records=100+Math.floor(hashNode(seed,`records:${asset.id}`,0x531f)*4900);
+        asset.dataHandling={label:`Sensitive records · ${asset.label}`,records,bytes:records*1024};
+      }
+    }
     const estate = {
       schemaVersion: SCHEMA_VERSION,
       seed,
@@ -3267,12 +3388,14 @@
     const weights = [1, 2, 3].map(layer => 0.15 + hashNode(seed, `stage-weight:${pace}:${layer}`, 0x9e3779b9));
     const total = weights.reduce((a,b) => a+b,0);
     const stageTimes = [0, Math.round(readTime * weights[0]/total), Math.round(readTime * (weights[0]+weights[1])/total), readTime];
-    return {stageTimes, actionDurations: stageTimes.map((t,i) => i ? t-stageTimes[i-1] : 0), modeledPathDurationSec: readTime};
+    return {stageTimes, actionDurations: stageTimes.map((t,i) => i ? t-stageTimes[i-1] : 0), modeledPathDurationSec: readTime,
+      reentryDurationSec:300};
   }
 
   function classifyRun(result) {
     const encrypted = result.events.filter(e => e.outcome === 'succeeded' && e.actionKind === 'encryption');
     const persisted = result.events.filter(e => e.outcome === 'succeeded' && e.actionKind === 'persistence');
+    const exported = result.events.filter(e => e.outcome === 'succeeded' && e.actionKind === 'data_exfiltration');
     const impact = result.summary.dataReached || encrypted.length > 0;
     const incomplete = result.summary.truncated;
     const enforcements = result.controls.filter(e => e.control === 'enforced');
@@ -3284,6 +3407,7 @@
     const late = reads.some(read => effective.some(e => e.scope === read.scope && e.timeSec > read.timeSec));
     const encryptionLate = encrypted.some(event=>effective.some(e=>e.scope===event.scope&&e.timeSec>event.timeSec));
     const label = incomplete ? 'Exploration incomplete' : encrypted.length ? (encryptionLate ? 'Endpoint encryption before containment' : 'Endpoint encryption')
+      : exported.length ? 'Data exfiltrated'
       : impact ? (late ? 'Record read before containment' : 'Protected record read')
       : persisted.length ? (allContained ? 'Session contained; persistence was established' : 'Persistence established; no encryption or protected read')
       : allContained ? 'Contained before protected read' : effective.length ? 'Partial session containment'
@@ -3310,12 +3434,14 @@
     if (!Array.isArray(timing.actionDurations) || timing.actionDurations.length !== 4 || timing.actionDurations.some(t => !Number.isFinite(t) || t < 0)) throw new Error('Expected four nonnegative action durations');
     if (!Number.isInteger(attackerProfile.maxConcurrentBranches) || attackerProfile.maxConcurrentBranches < 1) throw new Error('Worker count must be a positive integer');
     if (timing.explorationLimit != null && (!Number.isInteger(timing.explorationLimit) || timing.explorationLimit < 1)) throw new Error('Exploration limit must be a positive integer');
-    for (const key of ['collectionDelay','decisionDelay','responseDelay']) if (!Number.isFinite(timing[key]) || timing[key] < 0) throw new Error(`Invalid ${key}`);
+    for (const key of ['collectionDelay','decisionDelay','responseDelay','reentryDurationSec']) if (!Number.isFinite(timing[key]) || timing[key] < 0) throw new Error(`Invalid ${key}`);
     const result = simulateEstate(estate, mode, timing);
     result.events.sort((a,b) => a.timeSec-b.timeSec);
     result.controls.sort((a,b) => a.timeSec-b.timeSec);
     const run = {...result, lanes: attackerProfile.maxConcurrentBranches, attackerProfile,
       assumptions: {stageDurationsSec: timing.actionDurations, nominalPathDurationSec: timing.modeledPathDurationSec, responseDelaySec: timing.responseDelay,
+        progressionStrategy:attackerProfile.gangId?'Follow a foothold, collect and transfer data, then apply impact':'Parallel access and collection with prompt bulk transfer',
+        additionalIngressDurationSec:timing.reentryDurationSec,
         postCompromiseTiming: 'Additional synthetic local-action durations from estate findings; not measured ransomware throughput',
         techniquePolicy: attackerProfile.gangId ? { gangId: attackerId, sources: gangCatalogue.sources,
           roots: gangCatalogue.gangs[attackerId].roots, affiliateSupplement: GANG_SUPPLEMENTS[attackerId],

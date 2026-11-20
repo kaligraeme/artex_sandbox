@@ -15,31 +15,63 @@ function fit() {
   const header = document.querySelector('header').offsetHeight;
   document.querySelector('main').style.height = `${innerHeight-header}px`;
   frames.forEach(frame => {
-    const stage=frame.parentElement, available=innerHeight-header-stage.previousElementSibling.offsetHeight;
-    const height=frame.contentWindow.comparison.height();
-    const scale=Math.min(stage.clientWidth/1440, available/height);
-    stage.style.height=`${available}px`;frame.style.height=`${height}px`;frame.style.transform=`scale(${scale})`;
-    frame.style.left=`${(stage.clientWidth-1440*scale)/2}px`;
+    const canvas=frame.parentElement, stage=canvas.parentElement;
+    const available=Math.max(1,innerHeight-header-stage.previousElementSibling.offsetHeight);
+    stage.style.height=`${available}px`;
+    // Expand the renderer's layout width instead of centering a narrow graph or
+    // stretching its icons. Uniform scaling keeps text and markers proportional.
+    for(let pass=0;pass<3;pass++){
+      const width=Math.max(1440,Math.ceil(canvas.clientWidth*frame.contentWindow.comparison.height()/available));
+      if(frame.style.width===`${width}px`)break;
+      frame.style.width=`${width}px`;frame.contentWindow.comparison.redraw();
+    }
+    const scale=canvas.clientWidth/parseFloat(frame.style.width);
+    frame.style.height=`${Math.ceil(available/scale)}px`;frame.style.transform=`scale(${scale})`;
+    frame.style.left='0px';
   });
   fittedHeights=frames.map(frame=>frame.contentWindow.comparison.height()).join(',');
+}
+function updateFeeds() {
+  frames.forEach(frame=>{
+    const feed=frame.parentElement.previousElementSibling, list=feed.querySelector('ol');
+    const activity=frame.contentWindow.comparison.activity();
+    const signature=activity.map(item=>item.id).join(',');
+    if(list.dataset.signature===signature)return;
+    list.dataset.signature=signature;
+    const offset=feed.scrollTop, previousHeight=feed.scrollHeight;
+    const entries=activity.map(item=>{
+      const entry=document.createElement('li');entry.dataset.eventId=item.id;entry.dataset.time=item.time;
+      const code=document.createElement('strong');code.textContent=item.code;
+      const title=document.createElement('span');title.textContent=item.title;
+      const asset=document.createElement('span');asset.textContent=item.asset;
+      const detail=document.createElement('span');detail.textContent=item.detail || '';
+      const when=document.createElement('time');when.textContent=`${item.elapsed} · ${item.outcome}`;
+      entry.append(code,title,asset,detail,when);return entry;
+    });
+    list.replaceChildren(...entries);feed.querySelector('.feed-empty').hidden=activity.length>0;
+    feed.scrollTop=offset>0?offset+feed.scrollHeight-previousHeight:0;
+  });
 }
 function prepare() {
   cancelAnimationFrame(animation); generation++;
   document.getElementById('gang-profile').textContent=`${gangNames[gangId]}-style · One attacker`;
   const runs=frames.map((f,i)=>f.contentWindow.comparison.prepare(estate,i?'artex':'pre2023',mode,{gangId,infrastructureNumber}));
-  frames.forEach(f=>f.contentWindow.comparison.advance(0));fit();
+  frames.forEach(f=>f.contentWindow.comparison.advance(0));
+  document.querySelectorAll('.attack-feed ol').forEach(list=>{delete list.dataset.signature;list.replaceChildren();list.parentElement.scrollTop=0;});
+  updateFeeds();fit();
   return Math.max(...runs.map(r=>r.end));
 }
-function describe() {return `Seed ${estate.seed} · ${estate.assets.length} assets · Same estate · Shared modeled clock`;}
+function describe() {return `Seed ${estate.seed} · ${estate.assets.length} assets · Same estate · Shared clock`;}
 function runBoth() {
   const end=prepare(), token=generation, duration=Number(document.getElementById('duration').value)*1000;
-  frames.forEach(f=>f.contentWindow.comparison.advance(0,{start:true}));fit();
+  frames.forEach(f=>f.contentWindow.comparison.advance(0,{start:true}));updateFeeds();fit();
   const start=performance.now();status.textContent=describe();
   if(end===0){status.textContent=describe()+' · Both complete';return;}
   function tick(now) {
     if(token!==generation)return;
     const fraction=Math.min(1,(now-start)/duration);
     frames.forEach(f=>f.contentWindow.comparison.advance(end*fraction));
+    updateFeeds();
     if(frames.map(f=>f.contentWindow.comparison.height()).join(',')!==fittedHeights)fit();
     if(fraction<1)animation=requestAnimationFrame(tick);
     else status.textContent=describe()+' · Both complete';

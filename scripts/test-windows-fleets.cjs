@@ -71,10 +71,18 @@ delayed.actionOrder.push('donor');
 delayed.findings.push({id:'donor-access',assetId:'donor',kind:'anonymous_access',technique:'T1190',yieldsCapability:'app_exec'});
 delayed.relationships.push({id:'management-donor',sourceId:'management',targetId:'donor',protocol:'https',direction:'outbound',requiredSourceCapability:'app_exec'});
 delayed.credentials[1].sourceAssetId='donor';
-const discovered=e.simulateWireRun(delayed,'baseline','artex',{actionDurations:[1,2,3,4],attackerProfile:{maxConcurrentBranches:1}});
+const discovered=e.simulateWireRun(delayed,'baseline','artex',{actionDurations:[1,2,3,4]});
 const fleetAttempts=discovered.events.filter(event=>event.targetId==='fleet');
 assert.equal(fleetAttempts[0].outcome,'ineligible');
 assert(fleetAttempts.some(event=>event.outcome==='succeeded'),'Recovering a scoped credential unlocks the prior route');
+const donorAccess=discovered.events.find(event=>event.targetId==='donor'&&event.outcome==='succeeded');
+assert(fleetAttempts.find(event=>event.outcome==='succeeded').startSec>=donorAccess.timeSec,'Recovered credential cannot unlock access before acquisition');
+const duringProbe=structuredClone(delayed);
+duringProbe.assets.find(a=>a.id==='donor').layerIdx=1;
+const changing=e.simulateWireRun(duringProbe,'baseline','artex',{actionDurations:[1,2,20,4]});
+const recoveredAt=changing.events.find(event=>event.targetId==='donor'&&event.outcome==='succeeded').timeSec;
+for(const event of changing.events.filter(event=>event.targetId==='fleet'&&event.outcome==='succeeded'))
+  assert(event.startSec>=recoveredAt,'An in-flight failed probe cannot retroactively use a credential recovered after it started');
 
 const located=fixture({apiEntry:true});
 located.assets.push({id:'records',groupId:'records',label:'Records',layerIdx:3,interfaces:['https'],conditions:{}});

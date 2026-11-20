@@ -5,7 +5,8 @@ if (new URLSearchParams(location.search).has('embedded')) {
   style.textContent = `.comparison-embedded .brand-row,.comparison-embedded .mode-strip,
     .comparison-embedded .run-row,.comparison-embedded #catalog-example {display:none!important}
     .comparison-embedded .canvas-tools {justify-content:flex-end}
-    .comparison-embedded #viewport {min-height:0}
+    .comparison-embedded,.comparison-embedded body {overflow:hidden}
+    .comparison-embedded #viewport {min-height:0;margin:0}
     .comparison-embedded * {transition:none!important}`;
   document.head.append(style);
   window.comparison = {
@@ -27,6 +28,37 @@ if (new URLSearchParams(location.search).has('embedded')) {
       if (phaseIndex === phases.length) {finishRun(); this.done = true;}
     },
     height() {return Math.ceil(document.getElementById('viewport').getBoundingClientRect().bottom);},
+    redraw() {
+      resetGraph();
+      phases.slice(0,phaseIndex).forEach(phase=>renderPhase(phase));
+      showTime(modeledTime);
+    },
+    activity() {
+      if(!discoveryStarted)return [];
+      return run.events.map((event,index)=>({event,index})).filter(({event})=>
+        !event.policySkipped && event.timeSec<=modeledTime &&
+        (event.actionKind==='data_exfiltration' ||
+          event.outcome==='ineligible' && event.timeSec>event.startSec && (RunDiscovery.observed(event) || event.analysisKind==='route_review'&&event.sourceId) ||
+          RunDiscovery.observed(event) && (event.isProtectedRead || event.finding?.cveId || event.technique)))
+        .map(({event,index})=>({id:index,time:event.timeSec,elapsed:formatEstimate(event.timeSec),
+          code:event.isProtectedRead?'DATA FOUND':event.actionKind==='data_exfiltration'
+            ? event.outcome==='succeeded'?'DATA EXFILTRATED':event.outcome==='blocked'?'EXFILTRATION BLOCKED':'EXFILTRATION STOPPED'
+            :event.outcome==='ineligible'?event.analysisKind==='route_review'?'PATH REVIEW':'NO ACCESS'
+            :event.outcome==='suppressed'?'ATTEMPT STOPPED'
+            :event.finding?.cveId || event.technique,technique:event.technique,
+          title:event.isProtectedRead?`${event.finding?.cveId || event.technique || 'Authorized read'} · Sensitive records accessed${event.dataFound?` · ${event.dataFound.records} records`:''}`
+            :event.actionKind==='data_exfiltration'?`${event.finding.title}${event.technique?` · ${event.technique}`:''}`
+            :event.analysisKind==='route_review'?'Review of an outgoing route'
+            :event.outcome==='ineligible'?`${event.finding?.cveId || event.finding?.technique || 'Access check'} · ${event.finding?.title || 'Attempted access'}`
+            :event.finding?.title || 'Valid account access',
+          detail:event.actionKind==='data_exfiltration'?event.outcome==='succeeded'
+            ?`${event.dataTransfer.records} records · ${event.dataTransfer.bytes.toLocaleString()} bytes · ${event.dataTransfer.tool} → ${event.dataTransfer.destination}`:event.reason
+            :event.analysisKind==='route_review'?`Spent ${formatEstimate(event.timeSec-event.startSec)} reviewing a route; the known foothold lacks its required capability.`
+            :event.outcome==='ineligible'?`Spent ${formatEstimate(event.timeSec-event.startSec)} · ${event.reason}`
+            :event.outcome==='suppressed'?event.reason:'',
+          asset:estate.assets.find(a=>a.id===(event.analysisKind==='route_review'?event.sourceId:event.targetId))?.label || event.targetId,
+          outcome:event.outcome})).sort((a,b)=>b.time-a.time || b.id-a.id);
+    },
     state() {return {estate, events: run.events, time: modeledTime, done: this.done, lanes: run.lanes};}
   };
 }

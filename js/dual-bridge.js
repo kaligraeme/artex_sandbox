@@ -19,6 +19,7 @@ if (new URLSearchParams(location.search).has('embedded')) {
     },
     advance(time) {
       if (this.done) return;
+      if(time<=0&&phaseIndex===0){showTime(0);return;}
       while (phaseIndex < phases.length && phases[phaseIndex].time <= time) {
         renderPhase(phases[phaseIndex]); phaseIndex++;
       }

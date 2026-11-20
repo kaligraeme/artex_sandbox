@@ -49,7 +49,7 @@ async function main(){
             if(mode==='combined') {
               const deployed=await page.evaluate(()=>estate.defensePosture.decoys.length);
               assert(deployed>0,'Generated estate must deploy a canary');
-              assert.equal(await page.locator('.node.decoy .canary-marker').count(),deployed,'Canary deployment must be visible before Results');
+              assert.equal(await page.locator('.node.decoy:not([hidden]) .canary-marker').count(),0,'Unprobed internal decoys must not be disclosed at the start');
             }
             await page.click('#map-results-btn');
             const snapshot=await page.evaluate(()=>({run:JSON.stringify(run),style:runHud.className,expected:run.result.style,text:runHud.textContent,label:run.result.label}));
@@ -80,6 +80,70 @@ async function main(){
         console.log(`PASS browser ${viewport.width}x${viewport.height}, seed ${seed}: layout, 8 combinations, replay, details`);
       }
     }
+    for (const gang of ['lockbit','conti','blackcat','hive','revil']) {
+      const spawned = await page.evaluate(gang=>{
+        estate=generateEstate({seed:3,seedExercise:true});
+        const before=JSON.stringify(estate);
+        pre2023Group=gang;attackerChoice='pre2023';defense='baseline';referenceCase=null;
+        playRun();finishRun();
+        return {gang:run.attackerProfile.gangId,unchanged:JSON.stringify(estate)===before,
+          desktopVisible:!!document.getElementById('node-windows-desktop')&&!document.getElementById('node-windows-desktop').hidden,
+          workstation:estate.assets.some(a=>a.id==='windows-desktop'),
+          techniques:run.events.filter(e=>e.outcome==='succeeded').map(e=>e.technique)};
+      },gang);
+      assert.equal(spawned.gang,gang);assert(spawned.unchanged);assert(spawned.workstation);
+      assert(spawned.desktopVisible,'The workforce email surface is visible to both profiles even when they choose different methods');
+      if(['conti','revil','hive'].includes(gang))assert(spawned.techniques.includes('T1566.001'));
+    }
+    console.log('PASS browser: five spawned gangs use mapped policy on the same workforce estate');
+    const fleetImpact=await page.evaluate(()=>{
+      estate=generateEstate({seed:12,seedExercise:true});pre2023Group='lockbit';attackerChoice='pre2023';defense='baseline';
+      playRun();finishRun();
+      return {encrypted:run.summary.encryptedEndpointIds.length,persistent:run.summary.persistentEndpointIds.length,
+        text:runHud.textContent,states:[...document.querySelectorAll('.node-state')].map(n=>n.textContent),
+        fleets:estate.assets.filter(a=>a.endpointIds).length};
+    });
+    assert(fleetImpact.fleets>=2);assert(fleetImpact.encrypted>0);
+    assert(fleetImpact.text.includes(`${fleetImpact.encrypted} endpoints encrypted (modeled)`));
+    assert(fleetImpact.states.some(text=>text.includes('ENCRYPTED (MODELED)')));
+    console.log('PASS browser: fleet membership and scoped encryption appear in node states and final result');
+    const initialView=await page.evaluate(()=>{
+      estate=generateEstate({seed:3,seedExercise:true});pre2023Group='lockbit';attackerChoice='pre2023';defense='baseline';
+      playRun();cancelAnimationFrame(frame);
+      const future=discoveryPlan.assetIds.find(id=>!discoveryPlan.initialAssetIds.includes(id)&&discoveryPlan.assetTimes[id]>0);
+      return {estate:JSON.stringify(estate),run:JSON.stringify(run),total:estate.assets.length,
+        planned:discoveryPlan.assetIds.length,initial:discoveryPlan.initialAssetIds,
+        visible:[...currentNodes.values()].filter(n=>!n.el.hidden).map(n=>n.id),
+        edges:[...currentWires.values()].filter(w=>w.path.style.display!=='none').length,
+        future,label:currentNodes.get(future).label,time:discoveryPlan.assetTimes[future],
+        positions:Object.fromEntries([...currentNodes.values()].filter(n=>!n.el.hidden).map(n=>[n.id,[n.x,n.y]]))};
+    });
+    assert(initialView.planned<initialView.total,'Untouched infrastructure is excluded from the DOM plan');
+    assert.deepEqual(initialView.visible,initialView.initial);assert.equal(initialView.edges,0);
+    await page.click('#search-toggle');await page.fill('#asset-search',initialView.label);
+    assert.equal(await page.locator('.node.search-match').count(),0,'Search cannot reveal a future asset');
+    await page.press('#asset-search','Escape');
+    const growing=await page.evaluate(({time,future})=>{
+      while(phaseIndex<phases.length&&phases[phaseIndex].time<=time){renderPhase(phases[phaseIndex]);phaseIndex++;}
+      showTime(time);
+      return {visible:[...currentNodes.values()].filter(n=>!n.el.hidden).map(n=>n.id),
+        futureVisible:!currentNodes.get(future).el.hidden,
+        positions:Object.fromEntries([...currentNodes.values()].filter(n=>!n.el.hidden).map(n=>[n.id,[n.x,n.y]]))};
+    },initialView);
+    assert(growing.futureVisible);assert(growing.visible.length>initialView.visible.length);
+    for(const id of initialView.visible)assert.deepEqual(growing.positions[id],initialView.positions[id],'Existing nodes stay anchored');
+    await page.evaluate(()=>window.dispatchEvent(new Event('resize')));
+    assert.deepEqual(await page.evaluate(()=>[...currentNodes.values()].filter(n=>!n.el.hidden).map(n=>n.id)),growing.visible,'Resize preserves mid-probe discovery');
+    await page.click('#map-results-btn');
+    const completedView=await page.evaluate(()=>({estate:JSON.stringify(estate),run:JSON.stringify(run),
+      visible:[...currentNodes.values()].filter(n=>!n.el.hidden).map(n=>n.id),
+      expected:discoveryPlan.assetIds,edges:[...currentWires].filter(([,w])=>w.path.style.display!=='none').map(([id])=>id),
+      expectedEdges:discoveryPlan.relationshipIds}));
+    assert.deepEqual(completedView.visible,completedView.expected);assert.deepEqual(completedView.edges,completedView.expectedEdges);
+    assert.equal(completedView.estate,initialView.estate);assert.equal(completedView.run,initialView.run);
+    await page.click('#map-replay-btn');await page.evaluate(()=>cancelAnimationFrame(frame));
+    assert.deepEqual(await page.evaluate(()=>[...currentNodes.values()].filter(n=>!n.el.hidden).map(n=>n.id)),initialView.initial);
+    console.log('PASS browser: external-only start, no future search leaks, expanding anchored map, resize, results filtering, immutable model and replay reset');
     await page.evaluate(()=>{
       estate=generateEstate({preset:'demo',seed:404,seedExercise:false});
       estate.findings=[];estate.credentials=[];referenceCase=null;catalogLabel.hidden=true;playRun();finishRun();

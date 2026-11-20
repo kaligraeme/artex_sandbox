@@ -1,6 +1,7 @@
 const frames = [...document.querySelectorAll('iframe')];
 const status = document.getElementById('status');
 let estate, mode = 'baseline', animation, generation = 0;
+let fittedHeights = '';
 const ready = Promise.all(frames.map(frame => new Promise(resolve => {
   frame.addEventListener('load', async () => {await frame.contentDocument.fonts.ready; resolve();}, {once:true});
 })));
@@ -14,6 +15,7 @@ function fit() {
     stage.style.height=`${available}px`;frame.style.height=`${height}px`;frame.style.transform=`scale(${scale})`;
     frame.style.left=`${(stage.clientWidth-1440*scale)/2}px`;
   });
+  fittedHeights=frames.map(frame=>frame.contentWindow.comparison.height()).join(',');
 }
 function prepare() {
   cancelAnimationFrame(animation); generation++;
@@ -29,6 +31,7 @@ function runBoth() {
     if(token!==generation)return;
     const fraction=Math.min(1,(now-start)/duration);
     frames.forEach(f=>f.contentWindow.comparison.advance(end*fraction));
+    if(frames.map(f=>f.contentWindow.comparison.height()).join(',')!==fittedHeights)fit();
     if(fraction<1)animation=requestAnimationFrame(tick);
     else status.textContent=describe()+' · Both complete';
   }

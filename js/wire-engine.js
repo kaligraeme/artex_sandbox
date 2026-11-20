@@ -1,10 +1,10 @@
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory();
+    module.exports = factory(require('./gang-techniques.js'));
   } else {
-    root.WireEngine = factory();
+    root.WireEngine = factory(root.GangTechniques);
   }
-}(typeof self !== 'undefined' ? self : this, function () {
+}(typeof self !== 'undefined' ? self : this, function (gangCatalogue) {
   'use strict';
 
   const SCHEMA_VERSION = 3;
@@ -12,6 +12,62 @@
   const MAX_SUCCESS_PER_LAYER = 3;
   const WAF_PORTAL_COVERAGE = 0.66;
   const SOAR_DETECTION_RATE = 0.32;
+
+  if (!gangCatalogue?.gangs) throw new Error('Gang technique catalogue must load before WireEngine');
+
+  // Affiliate initial access is not described by ransomware-software entries alone.
+  // These are separately sourced supplements, never attributed to Threat Vision.
+  const GANG_SUPPLEMENTS = {
+    lockbit: { techniques: ['T1189','T1190','T1133','T1566','T1078','T1003','T1555.003','T1567.002'],
+      source: 'https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-165a' },
+    conti: { techniques: ['T1078','T1133','T1566.001','T1566.002','T1110','T1558.003'],
+      source: 'https://www.cisa.gov/news-events/cybersecurity-advisories/aa21-265a' },
+    blackcat: { techniques: ['T1078','T1133','T1190'],
+      analystMapped: ['T1078','T1133','T1190'],
+      source: 'https://www.microsoft.com/en-us/security/blog/2022/06/13/the-many-lives-of-blackcat-ransomware/' },
+    hive: { techniques: ['T1133','T1190','T1566.001','T1059','T1070','T1112','T1562','T1537','T1486','T1490','T1021.001'],
+      analystMapped: ['T1021.001'],
+      techniqueSources: { 'T1021.001': 'https://www.ic3.gov/CSA/2021/210825.pdf' },
+      source: 'https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-321a' },
+    revil: { techniques: [], source: null }
+  };
+  // Authored ordering among documented methods, not measured gang probabilities.
+  const GANG_ENTRY_ORDER = {
+    lockbit: ['T1133','T1190','T1566'], conti: ['T1566','T1133'],
+    blackcat: ['T1133','T1190'], hive: ['T1566','T1133','T1190'], revil: ['T1566','T1189']
+  };
+
+  function techniqueMatches(documented, actionTechnique) {
+    // A parent filter includes its children; a child never licenses its siblings.
+    return documented === actionTechnique || actionTechnique?.startsWith(`${documented}.`);
+  }
+
+  function gangTechniqueEvidence(gangId, technique) {
+    const profile = gangCatalogue.gangs[gangId];
+    if (!profile || !technique) return null;
+    const mapped = Object.keys(profile.techniques).find(id => techniqueMatches(id, technique));
+    if (mapped) return { basis: 'threat_vision_attack_mapping', technique: mapped,
+      evidence: profile.techniques[mapped].evidence, source: gangCatalogue.sources.threatVision };
+    const supplement = GANG_SUPPLEMENTS[gangId];
+    const documented = supplement.techniques.find(id => techniqueMatches(id, technique));
+    return documented ? { basis: 'affiliate_reporting', technique: documented,
+      analystMapped: supplement.analystMapped?.includes(documented) || false,
+      source: supplement.techniqueSources?.[documented] || supplement.source } : null;
+  }
+
+  function actionPolicy(action, sourceAsset, targetAsset, profile) {
+    if (action.finding?.requiresUserInteraction && profile?.allowsUserInteraction !== true) return null;
+    if (action.actionKind === 'encryption' && profile?.allowsRansomwareImpact !== true) return null;
+    if (action.actionKind === 'persistence' && profile?.allowsPersistence !== true) return null;
+    if (!profile?.gangId) return { basis: 'modeled_action' };
+    const evidence = gangTechniqueEvidence(profile.gangId, action.technique);
+    if (evidence) return evidence;
+    // Ordinary use of a scoped credential after a foothold is supporting access,
+    // not evidence of a gang-specific exploit or an initial-access capability.
+    if (sourceAsset && action.actionKind === 'valid_credential') return { basis: 'modeled_supporting_access' };
+    if (sourceAsset && targetAsset.isDecoy) return { basis: 'modeled_decoy_interaction' };
+    return null;
+  }
 
   const TRUST_ZONES = ['internet-dmz', 'identity-edge', 'internal-mesh', 'data-tier'];
 
@@ -581,6 +637,10 @@
     for (const a of estate.assets) {
       if (!a.id || assetIds.has(a.id)) errors.push(`Duplicate or missing asset id: ${a.id}`);
       assetIds.add(a.id);
+      if (a.endpointIds && (!Array.isArray(a.endpointIds) || !a.endpointIds.length ||
+          new Set(a.endpointIds).size !== a.endpointIds.length || a.endpointCount !== a.endpointIds.length)) {
+        errors.push(`Invalid fleet endpoint inventory on ${a.id}`);
+      }
       if (typeof a.layerIdx !== 'number' || a.layerIdx < 0 || a.layerIdx > 3) {
         errors.push(`Invalid layerIdx on asset ${a.id}`);
       }
@@ -702,6 +762,37 @@
 
     // 2. Check findings on targetAsset independently
     for (const f of targetFindings) {
+      if (f.kind === 'phishing_attachment') {
+        if (sourceAsset || !targetAsset.interfaces.includes('email') ||
+            f.requiresUserInteraction !== true || targetAsset.conditions?.userOpensAttachment !== true ||
+            targetAsset.conditions?.attachmentExecutionAllowed !== true ||
+            targetAsset.conditions?.mailFilterBlocksAttachment !== false) {
+          lastReason = 'Phishing requires delivered mail, a modeled user opening the attachment, and permitted execution.';
+          continue;
+        }
+        actions.push({ eligible: true, actionKind: f.kind, finding: f, technique: 'T1566.001',
+          requiredAccess: 'Delivered attachment + explicit user execution assumption', reachability,
+          grantedPermissions: targetAsset.localUserPermissions || [],
+          yieldsCapability: 'app_exec', credentialUsed: null, reason: f.description });
+        continue;
+      }
+      if (f.kind === 'remote_service') {
+        const protocol = relationship?.protocol || f.requiredInterface;
+        const credential = diagnoseCredentialForTarget(state, targetAsset, f.requiredPermission).credential;
+        if (!f.requiredPermission || !credential || !targetAsset.interfaces.includes(f.requiredInterface) ||
+            protocol !== f.requiredInterface || targetAsset.conditions?.remoteLoginEnabled !== true ||
+            targetAsset.conditions?.mfaEnforced !== false ||
+            (targetAsset.endpointIds && !targetAsset.endpointIds.some(id => credential.endpointScope?.includes(id)))) {
+          lastReason = 'Remote access requires its actual protocol, an authorized credential, enabled login and satisfied MFA.';
+          continue;
+        }
+        actions.push({ eligible: true, actionKind: f.kind, finding: f, technique: f.technique,
+          credentialUsed: credential, requiredAccess: `Scoped ${f.requiredPermission} credential`, reachability,
+          grantedPermissions: credential.permissions || [],
+          endpointScope: targetAsset.endpointIds?.filter(id => credential.endpointScope?.includes(id)) || [],
+          yieldsCapability: f.yieldsCapability, reason: f.description });
+        continue;
+      }
       if (f.kind === 'diagnostic_access') {
         const diagnosticLogin = diagnoseCredentialForTarget(state, targetAsset, 'read_diagnostics');
         if (!diagnosticLogin.usable) {
@@ -827,7 +918,7 @@
 
     // 3. Check if attacker holds a valid, non-revoked, in-scope credential
     const credCheck = diagnoseCredentialForTarget(state, targetAsset, targetAsset.layerIdx === 3 ? 'read' : 'authenticate');
-    if (credCheck.usable) {
+    if (credCheck.usable && targetAsset.accessModel !== 'windows_remote_service' && !targetFindings.some(f => f.kind === 'remote_service')) {
       const action = {
         eligible: true,
         actionKind: 'valid_credential',
@@ -874,6 +965,21 @@
    */
   function evaluateAction(state, sourceAsset, targetAsset, relationship, estate) {
     return evaluateDistinctActions(state, sourceAsset, targetAsset, relationship, estate, { firstOnly: true })[0];
+  }
+
+  function evaluatePostCompromiseAction(state, asset, finding) {
+    const reach = state.reachedAssets.get(asset.id);
+    const permission = finding.kind === 'encryption' ? 'write_local_files' : 'persist_user';
+    const enabled = finding.kind === 'encryption' ? asset.conditions?.localFilesWritable : asset.conditions?.startupChangesAllowed;
+    const endpointIds = (asset.endpointIds || [asset.id]).filter(id =>
+      reach?.endpointPermissions?.get(id)?.has(permission));
+    if (!reach?.capabilities.has('app_exec') || enabled !== true || !endpointIds.length) {
+      return { eligible: false, finding, reason: `Local ${finding.kind} requires established execution, ${permission} rights and the modeled endpoint configuration.` };
+    }
+    return { eligible: true, actionKind: finding.kind, finding, technique: finding.technique,
+      credentialUsed: null, yieldsCapability: finding.kind === 'encryption' ? 'encrypted_files' : 'persistence_installed',
+      affectedEndpointIds: endpointIds, requiredAccess: `Established execution + ${permission}`,
+      reachability: `Local action on already reached ${asset.label}`, reason: finding.description };
   }
 
   function diagnoseCredentialForTarget(state, targetAsset, permission = 'authenticate') {
@@ -939,6 +1045,10 @@
     }
     if (action.actionKind === 'diagnostic_access') {
       return { addressed: false, badge: 'SCOPED CREDENTIAL EXPOSED', reason: action.reason };
+    }
+    if (['phishing_attachment', 'remote_service', 'persistence', 'encryption'].includes(action.actionKind)) {
+      return { addressed: false, badge: action.technique,
+        reason: `${action.reason} HTTP virtual patching does not cover this Windows endpoint action.` };
     }
 
     if (mode === 'baseline' || mode === 'canaries') {
@@ -1088,6 +1198,10 @@
     const triggeredDecoys = new Set();
     const attackerProfile = timing?.attackerProfile || null;
 
+    const credentialSignature = target => [...state.acquiredCredentials.values()].filter(cred =>
+      cred.targetAssetIds?.length ? cred.targetAssetIds.includes(target.id) : cred.targetGroupIds?.includes(target.groupId))
+      .map(cred=>cred.id).sort().join(',');
+
     function scopeFor(source) {
       let entry = source.id;
       let parent = state.reachedAssets.get(entry)?.sourceId;
@@ -1153,10 +1267,11 @@
     let evaluatedTransitions = 0;
 
     function processTransition(sourceAsset, targetAsset, relationship) {
+      const localFinding = activeStep?.localFinding;
       const timeSec = activeStep?.timeSec ?? timing?.stageTimes?.[targetAsset.layerIdx];
       const startSec = activeStep?.startSec;
       const scope = timing ? (sourceAsset ? scopeFor(sourceAsset) : targetAsset.id) : null;
-      const transitionKey = `${sourceAsset ? sourceAsset.id : 'EXTERNAL'}->${targetAsset.id}:${relationship ? relationship.id : 'EXT'}`;
+      const transitionKey = localFinding ? `LOCAL:${localFinding.id}` : `${sourceAsset ? sourceAsset.id : 'EXTERNAL'}->${targetAsset.id}:${relationship ? relationship.id : 'EXT'}:${credentialSignature(targetAsset)}`;
       if (visitedTransitions.has(transitionKey)) return false;
       visitedTransitions.add(transitionKey);
 
@@ -1165,9 +1280,10 @@
           sourceId: sourceAsset ? sourceAsset.id : null,
           targetId: targetAsset.id,
           relationshipId: relationship ? relationship.id : null,
-          finding: null,
+          finding: localFinding || null,
+          ...(localFinding && {actionKind:localFinding.kind}),
           credentialUsed: null,
-          technique: null,
+          technique: localFinding?.technique || null,
           requiredAccess: null,
           reachability: `${sourceAsset ? sourceAsset.label : 'External'} -> ${targetAsset.label}`,
           grantedCapability: null,
@@ -1196,17 +1312,26 @@
       if (evaluatedTransitions >= explorationLimit) { truncated = true; return false; }
       evaluatedTransitions++;
       attemptedTransitions++;
-      const candidates = evaluateDistinctActions(state, sourceAsset, targetAsset, relationship, estate);
+      const feasible = localFinding ? [evaluatePostCompromiseAction(state, targetAsset, localFinding)]
+        : evaluateDistinctActions(state, sourceAsset, targetAsset, relationship, estate);
+      const candidates = feasible.filter(action => action.eligible && actionPolicy(action, sourceAsset, targetAsset, attackerProfile));
+      if (!candidates.length && feasible.some(action => action.eligible)) {
+        ineligibleTransitions++;
+        events.push({ sourceId: sourceAsset?.id || null, targetId: targetAsset.id,
+          relationshipId: relationship?.id || null, outcome: 'ineligible',
+          policySkipped: true, reason: `No applicable action in ${attackerProfile?.gangId || 'this attacker'}'s modeled repertoire; user-interaction prerequisites are enforced.` });
+        return false;
+      }
 
-      if (!candidates[0].eligible) {
+      if (!candidates.length) {
         ineligibleTransitions++;
         events.push({
           sourceId: sourceAsset ? sourceAsset.id : null,
           targetId: targetAsset.id,
           relationshipId: relationship ? relationship.id : null,
-          finding: candidates[0].finding || null,
+          finding: feasible[0].finding || null,
           outcome: 'ineligible',
-          reason: candidates[0].reason
+          reason: feasible[0].reason
         });
         return;
       }
@@ -1229,6 +1354,7 @@
 
       let gainedAccess = false;
       for (const action of distinctActions) {
+        const attackerEvidence = actionPolicy(action, sourceAsset, targetAsset, attackerProfile);
         const currentReach = state.reachedAssets.get(targetAsset.id);
         if (currentReach && currentReach.capabilities.has(action.yieldsCapability)) {
           continue;
@@ -1258,6 +1384,7 @@
             finding: action.finding,
             credentialUsed: action.credentialUsed,
             technique: action.technique,
+            attackerEvidence,
             requiredAccess: action.requiredAccess,
             reachability: action.reachability,
             grantedCapability: null,
@@ -1294,6 +1421,13 @@
             viaCredentialId: action.credentialUsed ? action.credentialUsed.id : null
           });
         }
+        const reached = state.reachedAssets.get(targetAsset.id);
+        if (!reached.endpointPermissions) reached.endpointPermissions = new Map();
+        const accessibleEndpoints = targetAsset.endpointIds ? action.endpointScope || [] : [targetAsset.id];
+        for (const id of accessibleEndpoints) {
+          if (!reached.endpointPermissions.has(id)) reached.endpointPermissions.set(id, new Set());
+          for (const permission of action.grantedPermissions || []) reached.endpointPermissions.get(id).add(permission);
+        }
 
         // Collect any synthetic credentials stored on targetAsset that are now accessible
         const newlyAcquired = [];
@@ -1301,7 +1435,8 @@
           if (cred.sourceAssetId !== targetAsset.id) continue;
           if (state.revokedCredentials.has(cred.id) || cred.revoked) continue;
           const capOk = !!cred.requiredSourceCapability && caps.has(cred.requiredSourceCapability);
-          if (capOk && !state.acquiredCredentials.has(cred.id)) {
+          const sourceEndpointOk = !cred.sourceEndpointIds || cred.sourceEndpointIds.some(id=>reached.endpointPermissions.has(id));
+          if (capOk && sourceEndpointOk && !state.acquiredCredentials.has(cred.id)) {
             state.acquiredCredentials.set(cred.id, cred);
             newlyAcquired.push(cred);
           }
@@ -1314,17 +1449,23 @@
           finding: action.finding,
           credentialUsed: action.credentialUsed,
           technique: action.technique,
+          attackerEvidence,
           requiredAccess: action.requiredAccess,
           reachability: action.reachability,
           grantedCapability: action.yieldsCapability,
           isProtectedRead: action.yieldsCapability === 'data_read' && targetAsset.layerIdx === 3 && !isCanary,
+          ...(localFinding && { actionKind: action.actionKind, affectedEndpointIds: action.affectedEndpointIds }),
           acquiredCredentials: newlyAcquired,
           ...(scope && { scope }),
           mitigation,
           outcome: isCanary && mode === 'canaries' ? 'alert_only' : 'succeeded',
           reason: mitigation.alertOnly ? mitigation.reason : action.reason
         });
-        recordTelemetry(sourceAsset, targetAsset, action, scope, timeSec, isCanary);
+        if (localFinding) {
+          if (timing?.respond && (!defensePosture?.telemetryLayers || defensePosture.telemetryLayers.includes(targetAsset.layerIdx))) {
+            signal(scope, targetAsset.id, 'endpoint', timeSec, true);
+          }
+        } else recordTelemetry(sourceAsset, targetAsset, action, scope, timeSec, isCanary);
       }
       return gainedAccess;
     }
@@ -1340,12 +1481,28 @@
       const enqueued = new Set(entryAssets.map(a => `EXTERNAL->${a.id}:EXT`));
       const workers = attackerProfile.maxConcurrentBranches;
       let clock = 0;
+      const priority = step => {
+        if (!attackerProfile.gangId) return 0;
+        if (step.localFinding) {
+          if (!evaluatePostCompromiseAction(state,step.targetAsset,step.localFinding).eligible) return 1000;
+          return step.localFinding.kind === 'persistence' ? 80 : 200;
+        }
+        const candidates = evaluateDistinctActions(state, step.sourceAsset, step.targetAsset, step.relationship, estate)
+          .filter(action => action.eligible && actionPolicy(action, step.sourceAsset, step.targetAsset, attackerProfile));
+        if (!candidates.length) return 1000;
+        const order = GANG_ENTRY_ORDER[attackerProfile.gangId];
+        return Math.min(...candidates.map(action => {
+          const rank = order.findIndex(id => techniqueMatches(id, action.technique));
+          return rank < 0 ? 100 : rank;
+        }));
+      };
       while (frontier.length || running.length) {
         if (evaluatedTransitions >= explorationLimit) { truncated = true; break; }
         while (frontier.length && running.length < workers) {
+          frontier.sort((a, b) => priority(a) - priority(b) || rankOf(a.targetAsset.id) - rankOf(b.targetAsset.id));
           const step = frontier.shift();
           const layer = step.targetAsset.layerIdx;
-          const duration = timing.actionDurations?.[layer] ?? Math.max(0, timing.stageTimes[layer] - (layer ? timing.stageTimes[layer - 1] : 0));
+          const duration = step.localFinding?.modeledDurationSec ?? timing.actionDurations?.[layer] ?? Math.max(0, timing.stageTimes[layer] - (layer ? timing.stageTimes[layer - 1] : 0));
           const startSec = Math.max(clock, step.readySec);
           const scope = step.sourceAsset ? scopeFor(step.sourceAsset) : step.targetAsset.id;
           if ((signals.get(scope) ?? Infinity) <= startSec) {
@@ -1368,40 +1525,51 @@
         const before = events.length;
         const ok = processTransition(activeStep.sourceAsset, activeStep.targetAsset, activeStep.relationship);
         for (let i = before; i < events.length; i++) Object.assign(events[i], {timeSec: clock, startSec: activeStep.startSec});
-        if (ok && activeStep.targetAsset.layerIdx < 3) {
+        if (ok && !activeStep.localFinding && state.reachedAssets.get(activeStep.targetAsset.id)?.capabilities.has('app_exec')) {
+          for (const finding of estate.findings.filter(f => f.assetId === activeStep.targetAsset.id && ['persistence','encryption'].includes(f.kind))) {
+            const probe = {actionKind: finding.kind, finding, technique: finding.technique};
+            if (!actionPolicy(probe, activeStep.targetAsset, activeStep.targetAsset, attackerProfile)) continue;
+            const key = `LOCAL:${finding.id}`;
+            if (enqueued.has(key)) continue;
+            enqueued.add(key);
+            frontier.push({sourceAsset:activeStep.targetAsset, targetAsset:activeStep.targetAsset,
+              relationship:null, localFinding:finding, readySec:clock});
+          }
+        }
+        if (ok && !activeStep.localFinding && activeStep.targetAsset.layerIdx < 3) {
           const out = estate.relationships.filter(r => r.sourceId === activeStep.targetAsset.id)
             .sort((a,b) => rankOf(a.targetId) - rankOf(b.targetId));
           for (const rel of out) {
             if (assetById.get(rel.targetId)?.isDecoy && !['canaries','soc-canary','combined'].includes(mode)) continue;
-            const key = `${rel.sourceId}->${rel.targetId}:${rel.id}`;
+            const key = `${rel.sourceId}->${rel.targetId}:${rel.id}:${credentialSignature(assetById.get(rel.targetId))}`;
             if (enqueued.has(key)) continue;
             enqueued.add(key);
             frontier.push({sourceAsset: activeStep.targetAsset, targetAsset: assetById.get(rel.targetId), relationship: rel, readySec: clock});
           }
         }
+        const recovered = events.slice(before).flatMap(event=>event.acquiredCredentials || []);
+        if (recovered.length) {
+          for (const rel of estate.relationships) {
+            if (!state.reachedAssets.has(rel.sourceId)) continue;
+            const target=assetById.get(rel.targetId);
+            if (!recovered.some(cred=>cred.targetAssetIds?.includes(target.id) || (!cred.targetAssetIds?.length && cred.targetGroupIds?.includes(target.groupId)))) continue;
+            const key=`${rel.sourceId}->${rel.targetId}:${rel.id}:${credentialSignature(target)}`;
+            if(enqueued.has(key))continue;
+            enqueued.add(key);
+            frontier.push({sourceAsset:assetById.get(rel.sourceId),targetAsset:target,relationship:rel,readySec:clock});
+          }
+        }
       }
       activeStep = null;
     } else {
-      // Layer 0 external entries
-      for (const entry of entryAssets) {
-        processTransition(null, entry, null);
-      }
-
-      // Layer 1..3 progression from reached assets
-      for (let layer = 0; layer < 3; layer++) {
-        const reachedInLayer = [...state.reachedAssets.entries()]
-          .filter(([, info]) => info.layerIdx === layer)
-          .map(([id]) => assetById.get(id))
-          .sort((a, b) => rankOf(a.id) - rankOf(b.id));
-
-        for (const src of reachedInLayer) {
-          const outRels = estate.relationships
-            .filter(r => r.sourceId === src.id)
-            .sort((a, b) => rankOf(a.targetId) - rankOf(b.targetId));
-          for (const rel of outRels) {
-            const tgt = assetById.get(rel.targetId);
-            if (tgt) processTransition(src, tgt, rel);
-          }
+      // Plain graph traversal also supports same-layer Windows/application flows.
+      const pending=entryAssets.map(target=>({source:null,target,rel:null}));
+      while(pending.length) {
+        const {source,target,rel}=pending.shift();
+        if(!processTransition(source,target,rel))continue;
+        for(const next of estate.relationships.filter(r=>r.sourceId===target.id)
+          .sort((a,b)=>rankOf(a.targetId)-rankOf(b.targetId))) {
+          pending.push({source:target,target:assetById.get(next.targetId),rel:next});
         }
       }
     }
@@ -1423,6 +1591,8 @@
       events,
       controls,
       summary: {
+        encryptedEndpointIds: [...new Set(events.filter(e => e.outcome === 'succeeded' && e.actionKind === 'encryption').flatMap(e => e.affectedEndpointIds))],
+        persistentEndpointIds: [...new Set(events.filter(e => e.outcome === 'succeeded' && e.actionKind === 'persistence').flatMap(e => e.affectedEndpointIds))],
         layerSuccessCounts: layerSuccessCount,
         eligibleTransitions,
         attemptedTransitions,
@@ -1595,6 +1765,166 @@
     }
 
     return route.map(stage => stage.asset.id);
+  }
+
+  // A seeded Windows estate branch shared by both attackers. These are deployment
+  // assumptions, not incident frequencies. No actor switch adds a vulnerability.
+  function addWindowsEstate(seed, assets, relationships, findings, credentials, actionOrder) {
+    const chance = (name, threshold) => hashNode(seed, `windows:${name}`, 0x73a916b) < threshold;
+    const addAsset = (id, label, layerIdx, interfaces, conditions, y) => {
+      const asset = { id, groupId: id, label, layerIdx, interfaces, conditions,
+        product: layerIdx === 0 ? 'Windows 11 Enterprise' : 'Windows Server 2022', assumedVersion: 'modeled',
+        trustZone: layerIdx === 0 ? 'user-endpoints' : TRUST_ZONES[layerIdx],
+        auth: 'domain-account', isExternalEntry: layerIdx === 0,
+        icon: layerIdx === 0 ? 'endpoint.png' : 'server-infrastructure.png',
+        clusterName: layerIdx === 0 ? 'Workforce & Remote Access' : 'Windows Enterprise',
+        variantIdx: 0, x: [0.18,0.4,0.64,0.87][layerIdx], y };
+      assets.push(asset); actionOrder.push(id); return asset;
+    };
+    const desktop = addAsset('windows-desktop', 'Windows Desktop · Email User', 0, ['email'], {
+      userOpensAttachment: chance('opens-attachment', .75),
+      attachmentExecutionAllowed: chance('attachment-execution', .8),
+      mailFilterBlocksAttachment: chance('mail-filter', .2)
+    }, .84);
+    const remote = addAsset('windows-rdp', 'Windows Remote Desktop · Internet Login', 0, ['rdp'], {
+      remoteLoginEnabled: chance('remote-login', .9), mfaEnforced: chance('remote-mfa', .4)
+    }, .94);
+    const admin = addAsset('windows-management', 'Windows Management Server', 1, ['smb','wmi','rdp'], {
+      remoteLoginEnabled: true, mfaEnforced: false
+    }, .79);
+    const fileServer = addAsset('windows-file-server', 'Windows File Server', 2, ['smb','wmi','rdp'], {
+      remoteLoginEnabled: true, mfaEnforced: false
+    }, .79);
+    const records = addAsset('windows-records', 'Confidential Department Share', 3, ['smb'], {}, .79);
+    desktop.localUserPermissions = ['write_local_files', ...(chance('desktop-startup-permission', .6) ? ['persist_user'] : [])];
+    desktop.conditions.localFilesWritable = true;
+    desktop.conditions.startupChangesAllowed = chance('desktop-startup-config', .7);
+    for (const host of [remote, admin, fileServer]) host.accessModel = 'windows_remote_service';
+    const reference = 'https://www.cisa.gov/news-events/cybersecurity-advisories/aa21-265a';
+    const base = { provenance: 'synthetic_deployment_assumption', inKev: false,
+      sourceUrl: reference, sourceReviewed: '2026-11-20' };
+    findings.push({ ...base, id: 'finding-windows-phishing', assetId: desktop.id,
+      kind: 'phishing_attachment', technique: 'T1566.001', requiresUserInteraction: true,
+      title: 'Phishing attachment · user execution required',
+      description: 'Synthetic employee opens a delivered malicious attachment and permits execution on their Windows desktop; no real email or payload is sent.',
+      yieldsCapability: 'app_exec' });
+    const remoteFinding = (asset, id, technique, requiredInterface, permission, capability) => {
+      findings.push({ ...base, id, assetId: asset.id, kind: 'remote_service', technique,
+        requiredInterface, requiredPermission: permission, yieldsCapability: capability,
+        title: `${technique} · ${requiredInterface.toUpperCase()} authorized access`,
+        description: `Modeled ${requiredInterface.toUpperCase()} access to ${asset.label} requires an acquired, unrevoked credential with ${permission} permission.` });
+    };
+    remoteFinding(remote, 'finding-windows-rdp', 'T1133', 'rdp', 'authenticate', 'account_session');
+    for (const host of [admin, fileServer]) {
+      remoteFinding(host, `finding-${host.id}-smb`, 'T1021.002', 'smb', 'execute', 'app_exec');
+      remoteFinding(host, `finding-${host.id}-wmi`, 'T1047', 'wmi', 'execute', 'app_exec');
+      remoteFinding(host, `finding-${host.id}-rdp`, 'T1021.001', 'rdp', 'execute', 'app_exec');
+    }
+    const credential = (source, target, capability, permissions, startingAccess = false) => {
+      credentials.push({ id: `cred-${source.id}-${target.id}`, kind: 'domain_account',
+        label: `Synthetic scoped Windows account for ${target.label}`,
+        scope: permissions[0], permissions, sourceAssetId: source.id,
+        requiredSourceCapability: capability, targetAssetIds: [target.id], targetGroupIds: [],
+        audience: target.id, revoked: false, expired: false,
+        mfaRequired: target.conditions.mfaEnforced === true, startingAccess });
+    };
+    // A broker-supplied credential exists only on seeds that explicitly model one.
+    if (chance('stolen-remote-account', .65)) credential(remote, remote, 'account_session', ['authenticate'], true);
+    if (chance('desktop-admin-credential', .7)) credential(desktop, admin, 'app_exec', ['authenticate','execute']);
+    if (chance('remote-admin-credential', .65)) credential(remote, admin, 'account_session', ['authenticate','execute']);
+    if (chance('admin-files-credential', .8)) credential(admin, fileServer, 'app_exec', ['authenticate','execute']);
+    if (chance('share-read-credential', .8)) credential(fileServer, records, 'app_exec', ['read']);
+    const connect = (source, target, protocol, capability) => relationships.push({
+      id: `rel-${source.id}-${target.id}-${protocol}`, sourceId: source.id, targetId: target.id,
+      protocol, direction: 'outbound', requiredSourceCapability: capability,
+      trustBoundary: inferTrustBoundary(source.layerIdx, target.layerIdx),
+      purpose: `Assumed permitted ${protocol.toUpperCase()} route; credentials and permissions checked separately` });
+    for (const [source, cap] of [[desktop,'app_exec'],[remote,'account_session']]) {
+      if (chance(`${source.id}-management-route`, .85)) {
+        connect(source, admin, 'smb', cap); connect(source, admin, 'wmi', cap);
+        connect(source, admin, 'rdp', cap);
+      }
+    }
+    if (chance('management-files-route', .85)) {
+      connect(admin, fileServer, 'smb', 'app_exec'); connect(admin, fileServer, 'wmi', 'app_exec');
+      connect(admin, fileServer, 'rdp', 'app_exec');
+    }
+    connect(fileServer, records, 'smb', 'app_exec');
+
+    const addLocalFindings = asset => {
+      findings.push({ ...base, id:`finding-${asset.id}-persistence`, assetId:asset.id,
+        kind:'persistence', technique:'T1547.001', title:'Registry startup persistence (modeled)',
+        modeledDurationSec:120, description:'Modeled startup entry established only on executed endpoints with explicit startup-write permission; no actual registry is changed.' });
+      findings.push({ ...base, id:`finding-${asset.id}-encryption`, assetId:asset.id,
+        kind:'encryption', technique:'T1486', title:'Endpoint file encryption (modeled)',
+        modeledDurationSec:300, description:'Modeled encryption affects only locally writable files on endpoints covered by the acquired execution credential; no real files are touched.' });
+    };
+    addLocalFindings(desktop);
+    const fleetRoles = ['Finance','Operations','Engineering'].slice(0, 2 + Number(chance('third-fleet', .5)));
+    const fleets = fleetRoles.map((department,index) => {
+      const id = `windows-fleet-${department.toLowerCase()}`;
+      const count = 12 + Math.floor(hashNode(seed, `${id}:size`, 0x98a31) * 69);
+      const fleet = addAsset(id, `${department} Desktop Fleet · ${count} endpoints`, 2, ['smb','wmi','rdp'], {
+        remoteLoginEnabled:chance(`${id}-login`, .9), mfaEnforced:chance(`${id}-mfa`, .25),
+        localFilesWritable:chance(`${id}-writable`, .85), startupChangesAllowed:chance(`${id}-startup`, .65)
+      }, .18 + index * .2);
+      fleet.product='Windows 11 Enterprise';fleet.icon='endpoint.png';fleet.accessModel='windows_remote_service';
+      fleet.endpointIds=Array.from({length:count},(_,i)=>`${id}-${String(i+1).padStart(3,'0')}`);
+      fleet.endpointCount=count;fleet.department=department;
+      for (const [protocol,technique] of [['smb','T1021.002'],['wmi','T1047'],['rdp','T1021.001']]) {
+        remoteFinding(fleet,`finding-${id}-${protocol}`,technique,protocol,'execute','app_exec');
+        connect(admin,fleet,protocol,'app_exec');
+      }
+      addLocalFindings(fleet);
+      return fleet;
+    });
+    const roles = {
+      department_user: ['authenticate','read'],
+      helpdesk: ['authenticate','execute'],
+      local_admin: ['authenticate','execute','write_local_files','persist_user'],
+      deployment_service: ['authenticate','execute','write_local_files'],
+      domain_admin: ['authenticate','execute','write_local_files','persist_user']
+    };
+    const variedCredential = (source,target,role,capability,salt) => {
+      const endpointScope = target.endpointIds?.filter(id => chance(`${salt}:${id}`, role === 'domain_admin' ? .9 : role === 'local_admin' ? .25 : .6));
+      const status = hashNode(seed, `${salt}:status`, 0x62cd1);
+      const sourceEndpointIds = source.endpointIds
+        ? [source.endpointIds[Math.floor(hashNode(seed,`${source.id}:${salt}:location`,0x62cd1)*source.endpointIds.length)]] : null;
+      credentials.push({ id:`cred-${source.id}-${target.id}-${salt}`, kind:role,
+        label:`Synthetic ${role.replaceAll('_',' ')} credential for ${target.label}`,
+        provenance:'synthetic_deployment_assumption', scope:role, permissions:[...roles[role]],
+        sourceAssetId:source.id, requiredSourceCapability:capability, targetAssetIds:[target.id],
+        targetGroupIds:[], audience:target.id, revoked:status < .1, expired:status >= .1 && status < .2,
+        mfaRequired:target.conditions.mfaEnforced === true, ...(endpointScope && {endpointScope}),
+        ...(sourceEndpointIds && {sourceEndpointIds}) });
+    };
+    const roleNames=Object.keys(roles);
+    for (const fleet of fleets) {
+      const role=roleNames[Math.floor(hashNode(seed,`${fleet.id}:role`,0x15a7)*roleNames.length)];
+      variedCredential(admin,fleet,role,'app_exec','fleet-management');
+      // Endpoint users can access their actual enterprise application, with a
+      // separately stored, scoped account. A fleet does not imply DB access.
+      const applications=assets.filter(a=>a.groupId==='app-engine'&&a.interfaces.includes('https'));
+      const application=applications[Math.floor(hashNode(seed,`${fleet.id}:app`,0x15a7)*applications.length)];
+      if(application) {
+        connect(fleet,application,'https','app_exec');
+        variedCredential(fleet,application,'department_user','app_exec','business-app');
+      }
+    }
+    // Bridge the Windows management plane to existing identity, application and
+    // secret-storage assets. Network permission and credential possession remain separate.
+    const bridges=assets.filter(a=>['ad-identity','exchange','vault-creds','app-engine','cust-api'].includes(a.groupId));
+    for(const source of bridges) {
+      if(!chance(`${source.id}:windows-bridge`,.35))continue;
+      for(const protocol of ['smb','wmi','rdp'])connect(source,admin,protocol,'app_exec');
+      const role=roleNames[Math.floor(hashNode(seed,`${source.id}:bridge-role`,0x15a7)*roleNames.length)];
+      variedCredential(source,admin,role,'app_exec','enterprise-bridge');
+    }
+    const identity=assets.find(a=>a.groupId==='ad-identity'&&a.interfaces.includes('ad-rpc'));
+    if(identity) {
+      connect(admin,identity,'ad-rpc','app_exec');
+      variedCredential(admin,identity,'helpdesk','app_exec','directory-account');
+    }
   }
 
   /**
@@ -2134,6 +2464,10 @@
     if (preset === 'mixed' && options.seedExercise) {
       const priority = seedVerifiedPath(keptAssets, keptRels, preferredIngress, rng, findings, credentials, addCveFindingForAsset, assignCredentialOnSource);
       actionOrder.splice(0, actionOrder.length, ...priority, ...actionOrder.filter(id => !priority.includes(id)));
+    }
+
+    if (preset === 'mixed') {
+      addWindowsEstate(seed, keptAssets, keptRels, findings, credentials, actionOrder);
     }
 
     // Estate-owned defensive visibility & decoy placement (invariant across attacker switches)
@@ -2885,18 +3219,24 @@
       id: 'pre2023',
       maxConcurrentBranches: 1,
       adaptiveWafEvasion: false,
+      allowsUserInteraction: true,
+      allowsPersistence: true,
+      allowsRansomwareImpact: true,
       detectionMultiplier: 1.0
     },
     artex: {
       id: 'artex',
       maxConcurrentBranches: 3,
       adaptiveWafEvasion: true,
+      allowsUserInteraction: false,
+      allowsPersistence: false,
+      allowsRansomwareImpact: false,
       detectionMultiplier: 0.72
     }
   };
 
-  // Names identify scenario examples. Pace selects the capability profile;
-  // boundary telemetry and decoy placement come from estate.defensePosture.
+  // Gang identity selects its documented repertoire at spawn. Defense deployment
+  // and topology still come exclusively from the shared estate.
   const WIRE_ATTACKERS = {
     lockbit: { pace: 'pre2023' },
     conti: { pace: 'pre2023' },
@@ -2922,7 +3262,9 @@
   }
 
   function classifyRun(result) {
-    const impact = result.summary.dataReached;
+    const encrypted = result.events.filter(e => e.outcome === 'succeeded' && e.actionKind === 'encryption');
+    const persisted = result.events.filter(e => e.outcome === 'succeeded' && e.actionKind === 'persistence');
+    const impact = result.summary.dataReached || encrypted.length > 0;
     const incomplete = result.summary.truncated;
     const enforcements = result.controls.filter(e => e.control === 'enforced');
     const reads = result.events.filter(e => e.outcome === 'succeeded' && e.isProtectedRead);
@@ -2931,7 +3273,10 @@
     const contained = new Set(effective.map(e => e.scope));
     const allContained = activeScopes.size > 0 && [...activeScopes].every(scope => contained.has(scope));
     const late = reads.some(read => effective.some(e => e.scope === read.scope && e.timeSec > read.timeSec));
-    const label = incomplete ? 'Exploration incomplete' : impact ? (late ? 'Record read before containment' : 'Protected record read')
+    const encryptionLate = encrypted.some(event=>effective.some(e=>e.scope===event.scope&&e.timeSec>event.timeSec));
+    const label = incomplete ? 'Exploration incomplete' : encrypted.length ? (encryptionLate ? 'Endpoint encryption before containment' : 'Endpoint encryption')
+      : impact ? (late ? 'Record read before containment' : 'Protected record read')
+      : persisted.length ? (allContained ? 'Session contained; persistence was established' : 'Persistence established; no encryption or protected read')
       : allContained ? 'Contained before protected read' : effective.length ? 'Partial session containment'
       : result.events.some(e => e.outcome === 'blocked') ? 'Virtual patch blocked attempts; no protected read'
       : result.controls.some(e => e.control === 'signal') ? 'Alerted; no confirmed containment'
@@ -2944,7 +3289,8 @@
     const attacker = WIRE_ATTACKERS[attackerId];
     if (!attacker) throw new Error(`Unknown Wire attacker: ${attackerId}`);
     if (!['baseline','patch','canaries','soc','soc-canary','combined'].includes(mode)) throw new Error(`Unknown Wire defense: ${mode}`);
-    const attackerProfile = {...ATTACKER_PROFILES[attacker.pace], ...options.attackerProfile};
+    const attackerProfile = {...ATTACKER_PROFILES[attacker.pace], ...options.attackerProfile,
+      gangId: attacker.pace === 'pre2023' ? attackerId : null};
     const timing = {...wireTiming(estate.seed, attacker.pace), respond: ['soc','soc-canary','combined'].includes(mode),
       collectionDelay: estate.defensePosture?.collectionDelaySec ?? 0,
       decisionDelay: estate.defensePosture?.decisionDelaySec ?? 15,
@@ -2961,6 +3307,10 @@
     result.controls.sort((a,b) => a.timeSec-b.timeSec);
     const run = {...result, lanes: attackerProfile.maxConcurrentBranches, attackerProfile,
       assumptions: {stageDurationsSec: timing.actionDurations, nominalPathDurationSec: timing.modeledPathDurationSec, responseDelaySec: timing.responseDelay,
+        postCompromiseTiming: 'Additional synthetic local-action durations from estate findings; not measured ransomware throughput',
+        techniquePolicy: attackerProfile.gangId ? { gangId: attackerId, sources: gangCatalogue.sources,
+          roots: gangCatalogue.gangs[attackerId].roots, affiliateSupplement: GANG_SUPPLEMENTS[attackerId],
+          interpretation: 'Documented technique filter plus ordinary scoped access after foothold; authored entry ordering. Historical-style operator on a modern estate.' } : null,
         collectionDelaySec: timing.collectionDelay, decisionDelaySec: timing.decisionDelay,
         telemetryLayers: estate.defensePosture?.telemetryLayers ?? null,
         responseAuthority: timing.responseAuthority, enforcementSucceeds: timing.enforcementSucceeds,
@@ -3421,6 +3771,7 @@
     EXTERNAL_ENTRY_GROUPS,
     DEFENSE_SCENARIOS,
     ATTACKER_PROFILES,
+    gangTechniqueEvidence,
     classifyRun,
     wireTiming,
     WIRE_ATTACKERS,

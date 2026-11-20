@@ -85,6 +85,7 @@ if (new URLSearchParams(location.search).get('capture') === 'path') {
     originalRender(event,time,animate);
     if(!CapturePlan.attempted(event))return;
     const node=currentNodes.get(event.targetId),wire=currentWires.get(event.relationshipId);
+    if(!node||node.el.hidden)return;
     if(event.outcome==='ineligible'){
       node.el.classList.add('attempt-failed');
       let note=node.el.querySelector('.attempt-note');
@@ -125,6 +126,7 @@ if (new URLSearchParams(location.search).get('capture') === 'path') {
     },
     advance(time){
       if(this.done)return;
+      if(time<=0&&phaseIndex===0){showTime(0);updateHeading();return;}
       while(phaseIndex<phases.length&&phases[phaseIndex].time<=time){renderPhase(phases[phaseIndex]);phaseIndex++;}
       showTime(Math.min(time,phases.at(-1)?.time||0));
       if(phaseIndex===phases.length){finishRun();this.done=true;}

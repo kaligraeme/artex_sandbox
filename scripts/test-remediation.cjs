@@ -152,7 +152,10 @@ assert(!run(untouched,'soc-canary').controls.some(c=>c.source==='canary'));
 const patchEstate=e.generateEstate({preset:'demo',seed:777});
 for(const mode of ['patch','combined']) assert(!e.simulateWireRun(patchEstate,mode,'lockbit').summary.dataReached);
 for(const options of [{actionDurations:[0,-1,2,3]},{attackerProfile:{maxConcurrentBranches:0}},{responseDelay:-1},{explorationLimit:0}]) assert.throws(()=>run(x,'baseline',options));
-assert(read(e.simulateWireRun(x,'soc','lockbit',{...opts,responseDelay:100})),'Conventional attack can beat late response');
+const conventionalTimingFixture = structuredClone(x);
+// Explicitly give the timing-only fixture a method in LockBit's repertoire.
+conventionalTimingFixture.findings.forEach(f => { f.technique = 'T1190'; });
+assert(read(e.simulateWireRun(conventionalTimingFixture,'soc','lockbit',{...opts,responseDelay:100})),'Conventional attack can beat late response');
 assert(!read(run(x,'soc',{responseDelay:0})),'Agentic attack can lose to early response');
 const lateDecoy=fixture({decoy:true});
 lateDecoy.defensePosture.telemetryLayers=[];

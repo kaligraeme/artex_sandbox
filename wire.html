@@ -71,7 +71,9 @@
   <aside id="asset-details" aria-label="Selected asset details" aria-live="polite" tabindex="0"></aside>
 </main>
 
+<script src="js/gang-techniques.js"></script>
 <script src="js/wire-engine.js"></script>
+<script src="js/run-discovery.js"></script>
 <script>
 const {
   cveTooltip,
@@ -92,6 +94,8 @@ const modeButtons = document.querySelectorAll('.mode-btn');
 const clock = document.getElementById('model-clock');
 let currentNodes = new Map();
 let currentWires = new Map();
+let discoveryPlan;
+let discoveryStarted = false;
 
 // Tickets are illustrative scenario events; severity is estimated, not a CVSS score.
 const socTickets = new Map();
@@ -146,6 +150,7 @@ function formatAssetTooltip(asset, findings, credentials) {
     `${asset.label} (${asset.trustZone})`,
     `Interfaces: ${asset.interfaces.join(', ')}`
   ];
+  if (asset.endpointCount) lines.push(`Fleet inventory: ${asset.endpointCount} endpoints; effects are limited by acquired endpoint scope.`);
   if (!findings.length) {
     lines.push('No finding modeled; security status is unknown.');
     if (asset.referenceCve) lines.push(`Product advisory reference: ${asset.referenceCve}`);
@@ -161,6 +166,8 @@ function formatAssetTooltip(asset, findings, credentials) {
       lines.push(c.startingAccess
         ? `Starting access: ${c.label} · ${c.scope}`
         : `Stored credential: ${c.label} (requires ${c.requiredSourceCapability})`);
+      if(c.endpointScope)lines.push(`Account endpoint scope: ${c.endpointScope.length} endpoints`);
+      if(c.sourceEndpointIds)lines.push(`Stored on endpoint: ${c.sourceEndpointIds.join(', ')}`);
     });
   }
   return lines.join('\n');
@@ -168,8 +175,6 @@ function formatAssetTooltip(asset, findings, credentials) {
 
 function layoutGraph(estate) {
   const w = Math.max(1440, document.documentElement.clientWidth - 36);
-  const h = new URLSearchParams(location.search).has('embedded') ? 0 : window.innerHeight;
-  const gitExample = estate.findings.find(finding => finding.illustration === 'git-to-idp');
   const graphTop = 80;
 
   currentWires.clear();
@@ -177,7 +182,9 @@ function layoutGraph(estate) {
   svg.innerHTML = '';
   document.getElementById('viewport').classList.remove('illustration-active');
 
-  const nodes = estate.assets.map(asset => {
+  const displayedIds = new Set(discoveryPlan?.assetIds || estate.assets.map(a=>a.id));
+  const displayedRelationships = new Set(discoveryPlan?.relationshipIds || estate.relationships.map(r=>r.id));
+  const nodes = estate.assets.filter(asset=>displayedIds.has(asset.id)).map(asset => {
     const displayLabel = asset.isDecoy ? `${asset.label} · Decoy` : asset.label;
     const findings = estate.findings.filter(f => f.assetId === asset.id);
     const creds = estate.credentials.filter(c => c.sourceAssetId === asset.id);
@@ -211,11 +218,11 @@ function layoutGraph(estate) {
     el.setAttribute('role', 'button');
     el.setAttribute('aria-label', node.label);
     if (node.referenceCve) el.dataset.appliance = node.groupId;
-    el.title = formatAssetTooltip(node, node.findings, node.creds);
+    el.title = `${node.label} (${node.trustZone})\nInterfaces: ${node.interfaces.join(', ')}\nFindings and stored credentials have not been observed.`;
     el.style.left = `${node.x}px`;
     el.style.top = `${node.y}px`;
 
-    const badge = getDefaultNodeBadge(node, node.findings);
+    const badge = {code:node.isExternalEntry?'EXTERNAL SURFACE':'DISCOVERED ASSET',title:'No access established'};
     el.innerHTML = `
       <div class="node-icon-wrapper">
         <div class="node-halo"></div>
@@ -245,38 +252,10 @@ function layoutGraph(estate) {
     node.el = el;
   });
 
-  // Stagger two lanes within each trust layer. Reserve the largest callout height up front,
-  // so animated badges never require repositioning the enterprise or moving active wires.
-  let bottom = graphTop;
-  const band = (w - 100) / 4;
-  for (let layer = 0; layer < 4; layer++) {
-    const lanes = [graphTop, graphTop + 72];
-    const ordered = nodes.filter(n => n.layerIdx === layer).sort((a,b) => a.y === b.y ? a.id.localeCompare(b.id) : a.y-b.y);
-    for (const [index, node] of ordered.entries()) {
-      const lane = index % 2;
-      node.x = 50 + layer * band + (lane ? 0.75 : 0.25) * band;
-      node.y = lanes[lane];
-      node.el.style.left = `${node.x}px`;
-      node.el.style.top = `${node.y}px`;
-      const badge = node.el.querySelector('.node-kev');
-      node.el.classList.add('hit');
-      node.el.querySelector('.node-state').textContent = 'PROTECTED READ';
-      badge.style.display = 'block';
-      badge.style.visibility = 'hidden';
-      const reserve = Math.max(180, node.el.getBoundingClientRect().height + 45);
-      badge.style.display = '';
-      badge.style.visibility = '';
-      node.el.classList.remove('hit');
-      node.el.querySelector('.node-state').textContent = '';
-      lanes[lane] += reserve;
-    }
-    bottom = Math.max(bottom, ...lanes);
-  }
-  document.getElementById('viewport').style.height = `${Math.max(h, bottom + 160)}px`;
   document.getElementById('asset-details').textContent = '';
-  estate.relationships.forEach(rel => createWire(currentNodes.get(rel.sourceId), currentNodes.get(rel.targetId), rel));
+  estate.relationships.filter(rel=>displayedRelationships.has(rel.id)).forEach(rel => createWire(currentNodes.get(rel.sourceId), currentNodes.get(rel.targetId), rel));
 
-  if (gitExample) drawGitIllustration(currentNodes.get(gitExample.assetId), w, bottom + 30);
+  updateDiscoveredMap(modeledTime || 0);
   if (referenceCase) markReferenceFlow(estate, referenceCase);
   applyAssetSearch();
   renderAttackers(modeledTime || 0);
@@ -290,6 +269,7 @@ function markReferenceFlow(estate, { context, example }) {
   const productToken = (example?.product || '').toLowerCase();
   flow.assets.forEach((id, index) => {
     const node = currentNodes.get(id);
+    if (!node) return;
     const el = node.el;
     el.title += `\nReference KEV Context · ${context.roles[index]}`;
     const labelLower = node.label.toLowerCase();
@@ -299,6 +279,44 @@ function markReferenceFlow(estate, { context, example }) {
       el.title += `\n${context.defensiveFocus}`;
     }
   });
+}
+
+function updateDiscoveredMap(time) {
+  if (!discoveryPlan) return;
+  const view = RunDiscovery.at(discoveryPlan,time,discoveryStarted);
+  const initial = new Set(discoveryPlan.initialAssetIds);
+  let changed = false;
+  for (const node of currentNodes.values()) {
+    const visible = view.known.has(node.id);
+    if (node.el.hidden === visible) changed = true;
+    node.el.hidden = !visible;
+    node.el.tabIndex = visible ? 0 : -1;
+  }
+  const w = Math.max(1440,document.documentElement.clientWidth-36);
+  const band = (w-100)/4;
+  let bottom=80;
+  if (new URLSearchParams(location.search).get('capture') !== 'path') {
+    for(let layer=0;layer<4;layer++) {
+      const lanes=[80,152];
+      const known=[...currentNodes.values()].filter(n=>n.layerIdx===layer&&!n.el.hidden)
+        .sort((a,b)=>Number(!initial.has(a.id))-Number(!initial.has(b.id)) || discoveryPlan.assetTimes[a.id]-discoveryPlan.assetTimes[b.id] || a.id.localeCompare(b.id));
+      known.forEach((node,index)=>{
+        const lane=index%2;
+        node.x=50+layer*band+(lane ? .75 : .25)*band;node.y=lanes[lane];
+        node.el.style.left=`${node.x}px`;node.el.style.top=`${node.y}px`;
+        lanes[lane]+=200;
+      });
+      bottom=Math.max(bottom,...lanes);
+    }
+    const minimum=new URLSearchParams(location.search).has('embedded')?0:window.innerHeight;
+    document.getElementById('viewport').style.height=`${Math.max(minimum,bottom+160)}px`;
+  }
+  const edges=new Set(view.relationshipIds);
+  for(const [id,wire] of currentWires) {
+    wire.path.style.display=edges.has(id)&&!wire.source.el.hidden&&!wire.target.el.hidden?'':'none';
+    wire.path.setAttribute('d',`M ${wire.source.x} ${wire.source.y} L ${wire.target.x} ${wire.target.y}`);
+  }
+  if(changed)applyAssetSearch();
 }
 
 function drawGitIllustration(proxy, width, y) {
@@ -323,6 +341,7 @@ function drawGitIllustration(proxy, width, y) {
 }
 
 function createWire(source, target, relationship) {
+  if (!source || !target) return;
   const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
   path.setAttribute('class', 'wire');
   svg.appendChild(path);
@@ -389,7 +408,7 @@ function animatePulse(wire) {
 
 function showProbes(events, laneCount) {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return 0;
-  const candidates = new Map(events.filter(event => !event.control && !['suppressed', 'ineligible', 'revisit', 'truncated'].includes(event.outcome))
+  const candidates = new Map(events.filter(event => !event.control && RunDiscovery.observed(event) && currentNodes.get(event.targetId)?.el.hidden === false)
     .map(event => [event.relationshipId ?? event.targetId, event]));
   let index = 0;
   for (const event of candidates.values()) {
@@ -412,12 +431,15 @@ function showProbes(events, laneCount) {
 
 function renderEvent(event, time, animate) {
   const node = currentNodes.get(event.targetId);
+  if (!node || node.el.hidden || event.policySkipped) return;
   const wire = currentWires.get(event.relationshipId);
   const success = event.outcome === 'succeeded';
   const blocked = event.outcome === 'blocked';
   const contained = event.outcome === 'suppressed';
   const alertOnly = event.outcome === 'alert_only' || event.grantedCapability === 'decoy_alert';
   const read = event.grantedCapability === 'data_read' && node.layerIdx === 3 && !node.isDecoy;
+  const encrypted = success && event.actionKind === 'encryption';
+  const persistent = success && event.actionKind === 'persistence';
   const staging = node.groupId === 'staging-status';
   const finding = event.finding;
   const diagnostic = finding?.kind === 'diagnostic_access';
@@ -425,6 +447,12 @@ function renderEvent(event, time, animate) {
   const action = finding?.title || (event.credentialUsed ? 'Valid Accounts' : 'Access check');
   const summary = reference ? `${action} · ${reference}` : action;
   node.el.title += `\n${formatEstimate(time)} · ${summary} · ${event.reason}`;
+  if(event.finding?.sourceUrl)node.el.title+=`\nSource: ${event.finding.sourceUrl}; deployment and outcome are synthetic.`;
+  for(const credential of event.acquiredCredentials || [])node.el.title+=`\nAcquired credential: ${credential.label} · permissions: ${(credential.permissions || []).join(', ')}`;
+  if(event.outcome==='ineligible' && RunDiscovery.observed(event)) {
+    node.el.classList.add('probed');
+    node.el.querySelector('.node-state').textContent='PROBED · NO ACCESS';
+  }
   if (!success && !blocked && !contained && !alertOnly) return;
 
   let result = 'ACCESS ESTABLISHED';
@@ -432,6 +460,8 @@ function renderEvent(event, time, animate) {
   else if (contained) result = 'ACTION EFFECT SUPPRESSED BY CONTAINMENT';
   else if (alertOnly) result = 'CANARY ALERT';
   else if (read) result = 'PROTECTED RECORD READ';
+  else if (encrypted) result = `MODELED ENCRYPTION · ${event.affectedEndpointIds.length} endpoints`;
+  else if (persistent) result = `PERSISTENCE ESTABLISHED · ${event.affectedEndpointIds.length} endpoints`;
   else if (diagnostic) result = 'STAGING CREDENTIAL EXPOSED';
   else if (finding?.illustration === 'git-to-idp') {
     result = 'GIT TOKEN IN EXPOSED LOGS';
@@ -447,10 +477,10 @@ function renderEvent(event, time, animate) {
     node.el.classList.toggle('defended', blocked);
     node.el.classList.toggle('contained', contained);
     node.el.classList.toggle('alerted', alertOnly);
-    if (read) node.el.classList.add('breach-target');
+    if (read || encrypted) node.el.classList.add('breach-target');
     node.el.querySelector('.cve').textContent = finding?.cveId || event.technique || result;
     node.el.querySelector('.vuln-title').textContent = finding?.title || result;
-    node.el.querySelector('.node-state').textContent = read ? 'PROTECTED READ' : blocked ? 'PREVENTED' : contained ? 'CONTAINED' : alertOnly ? 'CANARY ALERT' : '';
+    node.el.querySelector('.node-state').textContent = encrypted ? `${event.affectedEndpointIds.length}/${node.endpointCount || 1} ENCRYPTED (MODELED)` : persistent ? `${event.affectedEndpointIds.length}/${node.endpointCount || 1} PERSISTENT` : read ? 'PROTECTED READ' : blocked ? 'PREVENTED' : contained ? 'CONTAINED' : alertOnly ? 'CANARY ALERT' : '';
   }
   if (wire) {
     if (blocked) wire.path.classList.add('defended-wire');
@@ -459,20 +489,21 @@ function renderEvent(event, time, animate) {
     else wire.path.classList.add('hit-wire');
     if (animate && success) animatePulse(wire);
   }
-  socTickets.set(`${node.id}-${event.outcome}`, {
+  socTickets.set(`${node.id}-${event.outcome}-${event.actionKind || 'access'}`, {
     title: summary,
-    severity: read ? 'CRITICAL' : (blocked || contained || alertOnly) ? 'HIGH' : 'INFO',
+    severity: read || encrypted ? 'CRITICAL' : (persistent || blocked || contained || alertOnly) ? 'HIGH' : 'INFO',
     detail: `${formatEstimate(time)} · ${result}`
   });
 }
 
 function renderControl(event) {
   const node = currentNodes.get(event.targetId);
+  if (!node || node.el.hidden) return;
   const title = event.control === 'denied' ? 'SOAR lacks response authority'
     : event.control === 'failed' ? 'SOAR enforcement failed'
     : event.control === 'enforced' ? 'SOAR containment effective'
     : event.control === 'decision' ? 'SOAR containment approved'
-    : event.source === 'canary' ? 'Canary alerted' : 'Boundary telemetry';
+    : event.source === 'canary' ? 'Canary alerted' : event.source === 'endpoint' ? 'Endpoint behavior telemetry' : 'Boundary telemetry';
   if (event.control === 'signal' && event.source === 'canary') {
     const marker = node.el.querySelector('.canary-marker') || document.createElement('span');
     marker.className = 'canary-marker';
@@ -480,7 +511,7 @@ function renderControl(event) {
     node.el.append(marker);
   }
   const entry = currentNodes.get(event.scope);
-  const detail = `${formatEstimate(event.timeSec)} · Session via ${entry.label}`;
+  const detail = `${formatEstimate(event.timeSec)} · Session via ${entry?.label || event.scope}`;
   node.el.title += `\n${title} · ${detail}`;
   socTickets.set(`${event.scope}-${event.control}-${event.source}`, { title, severity: 'HIGH', detail });
 }
@@ -488,7 +519,7 @@ function renderControl(event) {
 function buildAttackerTracks(result) {
   const tracks = Array.from({length: result.lanes}, () => []);
   const available = tracks.map(() => 0);
-  const jobs = [...new Map(result.events.filter(e => Number.isFinite(e.startSec) && Number.isFinite(e.timeSec))
+  const jobs = [...new Map(result.events.filter(e => RunDiscovery.observed(e) && Number.isFinite(e.startSec) && Number.isFinite(e.timeSec))
     .map(e => [`${e.sourceId}:${e.targetId}:${e.startSec}:${e.timeSec}`, e])).values()]
     .sort((a,b) => a.startSec-b.startSec || a.timeSec-b.timeSec);
   for (const job of jobs) {
@@ -522,7 +553,7 @@ function renderAttackers(time) {
     const next = track.find(e => e.startSec >= time);
     const step = job || last || next;
     const target = step && currentNodes.get(step.targetId);
-    if (!target) { marker.hidden = true; continue; }
+    if (!target || target.el.hidden) { marker.hidden = true; continue; }
     marker.hidden = false;
     const source = currentNodes.get(step.sourceId);
     const fraction = job ? (time-job.startSec)/Math.max(1,job.timeSec-job.startSec) : 1;
@@ -536,12 +567,16 @@ function renderAttackers(time) {
 
 function showTime(time) {
   modeledTime = time;
+  if(time>0)discoveryStarted=true;
+  updateDiscoveredMap(time);
   renderAttackers(time);
   const elapsed = time === 0 ? '0 min' : formatEstimate(time);
   if (clock.textContent !== elapsed) clock.textContent = elapsed;
 }
 
 function renderPhase(phase, animate = false) {
+  discoveryStarted=true;
+  updateDiscoveredMap(phase.time);
   for (const event of [...phase.events].sort((a,b) => Number(!a.control)-Number(!b.control))) {
     if (event.control) renderControl(event);
     else renderEvent(event, phase.time, animate);
@@ -594,6 +629,8 @@ function finishRun() {
     ? 'Illustrative branch ends at IdP admin' : '';
   const group = run.lanes === 1 ? pre2023Groups[pre2023Group] : '';
   runHud.textContent = [group, run.result.label, result, evidence, limit, sampleLogs?.finding.title, `${count} external ${count === 1 ? 'entry' : 'entries'} reached`,
+    run.summary.encryptedEndpointIds?.length ? `${run.summary.encryptedEndpointIds.length} endpoints encrypted (modeled)` : '',
+    run.summary.persistentEndpointIds?.length ? `Persistence established on ${run.summary.persistentEndpointIds.length} endpoints` : '',
     blockedTransitions ? `${blockedTransitions} blocked` : '', run.summary.suppressedTransitions ? `${run.summary.suppressedTransitions} effects suppressed` : '', response, illustration].filter(Boolean).join(' · ');
 }
 
@@ -601,6 +638,8 @@ function playRun() {
   cancelAnimationFrame(frame);
   const attackerId = attackerChoice === 'pre2023' ? (pre2023Group ??= drawPre2023Group()) : 'artex';
   run = simulateWireRun(estate, defense, attackerId);
+  discoveryPlan = RunDiscovery.create(estate,run);
+  discoveryStarted = false;
   attackerTracks = buildAttackerTracks(run);
   runNumber++;
   const status = document.getElementById('run-status');
@@ -615,6 +654,7 @@ function playRun() {
   phases = [...grouped].sort(([a], [b]) => a - b)
     .map(([time, events]) => ({ time, events }));
   phaseIndex = 0;
+  modeledTime = 0;
   socLooping = false;
   resetGraph();
   runHud.className = '';
@@ -671,7 +711,7 @@ function applyAssetSearch() {
   const query = document.getElementById('asset-search').value.trim().toLowerCase();
   const matches = new Set();
   for (const node of currentNodes.values()) {
-    const match = !!query && `${node.label} ${node.product} ${node.findings.map(f => f.cveId || '').join(' ')}`.toLowerCase().includes(query);
+    const match = !node.el.hidden && !!query && `${node.label} ${node.product} ${node.el.title}`.toLowerCase().includes(query);
     node.el.classList.toggle('search-match', match);
     node.el.classList.toggle('search-dim', !!query && !match);
     if (match) matches.add(node.id);
@@ -733,6 +773,7 @@ document.getElementById('map-results-btn').addEventListener('click', finishRun);
 window.addEventListener('resize', () => {
   resetGraph();
   phases.slice(0, phaseIndex).forEach(phase => renderPhase(phase));
+  showTime(modeledTime);
 });
 async function startWire() {
   try {

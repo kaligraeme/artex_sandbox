@@ -9,6 +9,6 @@ assert(attempted(failure));assert(!attempted(check));assert(!attempted({...failu
 const estate={assets,relationships};const runs=[{events:[success,check],controls:[]},{events:[failure],controls:[]}];
 runs[0].events.push({sourceId:null,targetId:'unused',outcome:'succeeded',startSec:0,timeSec:0});
 const snapshot=JSON.stringify({estate,runs});const plan=create(estate,runs);
-assert.deepEqual(plan.assetIds,['entry','dead-end','data']);assert.deepEqual(plan.relationshipIds,['failed','success']);assert(plan.entryIds.every(id=>id!=='unused'));assert.deepEqual([...plan.chainIds].sort(),['data','entry']);assert.equal(JSON.stringify({estate,runs}),snapshot);
+assert.deepEqual(plan.assetIds,['entry','dead-end','data','unused']);assert.deepEqual(plan.relationshipIds,['failed','success']);assert(plan.entryIds.includes('unused'),'Successful starting access is used even at time zero');assert.deepEqual([...plan.chainIds].sort(),['data','entry']);assert.equal(JSON.stringify({estate,runs}),snapshot);
 for(const [seconds,text] of [[0,'0h:00m'],[59,'0h:00m'],[60,'0h:01m'],[5580,'1h:33m'],[36000,'10h:00m']])assert.equal(clock(seconds),text);
-console.log('PASS: attempted failures survive success-path pruning, panel union, unused findings and isolated entry successes excluded, inputs unchanged, elapsed clock format');
+console.log('PASS: failed probes and actual starting access retained, unused relationships excluded, panel union, inputs unchanged, elapsed clock format');

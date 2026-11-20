@@ -463,7 +463,7 @@ function renderEvent(event, time, animate) {
   else if (alertOnly) result = 'CANARY ALERT';
   else if (read) result = 'PROTECTED RECORD READ';
   else if (encrypted) result = `ENCRYPTION · ${event.affectedEndpointIds.length} endpoints`;
-  else if (exported) result = `DATA EXFILTRATED · ${event.dataTransfer.records} records · ${event.dataTransfer.destination}`;
+  else if (exported) result = `DATA EXFILTRATED · ${event.dataTransfer.records==null?'Record count unknown':`${event.dataTransfer.records} records`} · ${event.dataTransfer.destination}`;
   else if (persistent) result = `PERSISTENCE ESTABLISHED · ${event.affectedEndpointIds.length} endpoints`;
   else if (diagnostic) result = 'STAGING CREDENTIAL EXPOSED';
   else if (finding?.illustration === 'git-to-idp') {
@@ -636,7 +636,9 @@ function finishRun() {
   runHud.textContent = [group, run.result.label, result, evidence, limit, sampleLogs?.finding.title, `${count} external ${count === 1 ? 'entry' : 'entries'} reached`,
     entryFailure?.reason,
     run.summary.encryptedEndpointIds?.length ? `${run.summary.encryptedEndpointIds.length} endpoints encrypted` : '',
-    run.summary.exfiltratedDatasets?.length ? `${run.summary.exfiltratedDatasets.reduce((n,d)=>n+d.records,0)} records exfiltrated` : '',
+    run.summary.exfiltratedDatasets?.length ? (run.summary.exfiltratedDatasets.some(d=>d.records==null)
+      ? 'Data exfiltrated · total record count unknown'
+      : `${run.summary.exfiltratedDatasets.reduce((n,d)=>n+d.records,0)} records exfiltrated`) : '',
     run.summary.persistentEndpointIds?.length ? `Persistence established on ${run.summary.persistentEndpointIds.length} endpoints` : '',
     blockedTransitions ? `${blockedTransitions} blocked` : '', run.summary.suppressedTransitions ? `${run.summary.suppressedTransitions} effects suppressed` : '', response, illustration].filter(Boolean).join(' · ');
 }

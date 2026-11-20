@@ -988,16 +988,19 @@
     if(finding.kind==='data_exfiltration') {
       const collector=estate.assets.find(a=>a.id===finding.collectorId);
       const controlled=state.reachedAssets.get(finding.collectorId);
-      if(!reach?.capabilities.has('data_read') || !asset.dataHandling || !collector ||
+      if(!reach?.capabilities.has('data_read') || !collector ||
           !controlled || (!finding.responseExport && !controlled.capabilities.has('app_exec'))) {
         return {eligible:false,finding,reason:'Data transfer requires readable data and a controlled collection host.'};
       }
+      const egressAllowed=collector.egress?.[finding.responseExport?'responseExportAllowed':'cloudUploadAllowed'];
+      if(typeof egressAllowed!=='boolean')return {eligible:false,finding,
+        reason:'Export could not be evaluated: the collection host outbound policy is unspecified. Data access is confirmed; export permission is unknown.'};
       return {eligible:true,actionKind:finding.kind,finding,technique:finding.technique,
         yieldsCapability:'data_exfiltrated',credentialUsed:null,dataTransfer:finding.dataTransfer,
-        egressAllowed:collector.egress?.[finding.responseExport?'responseExportAllowed':'cloudUploadAllowed']===true,
+        egressAllowed,
         requiredAccess:'Previously read data + collection host + permitted outbound channel',
         reachability:`${asset.label} via ${collector.label} -> ${finding.dataTransfer.destination}`,
-        reason:`${finding.dataTransfer.records} records transferred using ${finding.dataTransfer.tool} to ${finding.dataTransfer.destination}.`};
+        reason:`${finding.dataTransfer.records==null?'Data (record count unknown)':`${finding.dataTransfer.records} records`} transferred using ${finding.dataTransfer.tool} to ${finding.dataTransfer.destination}.`};
     }
     const permission = finding.kind === 'encryption' ? 'write_local_files' : 'persist_user';
     const enabled = finding.kind === 'encryption' ? asset.conditions?.localFilesWritable : asset.conditions?.startupChangesAllowed;
@@ -1633,25 +1636,26 @@
         for (let i = before; i < events.length; i++) Object.assign(events[i], {timeSec: clock, startSec: activeStep.startSec});
         const newAccess=events.slice(before).find(event=>event.outcome==='succeeded'&&!event.sourceId);
         if(newAccess && !preferredScope)preferredScope=newAccess.scope;
-        for(const read of events.slice(before).filter(event=>event.outcome==='succeeded'&&event.isProtectedRead&&
-          Number.isSafeInteger(event.dataFound?.records)&&event.dataFound.records>0&&
-          Number.isSafeInteger(event.dataFound?.bytes)&&event.dataFound.bytes>0)) {
+        for(const read of events.slice(before).filter(event=>event.outcome==='succeeded'&&event.isProtectedRead)) {
           const target=assetById.get(read.targetId), responseExport=!attackerProfile.gangId;
           const method=DATA_EXPORT_METHODS[attackerProfile.gangId];
           if(!responseExport&&!method)continue;
+          const key=`EXFIL:${target.id}`;
+          if(enqueued.has(key))continue;
+          enqueued.add(key);
           // Follow the established read path to a host the session controls.
           let collectorId=read.sourceId || read.targetId;
           if(!responseExport)while(collectorId&&!state.reachedAssets.get(collectorId)?.capabilities.has('app_exec'))
             collectorId=state.reachedAssets.get(collectorId)?.sourceId;
-          const key=`EXFIL:${target.id}`;
-          if(enqueued.has(key))continue;
-          enqueued.add(key);
-          const {records,bytes}=target.dataHandling;
+          const records=Number.isSafeInteger(target.dataHandling?.records)&&target.dataHandling.records>0?target.dataHandling.records:null;
+          const bytes=Number.isSafeInteger(target.dataHandling?.bytes)&&target.dataHandling.bytes>0?target.dataHandling.bytes:null;
           const finding={id:key,kind:'data_exfiltration',assetId:target.id,collectorId,responseExport,transferScope:read.scope,
             technique:method?.technique || null,title:responseExport?'HTTP/API bulk data export':'Data exfiltration',
             sourceUrl:responseExport?ARTEX_EVIDENCE_SOURCE:gangTechniqueEvidence(attackerProfile.gangId,method.technique)?.source,
-            modeledDurationSec:120+Math.ceil(bytes/(512*1024)),
-            dataTransfer:{datasetId:target.id,dataset:target.dataHandling.label,records,bytes,
+            // Unknown size uses the synthetic setup duration, without inventing throughput or volume.
+            modeledDurationSec:120+(bytes==null?0:Math.ceil(bytes/(512*1024))),
+            timingBasis:bytes==null?'Synthetic 120-second export duration; data size unknown':'Synthetic setup plus size-based transfer duration',
+            dataTransfer:{datasetId:target.id,dataset:target.dataHandling?.label || `Sensitive records · ${target.label}`,records,bytes,
               tool:responseExport?'HTTP/API bulk extraction':method.tool,
               destination:responseExport?'Attacker-controlled workspace':method.destination}};
           frontier.push({sourceAsset:target,targetAsset:target,relationship:null,localFinding:finding,readySec:clock});

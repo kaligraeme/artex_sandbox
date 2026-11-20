@@ -41,9 +41,9 @@ async function main(){
       const listed=await page.locator('.attack-feed').nth(i).locator('li').evaluateAll(items=>items.map(item=>({code:item.querySelector('strong').textContent,time:Number(item.dataset.time)})));
       assert.deepEqual(listed,expected,'Feed shows exactly the completed techniques and CVEs');
       assert(listed.every((item,index)=>!index||
-        (listed[index-1].code==='DATA EXFILTRATED'&&item.code!=='DATA EXFILTRATED') ||
-        (listed[index-1].code=== 'DATA EXFILTRATED')===(item.code==='DATA EXFILTRATED')&&listed[index-1].time>=item.time),
-        'Completed exports are pinned; each group is newest first');
+        (/EXFILTRAT|EXPORT NOT ATTEMPTED/.test(listed[index-1].code)&&!/EXFILTRAT|EXPORT NOT ATTEMPTED/.test(item.code)) ||
+        /EXFILTRAT|EXPORT NOT ATTEMPTED/.test(listed[index-1].code)===/EXFILTRAT|EXPORT NOT ATTEMPTED/.test(item.code)&&listed[index-1].time>=item.time),
+        'All export outcomes are pinned; each group is newest first');
       assert(await panel.evaluate(()=>comparison.activity().some(item=>['NO NEW ACCESS','PATH REVIEW'].includes(item.code))),'Timed dead ends remain visible');
       assert(await panel.evaluate(()=>comparison.activity().filter(item=>item.code==='PATH REVIEW').every(item=>{
         const event=run.events[item.id],source=estate.assets.find(a=>a.id===event.sourceId),target=estate.assets.find(a=>a.id===event.targetId);

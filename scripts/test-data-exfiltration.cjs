@@ -40,6 +40,24 @@ for(const actor of [...gangs,'artex']){
   privateEstate.actionOrder.push('private');
   assert(!run(privateEstate,actor).summary.exfiltratedDatasets.some(d=>d.datasetId==='private'),'Bulk transfer cannot include unreadable datasets');
   assert.deepEqual(run(estate,actor),result);assert.equal(JSON.stringify(estate),snapshot);
+  for(const dataHandling of [undefined,{records:1000},{bytes:1024000},{records:-1,bytes:NaN}]){
+    const unknown=structuredClone(estate);
+    unknown.assets[3].dataHandling=dataHandling;
+    const unknownSnapshot=JSON.stringify(unknown),unknownRun=run(unknown,actor),exported=transferred(unknownRun);
+    assert(exported,`${actor}: data volume is not an access prerequisite`);
+    assert.equal(exported.dataTransfer.records,dataHandling?.records>0?dataHandling.records:null);
+    assert.equal(exported.dataTransfer.bytes,dataHandling?.bytes>0?dataHandling.bytes:null);
+    assert(Number.isFinite(exported.timeSec)&&exported.timeSec>exported.startSec);
+    assert.deepEqual(run(unknown,actor),unknownRun);assert.equal(JSON.stringify(unknown),unknownSnapshot);
+    unknown.assets.forEach(a=>a.egress={cloudUploadAllowed:false,responseExportAllowed:false});
+    const denied=run(unknown,actor);
+    assert(!transferred(denied),'Unknown volume cannot bypass denied egress');
+    assert(denied.events.some(e=>e.actionKind==='data_exfiltration'&&e.outcome==='blocked'));
+    unknown.assets.forEach(a=>{delete a.egress;});
+    const unspecified=run(unknown,actor);
+    assert(!transferred(unspecified),'Unknown policy cannot grant egress');
+    assert(unspecified.events.some(e=>e.actionKind==='data_exfiltration'&&/outbound policy is unspecified/.test(e.reason)));
+  }
   if(actor!=='artex')assert(e.gangTechniqueEvidence(actor,transfer.technique),'Gang transfer has sourced technique evidence');
   for(const removed of ['read','egress','execution']){
     const changed=structuredClone(estate);

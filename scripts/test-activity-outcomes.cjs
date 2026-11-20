@@ -36,7 +36,27 @@ context.modeledTime=transfer.timeSec;
 assert.equal(activity()[0].code,'DATA EXFILTRATED','Pin export as soon as it completes');
 context.run={...run,events:run.events.map(event=>event.actionKind==='data_exfiltration'
   ?{...event,outcome:'blocked',reason:'Egress denied.'}:event)};
-assert(activity().every((item,index,items)=>!index||items[index-1].time>=item.time),'Blocked transfers are not pinned');
+assert.equal(activity()[0].code,'EXFILTRATION BLOCKED','Blocked transfers are pinned too');
+context.modeledTime=Infinity;
+for(const outcome of ['blocked','suppressed','ineligible']){
+  context.run={...run,events:run.events.map(event=>event.actionKind==='data_exfiltration'
+    ?{...event,outcome,reason:'Transfer cannot complete.'}:event)};
+  assert(activity()[0].isExport,'Every export outcome stays above later hunting failures');
+  assert(activity().filter(item=>item.isExport).every((item,index,items)=>!index||items[index-1].time>=item.time));
+}
+const legacy=structuredClone(estate);
+legacy.assets.forEach(asset=>{delete asset.dataHandling;asset.egress={cloudUploadAllowed:true,responseExportAllowed:true};});
+context.run=engine.simulateWireRun(legacy,'baseline','artex');
+assert(context.run.events.some(event=>event.isProtectedRead),'Legacy estate retains confirmed reads');
+assert(context.run.summary.exfiltratedDatasets.length>0,'Unknown volume does not block an authorized export path');
+assert.equal(activity()[0].code,'DATA EXFILTRATED');
+assert.match(activity()[0].detail,/Record count unknown.*Data size unknown/);
+assert.doesNotMatch(activity()[0].detail,/null|undefined|0 records/);
+legacy.assets.forEach(asset=>{delete asset.egress;});
+context.run=engine.simulateWireRun(legacy,'baseline','artex');
+assert.equal(context.run.summary.exfiltratedDatasets.length,0,'Unknown outbound policy does not imply permission');
+assert.equal(activity()[0].code,'EXPORT NOT ATTEMPTED');
+assert.match(activity()[0].detail,/outbound policy is unspecified/);
 context.run=run;context.modeledTime=Infinity;
 assert(activity().filter(item=>item.time<read.timeSec).every(item=>!/Earlier data/.test(item.detail)),
   'Never leak future reads or exports into earlier failures');
@@ -67,4 +87,4 @@ assert.equal(nodeState.textContent,'DATA EXFILTRATED','A failed alternative cann
 classes.clear();nodeState.textContent='';
 display.renderEvent(failure,failure.timeSec,false);
 assert.equal(nodeState.textContent,'PROBED · NO ACCESS','An unreached target retains its failed probe status');
-console.log('PASS activity outcomes: completed exports pinned above continued hunting, newest first within groups, blocked exports unpinned, no future impact leaks, compromised node status preserved');
+console.log('PASS activity outcomes: all exports pinned, unknown volume displayed honestly, unspecified egress distinct, no future impact leaks, compromised status preserved');

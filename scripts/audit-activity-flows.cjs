@@ -46,7 +46,7 @@ function activity(run){
 }
 function keyEvent(event){
   return event.isProtectedRead?'DATA FOUND':event.actionKind==='data_exfiltration'
-    ?event.outcome==='succeeded'?'DATA EXFILTRATED':event.outcome==='blocked'?'EXFILTRATION BLOCKED':'EXFILTRATION STOPPED'
+    ?event.outcome==='succeeded'?'DATA EXFILTRATED':event.outcome==='blocked'?'EXFILTRATION BLOCKED':event.outcome==='ineligible'?'EXPORT NOT ATTEMPTED':'EXFILTRATION STOPPED'
     :event.analysisKind==='route_review'?'PATH REVIEW':event.outcome==='ineligible'?'NO NEW ACCESS'
     :event.actionKind||event.finding?.cveId||event.technique||event.finding?.kind||event.outcome;
 }
@@ -75,7 +75,7 @@ function generateReport(rows){
     const labels=new Map(row.estate.assets.map(asset=>[asset.id,asset.label]));
     for(const event of activity(run)){
       const id=event.analysisKind==='route_review'?event.sourceId:event.targetId;
-      const detail=event.dataTransfer?` · ${event.dataTransfer.records} records · ${event.dataTransfer.tool}`:'';
+      const detail=event.dataTransfer?` · ${event.dataTransfer.records==null?'Record count unknown':`${event.dataTransfer.records} records`} · ${event.dataTransfer.tool}`:'';
       lines.push(`| ${stamp(event.startSec)} → ${stamp(event.timeSec)} | ${keyEvent(event)}${detail} | ${labels.get(id)||id} | ${event.outcome} |`);
     }
     lines.push('');

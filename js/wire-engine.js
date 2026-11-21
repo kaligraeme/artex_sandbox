@@ -34,12 +34,7 @@
       techniqueSources: { 'T1021.001': 'https://www.ic3.gov/CSA/2021/210825.pdf',
         'T1047':'https://www.trendmicro.com/vinfo/us/security/news/ransomware-spotlight/ransomware-spotlight-hive' },
       source: 'https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-321a' },
-    revil: { techniques: ['T1567.002','T1021.001','T1190','T1199','T1059.001'], analystMapped: ['T1567.002','T1021.001','T1190','T1199','T1059.001'],
-      techniqueSources: {
-        'T1190': 'https://www.cisa.gov/news-events/alerts/2021/07/04/cisa-fbi-guidance-msps-and-their-customers-affected-kaseya-vsa-supply-chain-attack',
-        'T1199': 'https://www.cisa.gov/news-events/alerts/2021/07/04/cisa-fbi-guidance-msps-and-their-customers-affected-kaseya-vsa-supply-chain-attack',
-        'T1059.001': 'https://www.cisa.gov/news-events/alerts/2021/07/04/cisa-fbi-guidance-msps-and-their-customers-affected-kaseya-vsa-supply-chain-attack'
-      },
+    revil: { techniques: ['T1567.002','T1021.001'], analystMapped: ['T1567.002','T1021.001'],
       source: 'https://unit42.paloaltonetworks.com/revil-threat-actors/' },
     solarwinds: { techniques: ['T1195.002','T1190','T1078','T1550.001','T1552','T1059','T1021.001','T1041','T1530'],
       analystMapped: ['T1190','T1552','T1021.001','T1041','T1530'],
@@ -116,7 +111,7 @@
   // Authored ordering among documented methods, not measured gang probabilities.
   const GANG_ENTRY_ORDER = {
     lockbit: ['T1133','T1190','T1566'], conti: ['T1566','T1133'],
-    blackcat: ['T1133','T1190'], hive: ['T1566','T1133','T1190'], revil: ['T1566','T1189','T1190'],
+    blackcat: ['T1133','T1190'], hive: ['T1566','T1133','T1190'], revil: ['T1566','T1189'],
     solarwinds: ['T1195.002','T1190','T1078','T1552'],
     darkside: ['T1133','T1078','T1190'],
     log4shell: ['T1190','T1552'],

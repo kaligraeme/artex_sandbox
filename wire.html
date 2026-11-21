@@ -57,6 +57,8 @@
   <div id="catalog-example" hidden></div>
   <div id="run-hud" role="status"></div>
 </header>
+<div class="single-stage">
+<aside id="single-activity" class="attack-feed" aria-label="Attack techniques used"><h3>TTP / CVE activity</h3><p class="feed-empty">Waiting for activity</p><ol></ol></aside>
 <main id="viewport" aria-label="Enterprise attack and defense canvas">
   <div class="soc-ticker" aria-label="SOC tickets">
     <div id="soc-cards" class="soc-cards" aria-live="off"></div>
@@ -70,10 +72,12 @@
   <div id="attackers-layer" aria-label="Active attackers"></div>
   <aside id="asset-details" aria-label="Selected asset details" aria-live="polite" tabindex="0"></aside>
 </main>
+</div>
 
 <script src="js/gang-techniques.js"></script>
 <script src="js/wire-engine.js"></script>
 <script src="js/run-discovery.js"></script>
+<script src="js/attack-feed.js"></script>
 <script>
 const {
   cveTooltip,
@@ -174,7 +178,7 @@ function formatAssetTooltip(asset, findings, credentials) {
 }
 
 function layoutGraph(estate) {
-  const w = Math.max(1440, document.documentElement.clientWidth - (new URLSearchParams(location.search).has('embedded') ? 0 : 36));
+  const w = Math.max(1440, document.getElementById('viewport').clientWidth);
   const graphTop = 80;
 
   currentWires.clear();
@@ -292,7 +296,7 @@ function updateDiscoveredMap(time) {
     node.el.hidden = !visible;
     node.el.tabIndex = visible ? 0 : -1;
   }
-  const w = Math.max(1440,document.documentElement.clientWidth-(new URLSearchParams(location.search).has('embedded') ? 0 : 36));
+  const w = Math.max(1440,document.getElementById('viewport').clientWidth);
   const band = (w-100)/4;
   let bottom=80;
   if (new URLSearchParams(location.search).get('capture') !== 'path') {
@@ -575,6 +579,11 @@ function showTime(time) {
   renderAttackers(time);
   const elapsed = time === 0 ? '0 min' : formatEstimate(time);
   if (clock.textContent !== elapsed) clock.textContent = elapsed;
+  if (!new URLSearchParams(location.search).has('embedded')) {
+    AttackFeed.render(document.getElementById('single-activity'), AttackFeed.activity({
+      estate, run, modeledTime, discoveryStarted, done:phaseIndex === phases.length, formatEstimate
+    }));
+  }
 }
 
 function renderPhase(phase, animate = false) {
@@ -667,6 +676,8 @@ function playRun() {
   phaseIndex = 0;
   modeledTime = 0;
   socLooping = false;
+  delete document.querySelector('#single-activity ol').dataset.signature;
+  document.getElementById('single-activity').scrollTop = 0;
   resetGraph();
   runHud.className = '';
   runHud.textContent = attackerChoice === 'artex' ? 'Exploring reachable services' : `${pre2023Groups[attackerId]} · Exploring reachable services`;

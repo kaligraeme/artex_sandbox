@@ -33,23 +33,7 @@ function fit() {
 }
 function updateFeeds() {
   frames.forEach(frame=>{
-    const feed=frame.parentElement.previousElementSibling, list=feed.querySelector('ol');
-    const activity=frame.contentWindow.comparison.activity();
-    const signature=activity.map(item=>item.id).join(',');
-    if(list.dataset.signature===signature)return;
-    list.dataset.signature=signature;
-    const offset=feed.scrollTop, previousHeight=feed.scrollHeight;
-    const entries=activity.map(item=>{
-      const entry=document.createElement('li');entry.dataset.eventId=item.id;entry.dataset.time=item.time;
-      const code=document.createElement('strong');code.textContent=item.code;
-      const title=document.createElement('span');title.textContent=item.title;
-      const asset=document.createElement('span');asset.textContent=item.asset;
-      const detail=document.createElement('span');detail.textContent=item.detail || '';
-      const when=document.createElement('time');when.textContent=`${item.elapsed} elapsed · ${item.outcome==='ineligible'?(item.isExport?'not attempted':'no new access'):item.outcome}`;
-      entry.append(code,title,asset,detail,when);return entry;
-    });
-    list.replaceChildren(...entries);feed.querySelector('.feed-empty').hidden=activity.length>0;
-    feed.scrollTop=offset>0?offset+feed.scrollHeight-previousHeight:0;
+    AttackFeed.render(frame.parentElement.previousElementSibling, frame.contentWindow.comparison.activity());
   });
 }
 function prepare() {
@@ -107,3 +91,12 @@ ready.then(()=>{
 });
 document.getElementById('single').onclick=()=>sessionStorage.setItem('wire-return-estate',JSON.stringify(estate));
 document.getElementById('fullscreen').onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
+
+const feedToggle = document.getElementById('activity-toggle');
+feedToggle.onclick = () => {
+  const visible = feedToggle.getAttribute('aria-pressed') !== 'true';
+  feedToggle.setAttribute('aria-pressed', String(visible));
+  feedToggle.textContent = visible ? 'Hide activity stream' : 'Show activity stream';
+  document.querySelectorAll('.stage').forEach(stage => stage.classList.toggle('feeds-hidden', !visible));
+  if (estate) fit();
+};

@@ -1,6 +1,6 @@
 # Stopwatch calibration and limits
 
-The Wire stopwatch reports cumulative simulated time from the assumed edge foothold. It is neither the animation's playback duration nor a measurement of a live attack.
+The Wire stopwatch reports cumulative simulated time from the assumed edge foothold. See [Timing and data volumes in Wire](wire-timing-and-volume.md) for the milestones, historical references, and volume evidence shown in the demo.
 
 ## Historical context
 

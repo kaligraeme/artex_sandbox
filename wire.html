@@ -61,11 +61,47 @@
       <button id="map-results-btn" class="trace-control" type="button">Results</button>
       <a id="dual-view-link" class="trace-control" href="dual.html">Dual view</a>
       <button id="activity-toggle" class="trace-control" type="button" aria-controls="single-activity" aria-expanded="true">Hide CVE stream</button>
+      <select id="archetype-selector" class="trace-control" aria-label="Infrastructure archetype" title="Choose an infrastructure archetype or keep reference rotation">
+        <option value="auto" selected>Archetype: Auto (Catalog)</option>
+        <option value="enterprise-identity">Enterprise Identity &amp; Endpoints</option>
+        <option value="public-web">Public Web &amp; Internal Data</option>
+        <option value="cloud-saas">Cloud &amp; SaaS</option>
+        <option value="cicd-secrets">CI/CD &amp; Operational Secrets</option>
+      </select>
+      <button id="advanced-controls-toggle" class="trace-control" type="button" aria-controls="advanced-controls-panel" aria-expanded="false">Controls &amp; Manifest</button>
     </div>
     <div class="run-context">
       <div id="run-status" class="run-status running" role="status">Preparing infrastructure</div>
-      <div class="elapsed-clock" role="timer" aria-label="Elapsed time"><span>Elapsed</span><strong id="model-clock">0 min</strong></div>
+      <div class="elapsed-clock" role="timer" aria-label="Modeled elapsed time"><span>Modeled elapsed</span><strong id="model-clock">0 min</strong></div>
     </div>
+  </div>
+  <div id="advanced-controls-panel" class="advanced-controls-panel" hidden>
+    <label><input id="ctrl-virtual-patching" type="checkbox"> Virtual Patching (`virtualPatching`)</label>
+    <label><input id="ctrl-canaries" type="checkbox"> Canaries (`canaries`)</label>
+    <label>Response Policy (`responsePolicy`)
+      <select id="ctrl-response-policy">
+        <option value="observe_only" selected>observe_only</option>
+        <option value="playbook">playbook</option>
+        <option value="human_led">human_led</option>
+        <option value="agentic">agentic</option>
+      </select>
+    </label>
+    <label>Generation Mode
+      <select id="ctrl-generation-mode">
+        <option value="authored_walkthrough" selected>authored_walkthrough</option>
+        <option value="exploratory">exploratory</option>
+      </select>
+    </label>
+    <button id="export-manifest-btn" class="trace-control" type="button">Export Manifest</button>
+    <button id="import-manifest-btn" class="trace-control" type="button">Import Manifest</button>
+    <input id="import-manifest-input" type="file" accept="application/json,.json" hidden>
+    <details id="run-evidence">
+      <summary>Timing and data volumes</summary>
+      <p id="run-milestones"></p>
+      <ul id="run-data-volumes" hidden></ul>
+      <p><strong>Historical references</strong></p>
+      <div id="historical-timing"></div>
+    </details>
   </div>
   <div id="run-hud" role="status"></div>
 </header>
@@ -92,11 +128,15 @@
 <script src="js/attack-feed.js"></script>
 <script>
 const {
+  CALIBRATION_REGISTER,
   PRE2023_ATTACK_PATTERNS,
   cveTooltip,
   generateEstate,
   referenceServiceFlow,
-  simulateWireRun
+  simulateWireRun,
+  exportWirePlayback,
+  importManifest,
+  normalizeDefenseConfig
 } = window.WireEngine;
 
 const svg = document.getElementById('wire-svg');
@@ -254,7 +294,14 @@ function layoutGraph(estate) {
     `;
     const selectNode = () => {
       revealNodeWires(node, 4000);
-      document.getElementById('asset-details').textContent = node.el.title;
+      const ns = run?.nodeStates?.[node.id];
+      const evidenceTime = discoveryStarted ? modeledTime : -1;
+      const whyLines = (ns?.why || []).filter(w => w.timeSec <= evidenceTime).map(w =>
+        `Why [${w.outcome}${w.reasonCode ? ' · ' + w.reasonCode : ''}]: ${w.reason}${w.controlId ? ' (control: ' + w.controlId + ')' : ''}${w.scope ? ' [scope: ' + w.scope + ']' : ''}`
+      );
+      const extraWhy = whyLines.length ? `\n\n── Causal Inspection ("Why") ──\n${whyLines.join('\n')}` : '';
+      const data = describeDatasetVolume(node, run.events.filter(event => event.timeSec <= evidenceTime));
+      document.getElementById('asset-details').textContent = [node.el.title, data, extraWhy].filter(Boolean).join('\n');
     };
     el.addEventListener('click', selectNode);
     el.addEventListener('focus', selectNode);
@@ -464,6 +511,8 @@ function renderEvent(event, time, animate) {
   const success = event.outcome === 'succeeded';
   const blocked = event.outcome === 'blocked';
   const contained = event.outcome === 'suppressed';
+  const conditional = event.outcome === 'conditional';
+  const incomplete = event.outcome === 'budget_exhausted';
   const alertOnly = event.outcome === 'alert_only' || event.grantedCapability === 'decoy_alert';
   const read = event.grantedCapability === 'data_read' && node.layerIdx === 3 && !node.isDecoy;
   const encrypted = success && event.actionKind === 'encryption';
@@ -483,11 +532,13 @@ function renderEvent(event, time, animate) {
     node.el.classList.add('probed');
     node.el.querySelector('.node-state').textContent='PROBED · NO ACCESS';
   }
-  if (!success && !blocked && !contained && !alertOnly) return;
+  if (!success && !blocked && !contained && !alertOnly && !conditional && !incomplete) return;
 
   let result = 'ACCESS ESTABLISHED';
   if (blocked) result = event.mitigation?.badge || 'BLOCKED';
   else if (contained) result = 'ACTION EFFECT SUPPRESSED BY CONTAINMENT';
+  else if (conditional) result = 'CONDITIONAL OUTCOME';
+  else if (incomplete) result = 'INCOMPLETE EXPLORATION';
   else if (alertOnly) result = 'CANARY ALERT';
   else if (read) result = 'PROTECTED RECORD READ';
   else if (encrypted) result = `ENCRYPTION · ${event.affectedEndpointIds.length} endpoints`;
@@ -508,10 +559,12 @@ function renderEvent(event, time, animate) {
     node.el.classList.toggle('defended', blocked);
     node.el.classList.toggle('contained', contained);
     node.el.classList.toggle('alerted', alertOnly);
+    node.el.classList.toggle('conditional', conditional);
+    node.el.classList.toggle('incomplete', incomplete);
     if (read || encrypted) node.el.classList.add('breach-target');
     node.el.querySelector('.cve').textContent = exported ? 'DATA EXFILTRATED' : finding?.cveId || event.technique || result;
     node.el.querySelector('.vuln-title').textContent = finding?.title || result;
-    node.el.querySelector('.node-state').textContent = encrypted ? `${event.affectedEndpointIds.length}/${node.endpointCount || 1} ENCRYPTED` : persistent ? `${event.affectedEndpointIds.length}/${node.endpointCount || 1} PERSISTENT` : phished ? 'PHISH EXECUTED' : exported ? 'DATA EXFILTRATED' : read ? 'DATA FOUND' : blocked ? 'PREVENTED' : contained ? 'CONTAINED' : alertOnly ? 'CANARY ALERT' : '';
+    node.el.querySelector('.node-state').textContent = encrypted ? `${event.affectedEndpointIds.length}/${node.endpointCount || 1} ENCRYPTED` : persistent ? `${event.affectedEndpointIds.length}/${node.endpointCount || 1} PERSISTENT` : phished ? 'PHISH EXECUTED' : exported ? 'DATA EXFILTRATED' : read ? 'DATA FOUND' : blocked ? 'PREVENTED' : contained ? 'CONTAINED' : conditional ? 'CONDITIONAL' : incomplete ? 'INCOMPLETE' : alertOnly ? 'CANARY ALERT' : '';
   }
   if (wire) {
     if (blocked) wire.path.classList.add('defended-wire');
@@ -596,6 +649,84 @@ function renderAttackers(time) {
   }
 }
 
+const volumeNumber = new Intl.NumberFormat('en-US');
+
+function describeVolume(volume) {
+  const parts = [];
+  if (Number.isSafeInteger(volume?.records)) parts.push(`${volumeNumber.format(volume.records)} records`);
+  if (Number.isSafeInteger(volume?.bytes)) parts.push(`${volumeNumber.format(volume.bytes)} bytes`);
+  return parts.length ? parts.join(' / ') : 'volume unknown';
+}
+
+function describeDatasetVolume(asset, events) {
+  if (asset.isDecoy) return '';
+  const read = events.find(event => event.targetId === asset.id && event.isProtectedRead && event.outcome === 'succeeded');
+  const transfers = events.filter(event => event.targetId === asset.id && event.actionKind === 'data_exfiltration');
+  const exported = transfers.find(event => event.outcome === 'succeeded');
+  const inventory = (estate.datasets || []).filter(dataset => dataset.ownerAssetId === asset.id && dataset.sensitivity === 'sensitive' && !dataset.isDecoy);
+  if (!inventory.length && !read && !transfers.length) return '';
+  const available = inventory.length === 1 ? inventory[0] : asset.dataHandling;
+  return [
+    `Available · ${describeVolume(available)}`,
+    read ? `Read · ${describeVolume(read.dataFound)}` : 'Read · none recorded',
+    exported ? `Exported · ${describeVolume(exported.dataTransfer)}`
+      : transfers.some(event => ['suppressed', 'interrupted'].includes(event.outcome))
+        ? 'Export incomplete · transferred volume unknown'
+        : 'Export · no completion recorded'
+  ].join(' · ');
+}
+
+function renderRunEvidence(time) {
+  const events = run.events.filter(event => event.timeSec <= time);
+  const successful = events.filter(event => event.outcome === 'succeeded');
+  const controls = run.controls.filter(event => event.timeSec <= time);
+  const milestones = [
+    ['First lateral move', successful.find(event => event.sourceId && event.relationshipId && event.sourceId !== event.targetId && event.grantedCapability !== 'decoy_alert')],
+    ['First sensitive read', successful.find(event => event.isProtectedRead)],
+    ['First alert', controls.find(event => event.control === 'signal')],
+    ['First containment', controls.find(event => event.control === 'enforced')],
+    ['First export completed', successful.find(event => event.actionKind === 'data_exfiltration')]
+  ].filter(([, event]) => event).sort((a, b) => a[1].timeSec - b[1].timeSec);
+  document.getElementById('run-milestones').textContent = milestones.length
+    ? milestones.map(([label, event]) => `${label} ${formatEstimate(event.timeSec)}`).join(' · ')
+    : 'Modeled milestones appear during playback.';
+  const affected = new Set(events.filter(event => event.isProtectedRead || event.actionKind === 'data_exfiltration').map(event => event.targetId));
+  const volumes = document.getElementById('run-data-volumes');
+  volumes.replaceChildren(...estate.assets.filter(asset => affected.has(asset.id)).flatMap(asset => {
+    const text = describeDatasetVolume(asset, events);
+    if (!text) return [];
+    const item = document.createElement('li');
+    item.textContent = `${asset.label} · ${text}`;
+    return [item];
+  }));
+  volumes.hidden = !volumes.children.length;
+}
+
+function renderHistoricalTiming() {
+  const references = [
+    ['crowdstrike-2023-ecrime-breakout-mean', '2023 eCrime breakout mean'],
+    ['crowdstrike-2023-ecrime-breakout-fastest', '2023 eCrime fastest observed breakout'],
+    ['gtig-2026-artex-typical-deep-access', 'One ARTEX campaign, typical deep access'],
+    ['gtig-2026-artex-fast-deep-access', 'One ARTEX campaign, fast deep access case'],
+    ['mandiant-2022-dwell-median', '2022 median time from compromise to discovery']
+  ];
+  const list = document.getElementById('historical-timing');
+  for (const [id, label] of references) {
+    const fact = CALIBRATION_REGISTER.observedStatistics.find(statistic => statistic.id === id);
+    if (!fact) continue;
+    const line = document.createElement('p');
+    const link = document.createElement('a');
+    link.href = fact.sourceUrl;
+    link.textContent = label;
+    link.title = `${fact.startMilestone} → ${fact.endMilestone} · ${fact.population}`;
+    const seconds = fact.unit === 'minutes' ? fact.value * 60 : fact.value;
+    const value = fact.unit === 'days' ? `${fact.value} days` : WireEngine.formatDurationSeconds(seconds);
+    line.append(link, ` · ${value}`);
+    list.append(line);
+  }
+}
+renderHistoricalTiming();
+
 function showTime(time) {
   modeledTime = time;
   if(time>0)discoveryStarted=true;
@@ -618,6 +749,7 @@ function renderPhase(phase, animate = false) {
     else renderEvent(event, phase.time, animate);
   }
   renderSocTickets();
+  renderRunEvidence(phase.time);
 }
 
 function resetGraph() {
@@ -629,7 +761,7 @@ function resetGraph() {
 function finishRun() {
   cancelAnimationFrame(frame);
   document.getElementById('run-status').classList.remove('running');
-  document.getElementById('run-status').textContent = `${defenseLabels[defense]} · Run ${String(runNumber).padStart(2, '0')} · Complete on Infra ${infrastructureNumber}`;
+  document.getElementById('run-status').textContent = `${customDefenseConfig?.label || defenseLabels[defense]} · Run ${String(runNumber).padStart(2, '0')} · Complete on Infra ${infrastructureNumber}`;
   svg.querySelectorAll('.probe-wire').forEach(path => path.remove());
   for (; phaseIndex < phases.length; phaseIndex++) renderPhase(phases[phaseIndex]);
   showTime(phases.at(-1)?.time ?? 0);
@@ -637,10 +769,7 @@ function finishRun() {
   renderSocTickets();
   const { truncated, layerSuccessCounts, blockedTransitions } = run.summary;
   const successes = run.events.filter(event => event.outcome === 'succeeded');
-  const read = successes.find(event => {
-    const n = currentNodes.get(event.targetId);
-    return event.grantedCapability === 'data_read' && n?.layerIdx === 3 && !n?.isDecoy;
-  });
+  const read = successes.find(event => event.isProtectedRead);
   const milestone = read ?? successes.at(-1);
   const asset = milestone && currentNodes.get(milestone.targetId);
   const evidence = milestone?.finding?.cveId || milestone?.technique;
@@ -672,9 +801,7 @@ function finishRun() {
     entryFailure?.reason,
     lateral && `${lateral.summary}: ${lateral.detail}`,
     run.summary.encryptedEndpointIds?.length ? `${run.summary.encryptedEndpointIds.length} endpoints encrypted` : '',
-    run.summary.exfiltratedDatasets?.length ? (run.summary.exfiltratedDatasets.some(d=>d.records==null)
-      ? 'Data exfiltrated · total record count unknown'
-      : `${run.summary.exfiltratedDatasets.reduce((n,d)=>n+d.records,0)} records exfiltrated`) : '',
+    read ? describeDatasetVolume(estate.assets.find(node => node.id === read.targetId), run.events) : '',
     run.summary.persistentEndpointIds?.length ? `Persistence established on ${run.summary.persistentEndpointIds.length} endpoints` : '',
     blockedTransitions ? `${blockedTransitions} blocked` : '', run.summary.suppressedTransitions ? `${run.summary.suppressedTransitions} effects suppressed` : '', response, illustration].filter(Boolean).join(' · ');
 }
@@ -698,19 +825,46 @@ function updatePre2023PatternTooltip() {
     : modeNote;
 }
 
+const ctrlVirtualPatching = document.getElementById('ctrl-virtual-patching');
+const ctrlCanaries = document.getElementById('ctrl-canaries');
+const ctrlResponsePolicy = document.getElementById('ctrl-response-policy');
+const ctrlGenerationMode = document.getElementById('ctrl-generation-mode');
+const archetypeSelector = document.getElementById('archetype-selector');
+const advancedControlsToggle = document.getElementById('advanced-controls-toggle');
+const advancedControlsPanel = document.getElementById('advanced-controls-panel');
+let customDefenseConfig = null;
+
+function syncSwitches(cfg) {
+  const matchingCard = [...modeButtons].find(button => {
+    const preset = normalizeDefenseConfig(button.dataset.mode);
+    return preset.virtualPatching === cfg.virtualPatching && preset.canaries === cfg.canaries &&
+      preset.responsePolicy === cfg.responsePolicy;
+  });
+  defense = matchingCard?.dataset.mode || 'baseline';
+  customDefenseConfig = matchingCard ? null : cfg;
+  for (const button of modeButtons) {
+    button.classList.toggle('selected', button === matchingCard);
+    button.setAttribute('aria-pressed', String(button === matchingCard));
+  }
+  if (ctrlVirtualPatching) ctrlVirtualPatching.checked = !!cfg.virtualPatching;
+  if (ctrlCanaries) ctrlCanaries.checked = !!cfg.canaries;
+  if (ctrlResponsePolicy) ctrlResponsePolicy.value = cfg.responsePolicy;
+}
+syncSwitches(normalizeDefenseConfig(defense));
+
 function playRun() {
   cancelAnimationFrame(frame);
   const attackerId = attackerChoice === 'pre2023' ? activePre2023Group() : 'artex';
   updatePre2023PatternTooltip();
-  run = simulateWireRun(estate, defense, attackerId);
+  run = simulateWireRun(estate, defense, attackerId, customDefenseConfig ? { defenseConfig: customDefenseConfig } : {});
   discoveryPlan = RunDiscovery.create(estate,run);
   discoveryStarted = false;
   attackerTracks = buildAttackerTracks(run);
   runNumber++;
   const status = document.getElementById('run-status');
   status.classList.add('running');
-  status.textContent = `${defenseLabels[defense]} · Run ${String(runNumber).padStart(2, '0')} · Same infrastructure ${infrastructureNumber}`;
-  clock.title = `Elapsed time since foothold. Response latency: ${formatEstimate(run.assumptions.responseDelaySec)} after collection (${run.assumptions.collectionDelaySec}s).`;
+  status.textContent = `${customDefenseConfig?.label || defenseLabels[defense]} · Run ${String(runNumber).padStart(2, '0')} · Same infrastructure ${infrastructureNumber}`;
+  clock.title = 'Modeled time since the assumed foothold. Historical references and run milestones are in Controls & Manifest.';
   const grouped = new Map();
   for (const event of [...run.events, ...run.controls]) {
     if (!grouped.has(event.timeSec)) grouped.set(event.timeSec, []);
@@ -727,6 +881,7 @@ function playRun() {
   runHud.className = '';
   runHud.textContent = attackerChoice === 'artex' ? 'Exploring reachable services' : `${pre2023Groups[attackerId]} · Exploring reachable services`;
   showTime(0);
+  renderRunEvidence(-1);
 
   let startedAt = null;
   let duration;
@@ -756,15 +911,82 @@ function playRun() {
 
 modeButtons.forEach(button => {
   button.addEventListener('click', () => {
-    defense = button.dataset.mode;
-    modeButtons.forEach(candidate => {
-      const selected = candidate === button;
-      candidate.classList.toggle('selected', selected);
-      candidate.setAttribute('aria-pressed', String(selected));
-    });
+    syncSwitches(normalizeDefenseConfig(button.dataset.mode));
     playRun();
   });
 });
+
+if (advancedControlsToggle && advancedControlsPanel) {
+  advancedControlsToggle.addEventListener('click', () => {
+    advancedControlsPanel.hidden = !advancedControlsPanel.hidden;
+    advancedControlsToggle.setAttribute('aria-expanded', String(!advancedControlsPanel.hidden));
+  });
+}
+
+function onIndependentSwitchChange() {
+  syncSwitches(normalizeDefenseConfig({
+    virtualPatching: ctrlVirtualPatching.checked,
+    canaries: ctrlCanaries.checked,
+    responsePolicy: ctrlResponsePolicy.value
+  }));
+  playRun();
+}
+[ctrlVirtualPatching, ctrlCanaries, ctrlResponsePolicy].forEach(el => {
+  if (el) el.addEventListener('change', onIndependentSwitchChange);
+});
+
+if (archetypeSelector) {
+  archetypeSelector.addEventListener('change', () => newInfra());
+}
+if (ctrlGenerationMode) {
+  ctrlGenerationMode.addEventListener('change', () => newInfra());
+}
+
+const exportManifestBtn = document.getElementById('export-manifest-btn');
+const importManifestBtn = document.getElementById('import-manifest-btn');
+const importManifestInput = document.getElementById('import-manifest-input');
+if (exportManifestBtn) {
+  exportManifestBtn.addEventListener('click', () => {
+    const attackerId = attackerChoice === 'pre2023' ? activePre2023Group() : 'artex';
+    if (!run) return;
+    const json = exportWirePlayback(estate, attackerId, run);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${estate.id || 'estate'}-manifest.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+}
+if (importManifestBtn && importManifestInput) {
+  importManifestBtn.addEventListener('click', () => importManifestInput.click());
+  importManifestInput.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    importManifestInput.value = '';
+    const res = importManifest(await file.text());
+    if (!res.ok || res.kind !== 'wire_playback') {
+      runHud.className = '';
+      runHud.textContent = res.reason || res.errors?.join('; ') || 'Choose a Wire playback manifest exported from this page.';
+      return;
+    }
+    const { attackerId, defenseConfig } = res.manifest;
+    estate = res.manifest.estate;
+    referenceCase = null;
+    attackerChoice = attackerId === 'artex' ? 'artex' : 'pre2023';
+    if (attackerChoice === 'pre2023') pre2023Pattern.value = attackerId;
+    for (const button of attackerButtons) {
+      const selected = button.dataset.attacker === attackerChoice;
+      button.classList.toggle('selected', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    }
+    syncSwitches(defenseConfig);
+    archetypeSelector.value = estate.archetypeId || 'auto';
+    ctrlGenerationMode.value = estate.generationMode || 'authored_walkthrough';
+    playRun();
+  });
+}
 attackerButtons.forEach(button => button.addEventListener('click', () => {
   attackerChoice = button.dataset.attacker;
   attackerButtons.forEach(candidate => {
@@ -831,10 +1053,14 @@ function newInfra() {
   const previous = applianceRoster(estate);
   referenceCase = drawReferenceCase();
   pre2023Group = drawPre2023Group();
+  const chosenArchetype = (archetypeSelector && archetypeSelector.value !== 'auto')
+    ? archetypeSelector.value
+    : referenceCase?.context.archetypeId;
+  const chosenMode = ctrlGenerationMode?.value || 'authored_walkthrough';
   do {
     estate = generateEstate({
-      generationMode: 'authored_walkthrough',
-      archetypeId: referenceCase?.context.archetypeId,
+      generationMode: chosenMode,
+      archetypeId: chosenArchetype,
       preferredIngress: referenceCase?.context.groups[0]
     });
   } while (applianceRoster(estate) === previous);

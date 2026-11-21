@@ -163,6 +163,55 @@ async function main(){
     await page.waitForTimeout(1600);
     assert(await page.evaluate(()=>phaseIndex>0),'Animation must advance its event history');
     await page.click('#map-results-btn');
+    await page.click('#advanced-controls-toggle');
+    await page.locator('#ctrl-virtual-patching').setChecked(true);
+    await page.locator('#ctrl-canaries').setChecked(false);
+    await page.locator('#ctrl-response-policy').selectOption('agentic');
+    const downloadStarted = page.waitForEvent('download');
+    await page.click('#export-manifest-btn');
+    const download = await downloadStarted;
+    const exported = fs.readFileSync(await download.path());
+    const snapshot = JSON.parse(exported.toString());
+    assert.equal(snapshot.defenseConfig.virtualPatching, true);
+    assert.equal(snapshot.defenseConfig.canaries, false);
+    assert.equal(snapshot.defenseConfig.responsePolicy, 'agentic');
+    assert.deepEqual(snapshot.events, await page.evaluate(() => JSON.parse(JSON.stringify(run.events))));
+    await page.click('[data-mode="baseline"]');
+    await page.locator('#import-manifest-input').setInputFiles({
+      name: 'replay.json', mimeType: 'application/json', buffer: exported
+    });
+    await page.waitForFunction(() => run.defenseConfig.virtualPatching && run.defenseConfig.responsePolicy === 'agentic');
+    assert.deepEqual(snapshot.events, await page.evaluate(() => JSON.parse(JSON.stringify(run.events))));
+    await page.click('#map-replay-btn');
+    assert.deepEqual(snapshot.controls, await page.evaluate(() => JSON.parse(JSON.stringify(run.controls))));
+    const evidence = await page.evaluate(() => {
+      syncSwitches(normalizeDefenseConfig('baseline'));
+      estate = generateEstate({ preset: 'demo', seed: 1 });
+      for (const asset of estate.assets) asset.egress = { responseExportAllowed: true, cloudUploadAllowed: true };
+      playRun();
+      const milestoneText = () => document.getElementById('run-milestones').textContent;
+      const before = milestoneText();
+      const read = run.events.find(event => event.isProtectedRead && event.outcome === 'succeeded');
+      const exported = run.events.find(event => event.targetId === read.targetId &&
+        event.actionKind === 'data_exfiltration' && event.outcome === 'succeeded');
+      const asset = estate.assets.find(asset => asset.id === read.targetId);
+      const readOnly = describeDatasetVolume(asset, [read]);
+      const interrupted = describeDatasetVolume(asset, [read, { ...exported, outcome: 'suppressed' }]);
+      finishRun();
+      return {
+        before, after: milestoneText(), readOnly, interrupted,
+        volumes: document.getElementById('run-data-volumes').textContent,
+        references: document.getElementById('historical-timing').textContent
+      };
+    });
+    assert(!evidence.before.includes('First sensitive read'));
+    assert(evidence.after.includes('First sensitive read'));
+    assert(evidence.after.includes('First export completed'));
+    assert.match(evidence.readOnly, /Available .* Read .* no completion recorded/);
+    assert.match(evidence.interrupted, /transferred volume unknown/);
+    assert.match(evidence.volumes, /Exported .* records/);
+    assert(evidence.references.includes('00:02:07'));
+    assert(evidence.references.includes('04:00:00'));
     await page.emulateMedia({reducedMotion:'reduce'});
     assert.equal(await page.locator('.node-halo').first().evaluate(n=>getComputedStyle(n).animationName),'none');
     assert.deepEqual(errors,[]);

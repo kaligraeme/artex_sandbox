@@ -1,6 +1,6 @@
 # Wire diagram: object, connection and KEV logic
 
-> **Current engine note:** The wire diagram uses `js/wire-engine.js` (schema 3) and a single mixed estate generator. Seeded tabletop findings let most baseline runs reach a sample record. Authenticated diagnostics may separately expose a synthetic staging-status credential. The older presets described below are engine fixtures. Versions, network relationships, configuration, credentials, control coverage and outcomes are synthetic assumptions.
+> **Current engine note:** Wire playback uses the timed compatibility evaluator. Its manifest records the estate, attacker, defense switches, and exact playback events. The causal comparison API uses `simulateScenario` and `projectRun`, with its own replayable manifests. Both use synthetic estates. The calibration register in `assets/calibration.json` distinguishes historical observations from presentation assumptions.
 
 The intentional Demo-Ready route uses F5 BIG-IP 16.1.0, WSO2 API Manager 3.2.0, and Spring Framework 5.3.17. The broader Mixed estate draws from the appliance pool below. Deployment conditions and access are scenario assumptions. [CISA on BIG-IP](https://www.cisa.gov/sites/default/files/publications/AA22-138A-Threat_Actors_Exploiting_F5_BIG-IP_CVE-2022-1388_F5.pdf) · [CISA on WSO2](https://www.cisa.gov/sites/default/files/2023-08/aa23-215a_joint_csa_2022_top_routinely_exploited_vulnerabilities.pdf) · [Spring advisory](https://spring.io/security/cve-2022-22965/)
 

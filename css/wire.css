@@ -100,6 +100,16 @@ button:focus-visible, input:focus-visible, .node:focus-visible, a:focus-visible 
 .node.contained .node-kev { background: #1d3039; border-color: #487a87; color: #add6dd; }
 .node.contained .cve { color: #86d4db; }
 .node.breach-target .node-state { color: #ff9fb7; font-weight: 700; }
+.node.conditional .node-halo { border: 1px dashed #c0a8f1; background: #2d243b; opacity: 1; }
+.node.incomplete .node-halo { border: 1px dotted #8fa3b7; opacity: .85; }
+.advanced-controls-panel { padding: 10px 20px; background: #0f1720; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 14px; font-size: 11px; color: var(--muted); }
+.advanced-controls-panel[hidden] { display: none !important; }
+.advanced-controls-panel label { display: inline-flex; align-items: center; gap: 6px; color: var(--text); }
+.advanced-controls-panel select { background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 3px 7px; font: inherit; }
+#run-evidence { flex-basis: 100%; line-height: 1.5; }
+#run-evidence summary { cursor: pointer; color: var(--text); }
+#run-evidence p { margin: 4px 0; }
+#historical-timing a { color: inherit; }
 .node.decoy .node-label { color: #cbb88b; }
 .node.catalog-focus .node-label { text-decoration: underline; text-decoration-color: #55788a; text-underline-offset: 4px; }
 .node.search-match, .node:focus-visible { outline: 1px solid var(--cyan); outline-offset: 6px; }

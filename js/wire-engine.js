@@ -9,11 +9,50 @@
 
   const SCHEMA_VERSION = 4;
   const RUN_MANIFEST_VERSION = 1;
-  const ENGINE_VERSION = '4.0.0-phase-a';
+  const ENGINE_VERSION = '4.0.0';
   const MAX_ONWARD_PER_SOURCE = 2;
   const MAX_SUCCESS_PER_LAYER = 3;
   const WAF_PORTAL_COVERAGE = 0.66;
   const SOAR_DETECTION_RATE = 0.32;
+
+  const BEHAVIOR_PRESETS = {
+    operator_with_tools: {
+      id: 'operator_with_tools',
+      behaviorPreset: 'operator_with_tools',
+      label: 'Operator with tools',
+      supportedActionFamilies: ['cve', 'cve_authenticated', 'valid_credential', 'password_spray', 'anonymous_access', 'diagnostic_access', 'phishing_attachment', 'remote_service', 'persistence', 'encryption', 'data_exfiltration'],
+      availableTools: ['cobalt_strike', 'psexec'],
+      maxConcurrentBranches: 1,
+      discoveryPolicy: 'depth_first_foothold',
+      adaptationRepertoire: ['default', 'url_encoded_path', 'alternate_header_casing'],
+      evidenceVerificationPolicy: 'strict_operator_judgment',
+      humanAssistancePolicy: { requiredForAmbiguousContinuation: true, assistCost: 1 },
+      retryEffortCost: 1,
+      allowsUserInteraction: true,
+      allowsPersistence: true,
+      allowsRansomwareImpact: true
+    },
+    agentic_orchestration: {
+      id: 'agentic_orchestration',
+      behaviorPreset: 'agentic_orchestration',
+      label: 'Agentic orchestration',
+      supportedActionFamilies: ['cve', 'cve_authenticated', 'valid_credential', 'password_spray', 'anonymous_access', 'diagnostic_access', 'remote_service', 'data_exfiltration'],
+      availableTools: [],
+      maxConcurrentBranches: 3,
+      discoveryPolicy: 'breadth_first_coordinated',
+      adaptationRepertoire: ['default', 'url_encoded_path', 'chunked_transfer', 'json_content_type', 'alternate_header_casing'],
+      evidenceVerificationPolicy: 'automated_hypothesis_check',
+      humanAssistancePolicy: { requiredForAmbiguousContinuation: false, assistCost: 1 },
+      retryEffortCost: 1,
+      allowsUserInteraction: false,
+      allowsPersistence: false,
+      allowsRansomwareImpact: false
+    }
+  };
+
+  function hashSemanticKey(trialSeed, namespace, entityId, actionVariantId = 'default', attemptOrdinal = 0) {
+    return hashNode(trialSeed >>> 0, `${namespace}:${entityId}:${actionVariantId}:${attemptOrdinal}`, 0x9e3779b9);
+  }
 
   const DEFAULT_CALIBRATION_REGISTER = {
     schemaVersion: 1,
@@ -106,14 +145,14 @@
         notes: 'Measures dwell time to discovery, which is distinct from operator breakout time or time to first sensitive record read.'
       },
       {
-        id: 'gtig-2025-artex-typical-deep-access',
+        id: 'gtig-2026-artex-typical-deep-access',
         provenanceType: 'historical_source',
         displayClassification: 'source_fact',
         sourceTitle: 'GTIG: ARTEX and Friends Enter Agentic Offensive Frameworks',
         sourceUrl: 'https://cloud.google.com/blog/topics/threat-intelligence/artex-and-friends-enter-agentic-offensive-frameworks',
-        publicationDate: '2025-05-01',
-        observationPeriod: '2024/2025 campaign observations',
-        population: 'Observed intrusions by one ARTEX-associated threat actor studied by GTIG/Mandiant',
+        publicationDate: '2026-10-31',
+        observationPeriod: 'Campaign activity observed since at least August 2026',
+        population: 'One ARTEX-associated actor tracked by Wiz Research and discussed in the GTIG/Mandiant report',
         statisticType: 'typical_case_narrative',
         value: 240,
         unit: 'minutes',
@@ -123,13 +162,13 @@
         notes: 'Describes typical ~4-hour progression with burst/pause behavior and trial-and-error noise; not a universal parametric distribution.'
       },
       {
-        id: 'gtig-2025-artex-fast-deep-access',
+        id: 'gtig-2026-artex-fast-deep-access',
         provenanceType: 'historical_source',
         displayClassification: 'source_fact',
         sourceTitle: 'GTIG: ARTEX and Friends Enter Agentic Offensive Frameworks',
         sourceUrl: 'https://cloud.google.com/blog/topics/threat-intelligence/artex-and-friends-enter-agentic-offensive-frameworks',
-        publicationDate: '2025-05-01',
-        observationPeriod: '2024/2025 campaign observations',
+        publicationDate: '2026-10-31',
+        observationPeriod: 'Campaign activity observed since at least August 2026',
         population: 'Single fast intrusion case by an ARTEX-associated actor studied by GTIG/Mandiant',
         statisticType: 'single_case',
         value: 15,
@@ -160,7 +199,7 @@
         parameter: 'WIRE_READ_MINUTES.artex',
         distribution: { shape: 'discrete_uniform', min: 45, max: 75, unit: 'minutes' },
         applicableConditions: 'Agentic orchestration profile nominal 4-layer path duration context',
-        referencedStatisticIds: ['gtig-2025-artex-typical-deep-access', 'gtig-2025-artex-fast-deep-access'],
+        referencedStatisticIds: ['gtig-2026-artex-typical-deep-access', 'gtig-2026-artex-fast-deep-access'],
         justification: 'Illustrative presentation band between the 15-minute fast case and 4-hour typical deep-access observation reported by GTIG.',
         uncertaintyTreatment: 'seeded_draw_presentation_context',
         reviewNote: 'Presentation context only; does not imply universal agentic speed or guaranteed SOC evasion.'
@@ -1243,7 +1282,13 @@
     if (estate.defensePosture?.decoys) {
       if (!Array.isArray(estate.defensePosture.decoys)) fail('estate', 'defensePosture.decoys', 'Decoys must be an array');
       else for (const decoy of estate.defensePosture.decoys) {
-        if (!estate.assets.some(a => a.id === decoy.assetId && a.isDecoy)) fail(decoy?.assetId || 'decoy', 'defensePosture.decoys', `Undeployed decoy ${decoy.assetId}`);
+        if (decoy.kind === 'honeytoken_credential' || decoy.credentialId) {
+          if (!estate.credentials.some(c => c.id === decoy.credentialId)) {
+            fail(decoy?.credentialId || 'decoy', 'defensePosture.decoys', `Undeployed honeytoken decoy ${decoy.credentialId}`);
+          }
+        } else if (!estate.assets.some(a => a.id === decoy.assetId && a.isDecoy)) {
+          fail(decoy?.assetId || 'decoy', 'defensePosture.decoys', `Undeployed decoy ${decoy.assetId}`);
+        }
       }
     }
     const findingIds = new Set();
@@ -1408,8 +1453,8 @@
     }
     if (!Array.isArray(runConfig.initialAccess)) fail('runConfig', 'initialAccess', 'initialAccess must be an array');
     if (!Array.isArray(runConfig.initialKnowledge)) fail('runConfig', 'initialKnowledge', 'initialKnowledge must be an array');
-    if (!Array.isArray(runConfig.objectives) || runConfig.objectives.length === 0) {
-      fail('runConfig', 'objectives', 'objectives must be a non-empty array');
+    if (!Array.isArray(runConfig.objectives)) {
+      fail('runConfig', 'objectives', 'objectives must be an array');
     }
     if (!runConfig.limits || typeof runConfig.limits !== 'object') {
       fail('runConfig', 'limits', 'limits must be an object');
@@ -1420,22 +1465,32 @@
         }
       }
     }
-    if (!['report_conditional', 'sample', 'branch', 'unresolved'].includes(runConfig.uncertaintyMode)) {
+    if (!['report_conditional', 'unresolved'].includes(runConfig.uncertaintyMode)) {
       fail('runConfig', 'uncertaintyMode', `Invalid uncertaintyMode: ${runConfig.uncertaintyMode}`);
     }
-    const assetIds = new Set((estate?.assets || []).map(a => a.id));
-    const datasetIds = new Set((estate?.datasets || []).map(d => d.id));
+    if (!estateValidation.valid) return { valid: false, errors, warnings, details };
+    for (const key of ['routes', 'identityRelationships', 'weaknesses', 'datasets', 'sensors',
+      'enforcementPoints', 'patchRules', 'decoys', 'responseIntegrations', 'legitimateWorkflows', 'assumptions']) {
+      if (!Array.isArray(estate[key])) fail('estate', key, `Estate must declare ${key} as an array`);
+    }
+    const assetIds = new Set(estate.assets.map(a => a.id));
+    const datasets = new Map((Array.isArray(estate.datasets) ? estate.datasets : []).map(d => [d.id, d]));
+    const objectiveIds = new Set();
     if (Array.isArray(runConfig.objectives)) {
       for (const obj of runConfig.objectives) {
-        if (!obj?.id) fail('objective', 'id', 'Objective must declare an id');
-        if (!['dataset_read', 'dataset_export', 'asset_privilege'].includes(obj?.kind)) {
+        if (!obj?.id || objectiveIds.has(obj.id)) fail('objective', 'id', 'Objective must declare a unique id');
+        objectiveIds.add(obj?.id);
+        if (obj?.kind === 'asset_privilege') {
+          if (!assetIds.has(obj.targetAssetId) || !obj.requiredCapability) {
+            fail(obj.id, 'targetAssetId', 'Privilege objective requires a known asset and a capability');
+          }
+        } else if (obj?.kind === 'dataset_read' || obj?.kind === 'dataset_export') {
+          const dataset = datasets.get(obj.datasetId);
+          if (!dataset || (obj.targetAssetId != null && dataset.ownerAssetId !== obj.targetAssetId)) {
+            fail(obj.id, 'datasetId', `Objective ${obj.id} requires a known dataset and matching owner`);
+          }
+        } else {
           fail(obj?.id || 'objective', 'kind', `Unsupported objective kind: ${obj?.kind}`);
-        }
-        if (obj?.datasetId && datasetIds.size > 0 && !datasetIds.has(obj.datasetId)) {
-          fail(obj.id, 'datasetId', `Objective ${obj.id} references unknown datasetId ${obj.datasetId}`);
-        }
-        if (obj?.targetAssetId && assetIds.size > 0 && !assetIds.has(obj.targetAssetId)) {
-          fail(obj.id, 'targetAssetId', `Objective ${obj.id} references unknown targetAssetId ${obj.targetAssetId}`);
         }
       }
     }
@@ -1789,7 +1844,6 @@
     if (!action || typeof action !== 'object') throw new Error('evaluateDefense requires a validated action');
     const attackerProfile = options.attackerProfile || null;
     const defensePosture = options.defensePosture || null;
-    const multiplier = attackerProfile?.detectionMultiplier ?? 1;
     const layerMonitored = !defensePosture?.telemetryLayers || defensePosture.telemetryLayers.includes(targetAsset.layerIdx);
 
     if (isCanary) {
@@ -1840,14 +1894,14 @@
     const socEnabled = mode === 'defender' || mode === 'soc' || mode === 'soc-canary' || mode === 'combined';
 
     if (action.actionKind === 'anonymous_access') {
-      if (socEnabled && layerMonitored && soarDetects(targetAsset.id, seed, multiplier)) {
+      if (socEnabled && layerMonitored && soarDetects(targetAsset.id, seed)) {
         return { addressed: true, badge: 'CONTAINED · AGENTIC SOC', control: 'NIST AC-3 / SI-4', reason: 'Agentic SOC detects and closes the public exposure.' };
       }
       return { addressed: false, badge: 'PUBLIC EXPOSURE', reason: action.reason };
     }
 
     if (action.actionKind === 'valid_credential' || action.actionKind === 'password_spray') {
-      if (socEnabled && layerMonitored && soarDetects(targetAsset.id, seed, multiplier)) {
+      if (socEnabled && layerMonitored && soarDetects(targetAsset.id, seed)) {
         return {
           addressed: true,
           badge: 'CONTAINED · AGENTIC SOC',
@@ -1872,16 +1926,18 @@
     const groupCovered = !rule.waf?.appliesToGroups || rule.waf.appliesToGroups.includes(targetAsset.groupId);
     const protocolCovered = !rule.waf?.inspectedProtocols || targetAsset.interfaces.some(i => rule.waf.inspectedProtocols.includes(i));
     const wafRuleMatches = !isNonHttpProtocol && portalCovered && groupCovered && protocolCovered && rule.waf?.state === 'modeled' && !!rule.waf?.mitigates;
-    const wafEvadedByAdaptive = wafRuleMatches && rule.waf?.ruleStrictness === 'signature_regex' && !!attackerProfile?.adaptiveWafEvasion;
-    const wafMitigates = wafRuleMatches && !wafEvadedByAdaptive;
-    const soarMitigates = layerMonitored && rule.ml?.state === 'modeled' && !!rule.ml?.mitigates && soarDetects(targetAsset.id, seed, multiplier);
+    const chosenVariant = action.variantId || 'default';
+    const ruleAllowedVariants = rule.waf?.allowedVariants || (rule.waf?.ruleStrictness === 'signature_regex' ? ['chunked_transfer', 'json_content_type'] : []);
+    const wafVariantMissed = wafRuleMatches && ruleAllowedVariants.includes(chosenVariant);
+    const wafMitigates = wafRuleMatches && !wafVariantMissed;
+    const soarMitigates = layerMonitored && rule.ml?.state === 'modeled' && !!rule.ml?.mitigates && soarDetects(targetAsset.id, seed);
 
     if (mode === 'patch') {
       if (isNonHttpProtocol) {
         return { addressed: false, badge: 'WAF BLIND', reason: 'WAF operates at L7 HTTP; blind to non-HTTP protocols.' };
       }
-      if (wafEvadedByAdaptive) {
-        return { addressed: false, badge: 'WAF EVADED · ADAPTIVE', reason: 'Agentic Observer/Guard re-encoded payload around static signature WAF rule.' };
+      if (wafVariantMissed) {
+        return { addressed: false, badge: 'WAF RULE NOT MATCHED', reason: `Modeled request variant (${chosenVariant}) did not match static signature WAF rule.` };
       }
       if (wafMitigates) {
         return { addressed: true, badge: 'SHIELDED · WAF VIRTUAL PATCH', control: rule.waf.control, reason: rule.waf.reason };
@@ -1932,6 +1988,2499 @@
     return { addressed: false, badge: 'EXPLOITED', reason: 'Unmitigated.' };
   }
 
+  // ---------------------------------------------------------------------------
+  // Phase B (WP3 + WP4): Route-Based WAF Virtual Patching (§9), Per-Decoy Canary
+  // Triggers (§10), SOC State Machine (§11), Intervention Contracts (§12), and
+  // Knowledge-Limited Frontier Execution (`simulateScenario`, §5–§8).
+  // ---------------------------------------------------------------------------
+
+  const DEFENSE_CONFIG_PRESETS = {
+    baseline: { id: 'baseline', label: 'Baseline', virtualPatching: false, canaries: false, responsePolicy: 'observe_only' },
+    patch: { id: 'patch', label: 'Virtual Patching', virtualPatching: true, canaries: false, responsePolicy: 'observe_only' },
+    canaries: { id: 'canaries', label: 'Canary Only', virtualPatching: false, canaries: true, responsePolicy: 'observe_only' },
+    soc: { id: 'soc', label: 'Agentic SOC', virtualPatching: false, canaries: false, responsePolicy: 'agentic' },
+    'soc-canary': { id: 'soc-canary', label: 'SOC + Canary', virtualPatching: false, canaries: true, responsePolicy: 'agentic' },
+    combined: { id: 'combined', label: 'All Three (Defense-in-Depth)', virtualPatching: true, canaries: true, responsePolicy: 'agentic' },
+    playbook: { id: 'playbook', label: 'Playbook SOC', virtualPatching: false, canaries: false, responsePolicy: 'playbook' },
+    human_led: { id: 'human_led', label: 'Human-Led SOC', virtualPatching: false, canaries: false, responsePolicy: 'human_led' }
+  };
+
+  function normalizeDefenseConfig(input) {
+    if (typeof input === 'string') {
+      const preset = DEFENSE_CONFIG_PRESETS[input];
+      if (!preset) throw new Error(`Unknown defense preset: ${input}`);
+      return { ...preset };
+    }
+    if (!input || typeof input !== 'object') {
+      return { ...DEFENSE_CONFIG_PRESETS.baseline };
+    }
+    const virtualPatching = !!input.virtualPatching;
+    const canaries = !!input.canaries;
+    const responsePolicy = input.responsePolicy || 'observe_only';
+    if (!['observe_only', 'playbook', 'human_led', 'agentic'].includes(responsePolicy)) {
+      throw new Error(`Invalid responsePolicy: ${responsePolicy}`);
+    }
+    return {
+      id: input.id || `${virtualPatching ? 'patch' : 'nopatch'}-${canaries ? 'canary' : 'nocanary'}-${responsePolicy}`,
+      label: input.label || `Patch:${virtualPatching ? 'on' : 'off'} · Canary:${canaries ? 'on' : 'off'} · SOC:${responsePolicy}`,
+      virtualPatching,
+      canaries,
+      responsePolicy
+    };
+  }
+
+  function normalizeAttackerProfile(input) {
+    if (typeof input === 'string') {
+      if (BEHAVIOR_PRESETS[input]) return structuredClone(BEHAVIOR_PRESETS[input]);
+      const wireAttacker = WIRE_ATTACKERS[input];
+      if (wireAttacker) {
+        const base = BEHAVIOR_PRESETS[wireAttacker.behaviorPreset] || BEHAVIOR_PRESETS.operator_with_tools;
+        return {
+          ...structuredClone(base),
+          id: input,
+          displayLabel: PRE2023_ATTACK_PATTERNS[input]?.label || (input === 'artex' ? 'ARTEX' : input),
+          gangId: wireAttacker.pace === 'pre2023' ? input : null,
+          availableTools: [
+            ...(COBALT_STRIKE_SOURCES[input] ? ['cobalt_strike'] : []),
+            ...(PSEXEC_SOURCES[input] ? ['psexec'] : [])
+          ]
+        };
+      }
+      if (ATTACKER_PROFILES[input]) return structuredClone(ATTACKER_PROFILES[input]);
+      throw new Error(`Unknown attackerProfile: ${input}`);
+    }
+    if (!input || typeof input !== 'object') {
+      return structuredClone(BEHAVIOR_PRESETS.operator_with_tools);
+    }
+    const presetKey = input.behaviorPreset || (input.maxConcurrentBranches > 1 ? 'agentic_orchestration' : 'operator_with_tools');
+    const base = BEHAVIOR_PRESETS[presetKey] || BEHAVIOR_PRESETS.operator_with_tools;
+    return {
+      ...structuredClone(base),
+      ...structuredClone(input),
+      behaviorPreset: presetKey
+    };
+  }
+
+  /**
+   * Route-based WAF virtual patching evaluator (Spec Section 9, Invariants R04, R05, Fixtures F03–F07, F28, F34).
+   * Evaluates inline rules only at enforcementPoints actually traversed by the route or service hook.
+   */
+  function evaluateVirtualPatch({ estate, route, targetAsset, action, variantId = 'default', defenseConfig }) {
+    if (!defenseConfig?.virtualPatching) {
+      return {
+        covered: false,
+        matched: false,
+        enforced: false,
+        ruleId: null,
+        enforcementPointId: null,
+        reasonCode: 'CONTROL_DISABLED',
+        reason: 'Virtual patching is disabled in this defense configuration.'
+      };
+    }
+
+    const protocol = route?.protocol || action?.finding?.requiredInterface || targetAsset?.interfaces?.[0] || 'https';
+    const traversedEpIds = Array.isArray(route?.enforcementPointIds)
+      ? route.enforcementPointIds
+      : (!route && targetAsset?.isExternalEntry)
+        ? (estate.enforcementPoints || [])
+            .filter(ep => ep.assetId === targetAsset.id || (Array.isArray(ep.protectedAssetIds) && ep.protectedAssetIds.includes(targetAsset.id)) || (!ep.protectedAssetIds && ep.id === 'ep-edge-waf' && (!['forti-vpn', 'pulse-vpn', 'pan-globalprotect'].includes(targetAsset.groupId) || wafPortalCovered(targetAsset.id, estate.estateSeed ?? estate.seed ?? 1))))
+            .map(ep => ep.id)
+        : [];
+
+    if (!traversedEpIds.length) {
+      return {
+        covered: false,
+        matched: false,
+        enforced: false,
+        ruleId: null,
+        enforcementPointId: null,
+        reasonCode: 'OUTSIDE_CONTROL_PATH',
+        reason: `Route to ${targetAsset?.label || targetAsset?.id} does not traverse an inline virtual patch enforcement point.`
+      };
+    }
+
+    const epById = new Map((estate.enforcementPoints || []).map(ep => [ep.id, ep]));
+    const rulesById = new Map((estate.patchRules || []).map(r => [r.id, r]));
+
+    let lastCode = 'OUTSIDE_CONTROL_PATH';
+    let lastReason = 'No applicable virtual patch rule at traversed enforcement point.';
+    let lastEpId = traversedEpIds[0];
+
+    for (const epId of traversedEpIds) {
+      const ep = epById.get(epId);
+      if (!ep || ep.enabled === false) {
+        lastCode = 'INSPECTION_UNAVAILABLE';
+        lastReason = `Enforcement point ${epId} is disabled or unavailable.`;
+        lastEpId = epId;
+        continue;
+      }
+      if (!Array.isArray(ep.inspectedProtocols) || !ep.inspectedProtocols.includes(protocol)) {
+        lastCode = 'UNSUPPORTED_PROTOCOL';
+        lastReason = `Enforcement point ${epId} inspects [${(ep.inspectedProtocols || []).join(', ')}]; cannot inspect ${protocol}.`;
+        lastEpId = epId;
+        continue;
+      }
+      if (ep.inspectionAvailable === false) {
+        lastCode = 'INSPECTION_UNAVAILABLE';
+        lastReason = `Payload inspection is unavailable on enforcement point ${epId}.`;
+        lastEpId = epId;
+        continue;
+      }
+
+      const candidateRules = (ep.ruleIds || [])
+        .map(id => rulesById.get(id))
+        .filter(Boolean);
+
+      for (const rule of candidateRules) {
+        const cveMatches = rule.cveId && action?.finding?.cveId === rule.cveId;
+        const operationMatches = rule.restrictedOperation && (
+          action?.actionKind === rule.restrictedOperation ||
+          action?.yieldsCapability === rule.restrictedOperation ||
+          (rule.restrictsCredentials && action?.actionKind === 'valid_credential')
+        );
+        const targetMatches = !rule.targetAssetIds || rule.targetAssetIds.includes(targetAsset.id);
+        const groupMatches = !rule.appliesToGroups || rule.appliesToGroups.includes(targetAsset.groupId);
+        const protoMatches = !rule.inspectedProtocols || rule.inspectedProtocols.includes(protocol);
+
+        if (!targetMatches || !groupMatches || !protoMatches) continue;
+        if (!cveMatches && !operationMatches && !rule.matchesAllTrafficOnRoute) continue;
+
+        if (rule.coverageState === 'unknown') {
+          return {
+            covered: false,
+            matched: false,
+            enforced: false,
+            ruleId: rule.id,
+            enforcementPointId: ep.id,
+            reasonCode: 'COVERAGE_UNKNOWN',
+            reason: rule.reason || `Coverage state for rule ${rule.id} is unknown.`
+          };
+        }
+
+        // Check whether the modeled variant matches the rule predicate (Spec Section 8.3 & 9, F04, F05)
+        const blockedVariants = Array.isArray(rule.blockedVariants)
+          ? rule.blockedVariants
+          : rule.ruleStrictness === 'signature_regex'
+            ? ['default', 'alternate_header_casing']
+            : ['default', 'url_encoded_path', 'chunked_transfer', 'json_content_type', 'alternate_header_casing'];
+
+        const matched = blockedVariants.includes(variantId);
+        if (!matched) {
+          lastCode = 'RULE_NOT_MATCHED';
+          lastReason = `Rule ${rule.id} at ${ep.id} covers ${rule.cveId || rule.restrictedOperation}, but variant '${variantId}' did not match signature predicate.`;
+          lastEpId = ep.id;
+          continue;
+        }
+
+        if (rule.action === 'monitor' || rule.monitorOnly) {
+          return {
+            covered: true,
+            matched: true,
+            enforced: false,
+            ruleId: rule.id,
+            enforcementPointId: ep.id,
+            control: rule.control || 'NIST SI-4',
+            reasonCode: 'MONITOR_ONLY',
+            reason: rule.reason || `Rule ${rule.id} matched in monitor-only mode.`
+          };
+        }
+
+        return {
+          covered: true,
+          matched: true,
+          enforced: true,
+          ruleId: rule.id,
+          enforcementPointId: ep.id,
+          control: rule.control || 'NIST SC-7 / SI-2',
+          reasonCode: 'RULE_ENFORCED',
+          reason: rule.reason || `Rule ${rule.id} enforced at ${ep.id}.`
+        };
+      }
+
+      if (lastCode === 'OUTSIDE_CONTROL_PATH') {
+        lastCode = 'RULE_NOT_MATCHED';
+        lastReason = `Enforcement point ${ep.id} inspected ${protocol} request, but no deployed rule matched the operation.`;
+        lastEpId = ep.id;
+      }
+    }
+
+    return {
+      covered: lastCode === 'RULE_NOT_MATCHED',
+      matched: false,
+      enforced: false,
+      ruleId: null,
+      enforcementPointId: lastEpId,
+      reasonCode: lastCode,
+      reason: lastReason
+    };
+  }
+
+  /**
+   * Per-decoy canary interaction evaluator (Spec Section 10, Invariants R06, R07, Fixtures F08–F12).
+   * Tracks interactions and deduplication by (decoyId, principalId/sessionId), supports trigger on denied
+   * honeytoken use at an instrumented verifier, and never directly revokes access without SOC execution.
+   */
+  function evaluateDecoyInteraction({ estate, targetAsset, action, actor, outcome, defenseConfig, triggeredDecoyKeys }) {
+    if (!defenseConfig?.canaries) return null;
+    const decoys = estate.decoys || estate.defensePosture?.decoys || [];
+    const matchingDecoy = decoys.find(d => {
+      if (d.deployed === false) return false;
+      if (d.assetId && d.assetId === targetAsset.id) return true;
+      if (d.credentialId && action?.credentialUsed?.id === d.credentialId) {
+        if (!d.verifierAssetIds || d.verifierAssetIds.includes(targetAsset.id)) return true;
+      }
+      return false;
+    });
+
+    if (!matchingDecoy) return null;
+    if (matchingDecoy.alertDestination === null || matchingDecoy.instrumented === false) return null;
+
+    const triggerPredicate = matchingDecoy.triggerPredicate || (matchingDecoy.credentialId ? 'attempted_use' : 'any_interaction');
+    const triggersOnDenied = triggerPredicate === 'attempted_use' || triggerPredicate === 'any_interaction';
+    if (outcome !== 'succeeded' && !triggersOnDenied) return null;
+
+    const attributionIdentity = matchingDecoy.attributionQuality === 'none' || matchingDecoy.identifiesSession === false
+      ? null
+      : (actor?.sessionId || actor?.principalId || null);
+    const dedupKey = `${matchingDecoy.id}:${attributionIdentity || 'unattributed'}`;
+    const isDuplicate = triggeredDecoyKeys.has(dedupKey);
+    triggeredDecoyKeys.add(dedupKey);
+
+    return {
+      decoyId: matchingDecoy.id,
+      decoyKind: matchingDecoy.kind || (matchingDecoy.credentialId ? 'honeytoken_credential' : 'decoy_asset'),
+      targetAssetId: targetAsset.id,
+      credentialId: matchingDecoy.credentialId || action?.credentialUsed?.id || null,
+      triggerPredicate,
+      triggeredOnOutcome: outcome,
+      attributedSessionId: attributionIdentity,
+      attributedPrincipalId: attributionIdentity ? (actor?.principalId || attributionIdentity) : null,
+      attributionConfidence: attributionIdentity ? 'high' : 'ambiguous_unattributed',
+      dedupKey,
+      isDuplicate,
+      alertDelivered: !isDuplicate
+    };
+  }
+
+  /**
+   * Sensor observation generator (Spec Section 11.1, Invariant R03, R04).
+   * Sensors emit only events they can observe, with explicit availability, fieldsCollected, and attributionQuality.
+   */
+  function emitSensorObservations({ estate, targetAsset, sourceAsset, route, action, actor, outcome, trialSeed, attemptOrdinal = 0 }) {
+    const observations = [];
+    const sensors = (estate.sensors || []).filter(s => {
+      if (s.assetId && s.assetId === targetAsset.id) return true;
+      if (typeof s.layerIdx === 'number' && s.layerIdx === targetAsset.layerIdx && !s.assetId) return true;
+      if (!s.assetId && s.layerIdx == null) return true;
+      return false;
+    });
+
+    for (const sensor of sensors) {
+      if (sensor.availability === false) continue;
+      const actionKind = action?.actionKind || 'access_check';
+      if (Array.isArray(sensor.observableActions) && !sensor.observableActions.includes(actionKind) && !sensor.observableActions.includes('*')) {
+        continue;
+      }
+      const cveId = action?.finding?.cveId;
+      const mlRule = cveId ? KEV_MITIGATION_RULES[cveId]?.ml : null;
+      const hasStaticHypothesis = !!(mlRule && mlRule.state === 'modeled' && mlRule.mitigates);
+      const behavioralDraw = hashSemanticKey(trialSeed, 'observation', targetAsset.id, actionKind, attemptOrdinal);
+      const detectionThreshold = typeof sensor.detectionProbability === 'number'
+        ? sensor.detectionProbability
+        : SOAR_DETECTION_RATE;
+
+      let hypothesis = null;
+      if (actionKind === 'phishing_attachment' && outcome === 'succeeded') {
+        hypothesis = 'Anomalous user-executed attachment spawning child process on endpoint.';
+      } else if (actionKind === 'data_exfiltration' && outcome === 'succeeded') {
+        hypothesis = 'High-volume outbound data transfer from internal collection host.';
+      } else if (actionKind === 'encryption' || actionKind === 'persistence') {
+        hypothesis = `Endpoint modification (${actionKind}) outside approved maintenance window.`;
+      } else if (hasStaticHypothesis && (sensor.deterministicDetection || behavioralDraw < detectionThreshold)) {
+        hypothesis = mlRule.reason;
+      } else if (sensor.deterministicDetection || ((actionKind === 'password_spray' || actionKind === 'valid_credential' || actionKind === 'anonymous_access') && behavioralDraw < detectionThreshold)) {
+        hypothesis = `Behavioral anomaly on ${targetAsset.label} (${actionKind}).`;
+      }
+
+      const fields = {};
+      for (const f of sensor.fieldsCollected || ['sourceId', 'targetId', 'sessionId']) {
+        if (f === 'sourceId') fields.sourceId = sourceAsset?.id || null;
+        if (f === 'targetId') fields.targetId = targetAsset.id;
+        if (f === 'protocol') fields.protocol = route?.protocol || action?.finding?.requiredInterface || null;
+        if (f === 'principalId' && sensor.attributionQuality !== 'none') fields.principalId = actor?.principalId || null;
+        if (f === 'sessionId' && sensor.attributionQuality === 'session_scoped') fields.sessionId = actor?.sessionId || null;
+        if (f === 'technique') fields.technique = action?.technique || null;
+        if (f === 'credentialId') fields.credentialId = action?.credentialUsed?.id || null;
+      }
+
+      observations.push({
+        sensorId: sensor.id,
+        targetAssetId: targetAsset.id,
+        sourceAssetId: sourceAsset?.id || null,
+        routeId: route?.id || null,
+        actionKind,
+        outcome,
+        fields,
+        attributionQuality: sensor.attributionQuality || 'session_scoped',
+        suspiciousHypothesis: hypothesis,
+        isBenignWorkflow: !!actor?.isBenignWorkflow
+      });
+    }
+
+    return observations;
+  }
+
+  /**
+   * Scoped response executor (Spec Section 11.2, Invariants R05, R07, Fixtures F13–F15).
+   * Checks integration availability, authority, supported actions, authorized scopes, and session/token lineage.
+   */
+  function executeScopedResponse({ estate, proposedAction, worldState, defenderState }) {
+    const dedupKey = `${proposedAction.actionType}:${proposedAction.targetScopeId}`;
+    if (defenderState.confirmedResponses.has(dedupKey)) {
+      return {
+        status: 'confirmed',
+        idempotentDuplicate: true,
+        dedupKey,
+        integrationId: proposedAction.integrationId,
+        actionType: proposedAction.actionType,
+        targetScopeId: proposedAction.targetScopeId,
+        stateChanges: [],
+        reasonCode: 'IDEMPOTENT_ALREADY_CONFIRMED',
+        reason: `Response ${dedupKey} was already confirmed earlier in this run.`
+      };
+    }
+
+    const integrations = estate.responseIntegrations || [];
+    const integration = integrations.find(ri =>
+      ri.supportedActions?.includes(proposedAction.actionType) &&
+      (ri.authorizedScopes?.includes('*') || ri.authorizedScopes?.includes(proposedAction.targetScopeId))
+    ) || integrations.find(ri => ri.supportedActions?.includes(proposedAction.actionType));
+
+    if (!integration) {
+      return {
+        status: 'unsupported',
+        dedupKey,
+        integrationId: null,
+        actionType: proposedAction.actionType,
+        targetScopeId: proposedAction.targetScopeId,
+        stateChanges: [],
+        reasonCode: 'INTEGRATION_UNSUPPORTED',
+        reason: `No response integration supports ${proposedAction.actionType}.`
+      };
+    }
+
+    if (integration.available === false || estate.defensePosture?.enforcementSucceeds === false) {
+      return {
+        status: 'failed',
+        dedupKey,
+        integrationId: integration.id,
+        actionType: proposedAction.actionType,
+        targetScopeId: proposedAction.targetScopeId,
+        stateChanges: [],
+        reasonCode: 'ENFORCEMENT_FAILED',
+        reason: `Response integration ${integration.id} is unavailable or failed confirmation.`
+      };
+    }
+
+    if (integration.requiresApproval || estate.defensePosture?.responseAuthority === false) {
+      return {
+        status: 'approval_required',
+        dedupKey,
+        integrationId: integration.id,
+        actionType: proposedAction.actionType,
+        targetScopeId: proposedAction.targetScopeId,
+        stateChanges: [],
+        reasonCode: 'AUTHORITY_UNAVAILABLE',
+        reason: `Response ${proposedAction.actionType} on ${proposedAction.targetScopeId} lacks automated authority or requires manual approval.`
+      };
+    }
+
+    const scopeAuthorized = integration.authorizedScopes?.includes('*') || integration.authorizedScopes?.includes(proposedAction.targetScopeId);
+    if (!scopeAuthorized || !proposedAction.targetScopeId) {
+      return {
+        status: 'scope_unresolved',
+        dedupKey,
+        integrationId: integration.id,
+        actionType: proposedAction.actionType,
+        targetScopeId: proposedAction.targetScopeId,
+        stateChanges: [],
+        reasonCode: 'SCOPE_UNRESOLVED',
+        reason: `Target scope '${proposedAction.targetScopeId || 'unknown'}' is outside authorized scopes [${(integration.authorizedScopes || []).join(', ')}] of ${integration.id}.`
+      };
+    }
+
+    const stateChanges = [];
+    if (proposedAction.actionType === 'invalidate_session') {
+      worldState.invalidatedSessions.add(proposedAction.targetScopeId);
+      stateChanges.push({ kind: 'session_invalidated', sessionId: proposedAction.targetScopeId });
+    } else if (proposedAction.actionType === 'revoke_credential') {
+      worldState.revokedCredentials.add(proposedAction.targetScopeId);
+      stateChanges.push({ kind: 'credential_revoked', credentialId: proposedAction.targetScopeId });
+      // Respect integration token/session lineage contract (Spec Section 11.2, Fixture F15):
+      // revoking a token only invalidates already-minted sessions when sessionSemantics === 'terminate_minted_sessions'.
+      if (integration.sessionSemantics === 'terminate_minted_sessions' || integration.tokenSemantics === 'revoke_token_and_terminate_minted_sessions') {
+        for (const [sessId, lineage] of worldState.sessionLineage.entries()) {
+          if (lineage.mintedByCredentialId === proposedAction.targetScopeId) {
+            worldState.invalidatedSessions.add(sessId);
+            stateChanges.push({ kind: 'minted_session_invalidated', sessionId: sessId, credentialId: proposedAction.targetScopeId });
+          }
+        }
+      }
+    } else if (proposedAction.actionType === 'disable_account') {
+      worldState.disabledAccounts.add(proposedAction.targetScopeId);
+      stateChanges.push({ kind: 'account_disabled', principalId: proposedAction.targetScopeId });
+      if (integration.sessionSemantics === 'terminate_scoped_session' || integration.sessionSemantics === 'terminate_all_principal_sessions') {
+        for (const [sessId, lineage] of worldState.sessionLineage.entries()) {
+          if (lineage.principalId === proposedAction.targetScopeId) {
+            worldState.invalidatedSessions.add(sessId);
+            stateChanges.push({ kind: 'principal_session_invalidated', sessionId: sessId });
+          }
+        }
+      }
+    } else if (proposedAction.actionType === 'isolate_host') {
+      worldState.isolatedHosts.add(proposedAction.targetScopeId);
+      stateChanges.push({ kind: 'host_isolated', assetId: proposedAction.targetScopeId });
+    } else if (proposedAction.actionType === 'close_public_exposure') {
+      worldState.closedExposures.add(proposedAction.targetScopeId);
+      stateChanges.push({ kind: 'public_exposure_closed', assetId: proposedAction.targetScopeId });
+    }
+
+    defenderState.confirmedResponses.set(dedupKey, {
+      integrationId: integration.id,
+      actionType: proposedAction.actionType,
+      targetScopeId: proposedAction.targetScopeId,
+      stateChanges
+    });
+
+    return {
+      status: 'confirmed',
+      dedupKey,
+      integrationId: integration.id,
+      actionType: proposedAction.actionType,
+      targetScopeId: proposedAction.targetScopeId,
+      stateChanges,
+      reasonCode: 'RESPONSE_CONFIRMED',
+      reason: `Confirmed ${proposedAction.actionType} on ${proposedAction.targetScopeId} via ${integration.id}.`
+    };
+  }
+
+  /**
+   * Default run configuration builder for Schema v4 `simulateScenario`.
+   */
+  function createDefaultRunConfig(estate, overrides = {}) {
+    const externalEntries = (estate?.assets || []).filter(a => a.isExternalEntry).map(a => a.id);
+    const sensitiveDatasets = (estate?.datasets || []).filter(d => d.sensitivity === 'sensitive' && !d.isDecoy);
+    const defaultObjectives = sensitiveDatasets.map(ds => ({
+      id: `obj-read-${ds.id}`, kind: 'dataset_read', datasetId: ds.id, targetAssetId: ds.ownerAssetId
+    }));
+    return {
+      manifestVersion: RUN_MANIFEST_VERSION,
+      trialSeed: Number.isInteger(overrides.trialSeed) ? overrides.trialSeed : (estate?.estateSeed ?? estate?.seed ?? 1),
+      initialAccess: overrides.initialAccess || externalEntries,
+      initialKnowledge: overrides.initialKnowledge || externalEntries,
+      objectives: overrides.objectives || defaultObjectives,
+      limits: {
+        maxActionAttempts: 100,
+        maxRetriesPerAction: 2,
+        maxInvestigationActions: 20,
+        maxHumanAssists: 4,
+        maxRecordedEvents: 10000,
+        maxConditionalBranches: 16,
+        ...(overrides.limits || {})
+      },
+      interventionContracts: overrides.interventionContracts || [],
+      uncertaintyMode: overrides.uncertaintyMode || 'report_conditional'
+    };
+  }
+
+  /**
+   * Core causal simulation engine (Spec Sections 5–13, Invariants R01–R14, WP3 + WP4 + WP5).
+   * Evaluates a frontier of known candidate actions under equal maxActionAttempts budgets,
+   * knowledge-limited attacker discovery/adaptation, route-based virtual patching, per-decoy
+   * canary triggers, SOC incident/investigation/authority state machine, and explicit
+   * intervention contracts (`confirmed_before_action`, `confirmed_after_action`,
+   * `not_confirmed`, `ordering_unspecified`).
+   * Never mutates its input arguments.
+   */
+  function simulateScenario({ estate: rawEstate, attackerProfile: rawProfile, defenseConfig: rawDefense, runConfig: rawRunConfig } = {}) {
+    if (!rawEstate || typeof rawEstate !== 'object') {
+      throw new Error('simulateScenario requires a valid estate object');
+    }
+    const estate = structuredClone(rawEstate);
+    const attackerProfile = normalizeAttackerProfile(rawProfile);
+    const defenseConfig = normalizeDefenseConfig(rawDefense);
+    const runConfig = createDefaultRunConfig(estate, rawRunConfig || {});
+
+    const validation = validateRunConfig(estate, runConfig);
+    if (!validation.valid) {
+      throw new Error(`Invalid scenario configuration: ${validation.errors.join('; ')}`);
+    }
+
+    const assetById = new Map(estate.assets.map(a => [a.id, a]));
+    const routes = estate.routes || estate.relationships || [];
+    const orderRank = new Map((estate.actionOrder?.length ? estate.actionOrder : estate.assets.map(a => a.id)).map((id, idx) => [id, idx]));
+    const rankOf = id => orderRank.get(id) ?? 9999;
+
+    // Separate World State, Attacker Knowledge, and Defender State (Spec Section 6.3, R02, R03)
+    const worldState = {
+      reachedAssets: new Map(),
+      acquiredCredentials: new Map(
+        (estate.credentials || [])
+          .filter(c => c.startingAccess || runConfig.initialKnowledge.includes(c.id))
+          .map(c => [c.id, structuredClone(c)])
+      ),
+      revokedCredentials: new Set((estate.credentials || []).filter(c => c.revoked).map(c => c.id)),
+      invalidatedSessions: new Set(),
+      disabledAccounts: new Set(),
+      isolatedHosts: new Set(),
+      closedExposures: new Set(),
+      sessionLineage: new Map() // sessionId -> { principalId, rootAssetId, mintedByCredentialId, parentSessionId }
+    };
+
+    const attackerKnowledge = {
+      knownAssetIds: new Set([...runConfig.initialAccess, ...runConfig.initialKnowledge].filter(id => assetById.has(id))),
+      knownRouteIds: new Set(),
+      knownCredentialIds: new Set([...worldState.acquiredCredentials.keys()]),
+      triedVariantsByTarget: new Map(), // `${routeId || 'EXT'}:${targetId}:${findingId}` -> Set(variantId)
+      attemptOrdinalByLineage: new Map(),
+      validatedDiscoveries: 0,
+      duplicatedWork: 0,
+      abandonedBranches: 0,
+      assistanceRequests: 0
+    };
+
+    // Seed initial routes from initial known external assets
+    for (const id of attackerKnowledge.knownAssetIds) {
+      const asset = assetById.get(id);
+      if (asset?.isExternalEntry) {
+        for (const r of routes) {
+          if (r.sourceId === id) attackerKnowledge.knownRouteIds.add(r.id);
+        }
+      }
+    }
+
+    const defenderState = {
+      observations: [],
+      incidents: new Map(), // incidentId -> { id, status, targetScopeId, principalId, evidenceIds, history, proposedActions }
+      triggeredDecoyKeys: new Set(),
+      decoyAlerts: [],
+      investigationsExecuted: 0,
+      confirmedResponses: new Map(),
+      pendingInterventions: [], // queued reactive responses awaiting intervention contract resolution
+      legitimateWorkflowsDisrupted: [],
+      legitimateIdentitiesAffected: new Set(),
+      falseBlocks: []
+    };
+
+    const events = [];
+    let sequence = 0;
+    const recordEvent = (ev) => {
+      if (events.length >= runConfig.limits.maxRecordedEvents) {
+        return null;
+      }
+      sequence += 1;
+      const entry = {
+        id: ev.id || `event-${sequence}`,
+        sequence,
+        causalParentIds: ev.causalParentIds || [],
+        branchId: ev.branchId || 'branch-1',
+        kind: ev.kind,
+        actionId: ev.actionId || null,
+        actor: ev.actor || { principalId: 'attacker-principal', sessionId: 'session-initial' },
+        sourceId: ev.sourceId ?? null,
+        targetId: ev.targetId ?? null,
+        routeId: ev.routeId ?? null,
+        outcome: ev.outcome,
+        reasonCode: ev.reasonCode || 'EVALUATED',
+        reason: ev.reason || '',
+        evidenceIds: ev.evidenceIds || [],
+        controlId: ev.controlId || null,
+        stateChanges: ev.stateChanges || [],
+        objectiveChanges: ev.objectiveChanges || [],
+        assumptionIds: ev.assumptionIds || []
+      };
+      // Copy any domain metadata fields (finding, credentialUsed, technique, variantId, etc.)
+      if (ev.meta) Object.assign(entry, ev.meta);
+      events.push(entry);
+      return entry;
+    };
+
+    // Evaluate legitimate workflows against inline virtual patches and SOC (Spec Section 9 & 11.3, Fixtures F16, F28)
+    for (const wf of estate.legitimateWorkflows || []) {
+      const wfRoutes = (wf.routeIds || []).map(rid => routes.find(r => r.id === rid)).filter(Boolean);
+      const wfSessionId = `session-benign-${wf.id}`;
+      const wfPrincipalId = wf.actor || `principal-benign-${wf.id}`;
+      let wfBlocked = false;
+
+      for (const r of wfRoutes) {
+        const target = assetById.get(r.targetId);
+        if (!target) continue;
+        // Check if a misconfigured virtual patch rule falsely blocks legitimate workflow traffic (F28)
+        if (defenseConfig.virtualPatching) {
+          const epById = new Map((estate.enforcementPoints || []).map(ep => [ep.id, ep]));
+          const rulesById = new Map((estate.patchRules || []).map(pr => [pr.id, pr]));
+          for (const epId of r.enforcementPointIds || []) {
+            const ep = epById.get(epId);
+            if (!ep || ep.enabled === false) continue;
+            for (const ruleId of ep.ruleIds || []) {
+              const rule = rulesById.get(ruleId);
+              if (!rule) continue;
+              if (rule.blocksLegitimateWorkflowIds?.includes(wf.id) || (rule.matchesAllTrafficOnRoute && (!rule.targetAssetIds || rule.targetAssetIds.includes(target.id)))) {
+                wfBlocked = true;
+                defenderState.falseBlocks.push({
+                  workflowId: wf.id,
+                  routeId: r.id,
+                  ruleId: rule.id,
+                  enforcementPointId: ep.id
+                });
+                defenderState.legitimateWorkflowsDisrupted.push(wf.id);
+                defenderState.legitimateIdentitiesAffected.add(wfPrincipalId);
+                recordEvent({
+                  kind: 'action_result',
+                  actionId: `benign-${wf.id}-${r.id}`,
+                  actor: { principalId: wfPrincipalId, sessionId: wfSessionId, isBenignWorkflow: true },
+                  sourceId: r.sourceId,
+                  targetId: target.id,
+                  routeId: r.id,
+                  outcome: 'denied',
+                  reasonCode: 'FALSE_POSITIVE_PATCH_BLOCK',
+                  reason: `Legitimate workflow ${wf.label} was blocked by overly broad rule ${rule.id} at ${ep.id}.`,
+                  controlId: rule.id
+                });
+              }
+            }
+          }
+        }
+      }
+
+      // Check benign multi-boundary workflow against SOC policy (Fixture F16):
+      // Boundary count alone must not convict a documented legitimate workflow unless the policy is misconfigured.
+      if (!wfBlocked && wfRoutes.length >= 2 && defenseConfig.responsePolicy !== 'observe_only') {
+        const obsEvent = recordEvent({
+          kind: 'observation',
+          actionId: `obs-benign-${wf.id}`,
+          actor: { principalId: wfPrincipalId, sessionId: wfSessionId, isBenignWorkflow: true },
+          sourceId: wfRoutes[0]?.sourceId || null,
+          targetId: wfRoutes[wfRoutes.length - 1]?.targetId || null,
+          routeId: wfRoutes[wfRoutes.length - 1]?.id || null,
+          outcome: 'succeeded',
+          reasonCode: 'BENIGN_BOUNDARY_CROSSING_OBSERVED',
+          reason: `Observed ${wfRoutes.length} boundary crossings by legitimate workflow ${wf.label}.`
+        });
+        if (wf.forceFalsePositiveSocIntervention) {
+          defenderState.legitimateWorkflowsDisrupted.push(wf.id);
+          defenderState.legitimateIdentitiesAffected.add(wfPrincipalId);
+          recordEvent({
+            kind: 'response_confirmation',
+            causalParentIds: obsEvent ? [obsEvent.id] : [],
+            actor: { principalId: 'soc-policy', sessionId: wfSessionId },
+            targetId: wfRoutes[wfRoutes.length - 1]?.targetId || null,
+            outcome: 'succeeded',
+            reasonCode: 'ERRONEOUS_BENIGN_CONTAINMENT',
+            reason: `Erroneous containment disrupted legitimate workflow ${wf.label}.`
+          });
+        } else {
+          defenderState.investigationsExecuted = Math.min(
+            runConfig.limits.maxInvestigationActions,
+            defenderState.investigationsExecuted + 1
+          );
+          recordEvent({
+            kind: 'investigation',
+            causalParentIds: obsEvent ? [obsEvent.id] : [],
+            actor: { principalId: 'soc-policy', sessionId: wfSessionId },
+            targetId: wfRoutes[wfRoutes.length - 1]?.targetId || null,
+            outcome: 'succeeded',
+            reasonCode: 'BENIGN_WORKFLOW_VERIFIED',
+            reason: `Investigation verified ${wf.label} (${wfRoutes.length} boundaries crossed) matches authorized service pattern; incident closed without containment.`
+          });
+        }
+      }
+    }
+
+    // Budget and metric counters
+    let actionAttempts = 0;
+    let retriesUsed = 0;
+    let humanAssistsUsed = 0;
+    let controlBlocks = 0;
+    let policyDenials = 0;
+    let actionFailures = 0;
+    let canceledActions = 0;
+    let guardrailExhausted = false;
+    let orderingUnresolved = false;
+    let assistanceBudgetExhausted = false;
+    let guardrailReason = null;
+    const conditionalOutcomes = [];
+
+    // Build initial frontier from attacker's known entry points (R02: no inspection of hidden findings or isDecoy)
+    const frontier = [];
+    const enqueuedKeys = new Set();
+    let branchCounter = 0;
+
+    const enqueueCandidate = (cand) => {
+      // Attacker cannot see `isDecoy`; only skip undeployed decoys that do not exist in the active overlay
+      const deployedDecoyIds = new Set(
+        (estate.decoys || estate.defensePosture?.decoys || [])
+          .filter(d => d.deployed !== false)
+          .map(d => d.assetId)
+          .filter(Boolean)
+      );
+      if (cand.targetAsset.isDecoy || cand.targetAsset.isDecoyAsset) {
+        if (!defenseConfig.canaries || (deployedDecoyIds.size > 0 && !deployedDecoyIds.has(cand.targetAsset.id))) {
+          return;
+        }
+      }
+      const key = `${cand.sourceAsset?.id || 'EXT'}->${cand.targetAsset.id}:${cand.route?.id || 'EXT'}:${cand.localFinding?.id || ''}:${cand.variantId || 'default'}:${cand.credentialSnapshot || ''}:${cand.sourceCapSnapshot || ''}`;
+      if (enqueuedKeys.has(key)) return;
+      enqueuedKeys.add(key);
+      frontier.push({ ...cand, frontierKey: key });
+    };
+
+    const getCredentialSnapshot = (targetAsset) =>
+      [...worldState.acquiredCredentials.values()]
+        .filter(c => !worldState.revokedCredentials.has(c.id) && !c.revoked && (
+          c.targetAssetIds?.includes(targetAsset.id) || (!c.targetAssetIds?.length && c.targetGroupIds?.includes(targetAsset.groupId))
+        ))
+        .map(c => c.id)
+        .sort()
+        .join(',');
+
+    const getSourceCapSnapshot = (sourceAsset) =>
+      sourceAsset ? [...(worldState.reachedAssets.get(sourceAsset.id)?.capabilities || [])].sort().join(',') : 'EXT';
+
+    const initialEntries = estate.assets
+      .filter(a => attackerKnowledge.knownAssetIds.has(a.id) && (a.isExternalEntry || runConfig.initialAccess.includes(a.id)))
+      .sort((a, b) => rankOf(a.id) - rankOf(b.id));
+
+    for (const entry of initialEntries) {
+      branchCounter += 1;
+      const sessionId = entry.sessionId || `sess-${entry.id}`;
+      const principalId = `principal-${entry.id}`;
+      worldState.sessionLineage.set(sessionId, {
+        principalId,
+        rootAssetId: entry.id,
+        mintedByCredentialId: null,
+        parentSessionId: null
+      });
+      enqueueCandidate({
+        sourceAsset: null,
+        targetAsset: entry,
+        route: null,
+        localFinding: null,
+        variantId: 'default',
+        retryCount: 0,
+        branchId: `branch-${branchCounter}`,
+        sessionId,
+        principalId,
+        causalParentIds: [],
+        credentialSnapshot: getCredentialSnapshot(entry),
+        sourceCapSnapshot: 'EXT'
+      });
+    }
+
+    // Helper to look up intervention contract for a reactive response vs. a dependent action (Spec Section 12, R11, F21, F22)
+    function resolveInterventionContract(pendingResp, candidateStep) {
+      const contracts = runConfig.interventionContracts || [];
+      const exactMatch = contracts.find(ic =>
+        (!ic.responseActionType || ic.responseActionType === pendingResp.actionType) &&
+        (!ic.targetScopeId || ic.targetScopeId === pendingResp.targetScopeId || ic.targetScopeId === candidateStep.sessionId) &&
+        (!ic.dependentTargetId || ic.dependentTargetId === candidateStep.targetAsset.id) &&
+        (!ic.dependentActionId || ic.dependentActionId === candidateStep.route?.id || ic.dependentActionId === candidateStep.targetAsset.id)
+      );
+      if (exactMatch) return exactMatch;
+      // Check if there is a contract for this responseActionType + scope that targets a specific future dependent step
+      const futureDependentMatch = contracts.find(ic =>
+        (!ic.responseActionType || ic.responseActionType === pendingResp.actionType) &&
+        (!ic.targetScopeId || ic.targetScopeId === pendingResp.targetScopeId || ic.targetScopeId === candidateStep.sessionId) &&
+        (ic.dependentTargetId || ic.dependentActionId)
+      );
+      if (futureDependentMatch) return futureDependentMatch;
+      if (estate.defensePosture?.defaultInterventionContract) {
+        return { contract: estate.defensePosture.defaultInterventionContract };
+      }
+      return { contract: 'ordering_unspecified' };
+    }
+
+    // SOC Incident & Investigation State Machine processor (Spec Section 11, Invariants R03, R05, R07, F11–F15, F31)
+    function processSocObservations(newObservations, decoyAlert, causalEventId, stepContext) {
+      const policy = defenseConfig.responsePolicy;
+      const allSignals = [...newObservations.filter(o => o.suspiciousHypothesis), ...(decoyAlert && decoyAlert.alertDelivered ? [decoyAlert] : [])];
+      if (!allSignals.length) return;
+
+      for (const sig of allSignals) {
+        const isDecoySig = !!sig.decoyId;
+        const attributedSession = isDecoySig ? sig.attributedSessionId : sig.fields?.sessionId;
+        const attributedPrincipal = isDecoySig ? sig.attributedPrincipalId : sig.fields?.principalId;
+        const incKey = attributedSession || `unattributed-${sig.targetAssetId}`;
+
+        let incident = defenderState.incidents.get(incKey);
+        if (!incident) {
+          incident = {
+            id: `incident-${defenderState.incidents.size + 1}`,
+            key: incKey,
+            status: 'untriaged',
+            targetScopeId: attributedSession,
+            principalId: attributedPrincipal,
+            targetAssetId: sig.targetAssetId,
+            credentialId: sig.credentialId || sig.fields?.credentialId || null,
+            evidenceIds: [],
+            transitions: [],
+            proposedActions: []
+          };
+          defenderState.incidents.set(incKey, incident);
+        }
+
+        incident.evidenceIds.push(causalEventId);
+        const transition = (newStatus, rationale) => {
+          incident.status = newStatus;
+          incident.transitions.push({ status: newStatus, rationale, evidenceIds: [...incident.evidenceIds] });
+          recordEvent({
+            kind: 'incident_update',
+            causalParentIds: [causalEventId],
+            branchId: stepContext.branchId,
+            actor: { principalId: `soc-${policy}`, sessionId: attributedSession || 'unattributed' },
+            targetId: sig.targetAssetId,
+            outcome: 'succeeded',
+            reasonCode: `INCIDENT_${newStatus.toUpperCase()}`,
+            reason: rationale,
+            evidenceIds: [...incident.evidenceIds]
+          });
+        };
+
+        transition('investigating', isDecoySig
+          ? `Triaging canary decoy alert (${sig.decoyId}) on ${sig.targetAssetId}.`
+          : `Triaging sensor observation (${sig.sensorId}): ${sig.suspiciousHypothesis}`);
+
+        // Observe-only mode (including Canary-only mode, R07, F11) records incident & detection but executes no active response
+        if (policy === 'observe_only') {
+          transition('closed', 'Observation-only response policy: alert and evidence recorded; no active containment proposed.');
+          continue;
+        }
+
+        // Execute bounded investigation action if needed (Spec Section 11.1)
+        if (defenderState.investigationsExecuted < runConfig.limits.maxInvestigationActions) {
+          defenderState.investigationsExecuted += 1;
+          recordEvent({
+            kind: 'investigation',
+            causalParentIds: [causalEventId],
+            branchId: stepContext.branchId,
+            actor: { principalId: `soc-${policy}`, sessionId: attributedSession || 'unattributed' },
+            targetId: sig.targetAssetId,
+            outcome: 'succeeded',
+            reasonCode: 'INVESTIGATION_COMPLETED',
+            reason: attributedSession
+              ? `Correlated activity to session '${attributedSession}' and verified exposure context.`
+              : `Investigated alert on ${sig.targetAssetId}, but session attribution is absent.`
+          });
+        }
+
+        // Fixture F12: Canary or sensor identifies suspicious activity, but not a revocable session/identity
+        if (!attributedSession && !incident.credentialId) {
+          transition('insufficient_evidence', 'High-confidence suspicious activity observed, but telemetry lacks revocable session or credential attribution (F12).');
+          continue;
+        }
+
+        // Propose scoped response action(s) (Spec Section 11.2, R07: proposal alone is not enforcement)
+        // Fixture F31: human_led and agentic policies with identical configuration make identical decisions.
+        const proposedActionType = sig.decoyKind === 'honeytoken_credential' && incident.credentialId
+          ? 'revoke_credential'
+          : attributedSession
+            ? 'invalidate_session'
+            : 'revoke_credential';
+        const targetScopeId = proposedActionType === 'revoke_credential' ? incident.credentialId : attributedSession;
+
+        // Avoid queuing duplicate response proposals for the same (actionType, targetScopeId)
+        if (incident.proposedActions.some(p => p.actionType === proposedActionType && p.targetScopeId === targetScopeId)) {
+          continue;
+        }
+
+        const proposal = {
+          id: `proposal-${incident.id}-${incident.proposedActions.length + 1}`,
+          incidentId: incident.id,
+          actionType: proposedActionType,
+          targetScopeId,
+          targetAssetId: sig.targetAssetId,
+          causalEventId
+        };
+        incident.proposedActions.push(proposal);
+        transition('action_proposed', `Proposed ${proposedActionType} for scope '${targetScopeId}'.`);
+
+        const propEv = recordEvent({
+          kind: 'response_proposal',
+          causalParentIds: [causalEventId],
+          branchId: stepContext.branchId,
+          actor: { principalId: `soc-${policy}`, sessionId: attributedSession || 'unattributed' },
+          targetId: sig.targetAssetId,
+          outcome: 'succeeded',
+          reasonCode: 'RESPONSE_PROPOSED',
+          reason: `SOC policy (${policy}) proposed ${proposedActionType} on '${targetScopeId}'.`,
+          evidenceIds: [...incident.evidenceIds]
+        });
+
+        // Queue reactive intervention for contract evaluation (Spec Section 12)
+        defenderState.pendingInterventions.push({
+          ...proposal,
+          incident,
+          proposalEventId: propEv?.id || causalEventId
+        });
+      }
+    }
+
+    // Apply or defer pending reactive interventions according to declared interventionContracts (Spec Section 12)
+    function applyPendingInterventionsForStep(candidateStep) {
+      const remaining = [];
+      for (const pending of defenderState.pendingInterventions) {
+        const contractSpec = resolveInterventionContract(pending, candidateStep);
+        const contract = contractSpec.contract;
+
+        // If a contract specifies a dependentTargetId or dependentActionId that has not been reached yet,
+        // keep the pending intervention queued until that dependent step is evaluated.
+        const targetsSpecificStep = !!(contractSpec.dependentTargetId || contractSpec.dependentActionId);
+        const matchesThisStep = (!contractSpec.dependentTargetId || contractSpec.dependentTargetId === candidateStep.targetAsset.id) &&
+          (!contractSpec.dependentActionId || contractSpec.dependentActionId === candidateStep.route?.id || contractSpec.dependentActionId === candidateStep.targetAsset.id);
+
+        if (targetsSpecificStep && !matchesThisStep) {
+          remaining.push(pending);
+          continue;
+        }
+
+        if (contract === 'confirmed_after_action') {
+          pending.confirmAfterStepKey = candidateStep.frontierKey;
+          remaining.push(pending);
+          continue;
+        }
+
+        if (contract === 'not_confirmed') {
+          pending.incident.status = 'enforcement_failed';
+          recordEvent({
+            kind: 'response_confirmation',
+            causalParentIds: [pending.proposalEventId],
+            branchId: candidateStep.branchId,
+            actor: { principalId: `soc-${defenseConfig.responsePolicy}`, sessionId: pending.targetScopeId || 'unattributed' },
+            targetId: pending.targetAssetId,
+            outcome: 'failed',
+            reasonCode: 'INTERVENTION_NOT_CONFIRMED',
+            reason: `Intervention contract 'not_confirmed': ${pending.actionType} on '${pending.targetScopeId}' was not confirmed.`
+          });
+          continue;
+        }
+
+        if (contract === 'ordering_unspecified') {
+          // Record conditional outcome branch (Spec Section 12, R11, F21)
+          const affectsThisStep = pending.targetScopeId === candidateStep.sessionId ||
+            (pending.actionType === 'revoke_credential' && worldState.acquiredCredentials.has(pending.targetScopeId));
+          if (affectsThisStep) {
+            const preview = executeScopedResponse({
+              estate, proposedAction: pending,
+              worldState: structuredClone(worldState),
+              defenderState: structuredClone(defenderState)
+            });
+            if (preview.status !== 'confirmed') {
+              pending.incident.status = preview.status === 'approval_required' ? 'awaiting_authority' : 'enforcement_failed';
+              recordEvent({
+                kind: 'response_confirmation',
+                causalParentIds: [pending.proposalEventId],
+                branchId: candidateStep.branchId,
+                targetId: pending.targetAssetId,
+                outcome: 'failed',
+                controlId: preview.integrationId,
+                reasonCode: preview.reasonCode,
+                reason: preview.reason
+              });
+              continue;
+            }
+            if (conditionalOutcomes.length >= runConfig.limits.maxConditionalBranches) {
+              guardrailExhausted = true;
+              guardrailReason = 'maxConditionalBranches';
+            } else {
+              conditionalOutcomes.push({
+                id: `cond-${conditionalOutcomes.length + 1}`,
+                contract: 'ordering_unspecified',
+                responseActionType: pending.actionType,
+                targetScopeId: pending.targetScopeId,
+                dependentTargetId: candidateStep.targetAsset.id,
+                dependentRouteId: candidateStep.route?.id || null,
+                controllingAssumption: contractSpec.controllingAssumption || `Whether ${pending.actionType} on '${pending.targetScopeId}' is effective at the access check for ${candidateStep.targetAsset.label}.`,
+                status: 'unresolved'
+              });
+            }
+            recordEvent({
+              kind: 'response_confirmation',
+              causalParentIds: [pending.proposalEventId],
+              branchId: candidateStep.branchId,
+              actor: { principalId: `soc-${defenseConfig.responsePolicy}`, sessionId: pending.targetScopeId || 'unattributed' },
+              targetId: candidateStep.targetAsset.id,
+              outcome: 'conditional',
+              reasonCode: 'ORDERING_UNSPECIFIED_CONDITIONAL',
+              reason: `Unspecified ordering between ${pending.actionType} (${pending.targetScopeId}) and access to ${candidateStep.targetAsset.label}; the dependent action was left unresolved.`
+            });
+            // Stop at the disputed action so later events cannot imply either ordering.
+            orderingUnresolved = true;
+            return;
+          }
+          remaining.push(pending);
+          continue;
+        }
+
+        // Explicitly confirmed before the dependent action.
+        const execResult = executeScopedResponse({
+          estate,
+          proposedAction: pending,
+          worldState,
+          defenderState
+        });
+
+        if (execResult.status === 'confirmed') {
+          pending.incident.status = 'enforcement_confirmed';
+          recordEvent({
+            kind: 'response_confirmation',
+            causalParentIds: [pending.proposalEventId],
+            branchId: candidateStep.branchId,
+            actor: { principalId: `soc-${defenseConfig.responsePolicy}`, sessionId: pending.targetScopeId || 'unattributed' },
+            targetId: pending.targetAssetId,
+            outcome: 'succeeded',
+            reasonCode: execResult.reasonCode,
+            reason: execResult.reason,
+            controlId: execResult.integrationId,
+            stateChanges: execResult.stateChanges
+          });
+        } else if (execResult.status === 'approval_required') {
+          pending.incident.status = 'awaiting_authority';
+          recordEvent({
+            kind: 'response_confirmation',
+            causalParentIds: [pending.proposalEventId],
+            branchId: candidateStep.branchId,
+            actor: { principalId: `soc-${defenseConfig.responsePolicy}`, sessionId: pending.targetScopeId || 'unattributed' },
+            targetId: pending.targetAssetId,
+            outcome: 'denied',
+            reasonCode: execResult.reasonCode,
+            reason: execResult.reason,
+            controlId: execResult.integrationId
+          });
+        } else {
+          pending.incident.status = 'enforcement_failed';
+          recordEvent({
+            kind: 'response_confirmation',
+            causalParentIds: [pending.proposalEventId],
+            branchId: candidateStep.branchId,
+            actor: { principalId: `soc-${defenseConfig.responsePolicy}`, sessionId: pending.targetScopeId || 'unattributed' },
+            targetId: pending.targetAssetId,
+            outcome: 'failed',
+            reasonCode: execResult.reasonCode,
+            reason: execResult.reason,
+            controlId: execResult.integrationId
+          });
+        }
+      }
+      defenderState.pendingInterventions = remaining;
+    }
+
+    function confirmDeferredAfterActionInterventions(completedStep, completedEventId) {
+      const remaining = [];
+      for (const pending of defenderState.pendingInterventions) {
+        if (pending.confirmAfterStepKey === completedStep.frontierKey) {
+          const execResult = executeScopedResponse({
+            estate,
+            proposedAction: pending,
+            worldState,
+            defenderState
+          });
+          pending.incident.status = execResult.status === 'confirmed' ? 'enforcement_confirmed' : 'enforcement_failed';
+          recordEvent({
+            kind: 'response_confirmation',
+            causalParentIds: [pending.proposalEventId, completedEventId].filter(Boolean),
+            branchId: completedStep.branchId,
+            actor: { principalId: `soc-${defenseConfig.responsePolicy}`, sessionId: pending.targetScopeId || 'unattributed' },
+            targetId: pending.targetAssetId,
+            outcome: execResult.status === 'confirmed' ? 'succeeded' : 'failed',
+            reasonCode: execResult.status === 'confirmed' ? 'CONFIRMED_AFTER_ACTION' : execResult.reasonCode,
+            reason: `${execResult.reason} (Confirmed after action on ${completedStep.targetAsset.label}; completed impact is preserved.)`,
+            controlId: execResult.integrationId,
+            stateChanges: execResult.stateChanges
+          });
+        } else {
+          remaining.push(pending);
+        }
+      }
+      defenderState.pendingInterventions = remaining;
+    }
+
+    // Main Frontier Execution Loop (Spec Section 5 & Section 8.2)
+    // Concurrency selects up to `maxConcurrentBranches` independent candidates per batch reading a common
+    // pre-action state, while every attempted action consumes the same shared `maxActionAttempts` budget.
+    const maxBranches = Math.max(1, attackerProfile.maxConcurrentBranches || 1);
+    const visitedStateTransitions = new Set();
+
+    function scoreCandidateForPolicy(cand) {
+      if (cand.localFinding) {
+        if (cand.localFinding.kind === 'data_exfiltration') return 5;
+        if (cand.localFinding.kind === 'persistence') return 15;
+        if (cand.localFinding.kind === 'encryption') return 900;
+      }
+      // Check if candidate leads directly to an objective target
+      const isObjTarget = runConfig.objectives.some(o => o.targetAssetId === cand.targetAsset.id);
+      if (isObjTarget) return 25;
+      if (attackerProfile.discoveryPolicy === 'depth_first_foothold') {
+        // Depth-first prefers exploring discovered nodes from an established foothold in layer/actionOrder sequence before trying new Layer 0 entries
+        return cand.sourceAsset ? (10 + cand.targetAsset.layerIdx * 5) : 80;
+      }
+      // Breadth-first coordinated explores across available branches
+      return 30 + cand.targetAsset.layerIdx * 5;
+    }
+
+    while (frontier.length > 0 && !orderingUnresolved) {
+      if (events.length >= runConfig.limits.maxRecordedEvents) {
+        guardrailExhausted = true;
+        guardrailReason = 'maxRecordedEvents';
+        break;
+      }
+      if (actionAttempts >= runConfig.limits.maxActionAttempts) {
+        guardrailExhausted = true;
+        guardrailReason = 'maxActionAttempts';
+        break;
+      }
+
+      frontier.sort((a, b) =>
+        scoreCandidateForPolicy(a) - scoreCandidateForPolicy(b) ||
+        rankOf(a.targetAsset.id) - rankOf(b.targetAsset.id) ||
+        (a.route?.id || '').localeCompare(b.route?.id || '')
+      );
+
+      // Select batch of up to `maxBranches` independent actions whose prerequisites are currently satisfied
+      const batch = [];
+      const batchTargets = new Set();
+      for (let i = 0; i < frontier.length && batch.length < maxBranches; i++) {
+        const cand = frontier[i];
+        // Avoid dispatching two concurrent workers to the exact same target+capability in the same batch
+        const targetCapKey = `${cand.targetAsset.id}:${cand.localFinding?.kind || 'access'}`;
+        if (batchTargets.has(targetCapKey)) {
+          attackerKnowledge.duplicatedWork += 1;
+          continue;
+        }
+        batchTargets.add(targetCapKey);
+        batch.push(cand);
+        frontier.splice(i, 1);
+        i -= 1;
+      }
+
+      if (batch.length === 0 && frontier.length > 0) {
+        batch.push(frontier.shift());
+      }
+
+      // Snapshot common pre-action world state for this concurrent batch (Spec Section 8.2:
+      // "Actions selected together read a common pre-action state. A dependent action cannot use
+      // a credential that another action in the same batch has not yet produced.")
+      const preBatchCredentials = new Map(worldState.acquiredCredentials);
+      const preBatchReached = new Map(
+        [...worldState.reachedAssets.entries()].map(([k, v]) => [k, {
+          ...v,
+          capabilities: new Set(v.capabilities),
+          endpointPermissions: v.endpointPermissions ? new Map([...v.endpointPermissions.entries()].map(([ek, ev]) => [ek, new Set(ev)])) : new Map()
+        }])
+      );
+
+      for (const step of batch) {
+        if (events.length >= runConfig.limits.maxRecordedEvents) {
+          guardrailExhausted = true;
+          guardrailReason = 'maxRecordedEvents';
+          break;
+        }
+
+        // Resolve any reactive interventions scheduled before this step
+        applyPendingInterventionsForStep(step);
+        if (orderingUnresolved || guardrailExhausted) break;
+
+        const actor = { principalId: step.principalId, sessionId: step.sessionId };
+
+        // 1. Check if session, principal, or source host was contained/isolated before dispatch (R12, F30:
+        // "Do not increment attack-attempt counters for actions canceled before dispatch.")
+        const sessionContained = worldState.invalidatedSessions.has(step.sessionId) ||
+          worldState.disabledAccounts.has(step.principalId) ||
+          (step.sourceAsset && worldState.isolatedHosts.has(step.sourceAsset.id)) ||
+          worldState.isolatedHosts.has(step.targetAsset.id);
+
+        if (sessionContained) {
+          canceledActions += 1;
+          recordEvent({
+            kind: 'action_result',
+            actionId: `action-${step.targetAsset.id}-suppressed`,
+            causalParentIds: step.causalParentIds,
+            branchId: step.branchId,
+            actor,
+            sourceId: step.sourceAsset?.id || null,
+            targetId: step.targetAsset.id,
+            routeId: step.route?.id || null,
+            outcome: 'suppressed',
+            reasonCode: 'SESSION_OR_HOST_CONTAINED',
+            reason: `Candidate action on ${step.targetAsset.label} was suppressed before dispatch because session '${step.sessionId}' or host scope was contained.`,
+            meta: {
+              finding: step.localFinding || null,
+              suppressionPhase: 'queued'
+            }
+          });
+          continue;
+        }
+
+        // Check visited state guard (Spec Section 7.1, F20: cycle guard keyed on capabilities + credentials + variant)
+        const stateVisitKey = `${step.sourceAsset?.id || 'EXT'}->${step.targetAsset.id}:${step.route?.id || 'EXT'}:${step.localFinding?.id || ''}:${step.variantId || 'default'}:${getCredentialSnapshot(step.targetAsset)}:${getSourceCapSnapshot(step.sourceAsset)}`;
+        if (visitedStateTransitions.has(stateVisitKey)) {
+          continue;
+        }
+        visitedStateTransitions.add(stateVisitKey);
+
+        // Check attempt budget before dispatching an actual attempt
+        if (actionAttempts >= runConfig.limits.maxActionAttempts) {
+          guardrailExhausted = true;
+          guardrailReason = 'maxActionAttempts';
+          recordEvent({
+            kind: 'action_result',
+            actionId: `action-${step.targetAsset.id}-budget`,
+            causalParentIds: step.causalParentIds,
+            branchId: step.branchId,
+            actor,
+            sourceId: step.sourceAsset?.id || null,
+            targetId: step.targetAsset.id,
+            routeId: step.route?.id || null,
+            outcome: 'budget_exhausted',
+            reasonCode: 'MAX_ACTION_ATTEMPTS_REACHED',
+            reason: `Attempt budget (${runConfig.limits.maxActionAttempts}) exhausted before evaluating ${step.targetAsset.label}.`
+          });
+          break;
+        }
+
+        // Evaluate prerequisites against pre-batch state snapshot
+        const evalStateSnapshot = {
+          reachedAssets: preBatchReached,
+          acquiredCredentials: preBatchCredentials,
+          revokedCredentials: worldState.revokedCredentials
+        };
+
+        const feasibleActions = step.localFinding
+          ? [evaluatePostCompromiseAction(evalStateSnapshot, step.targetAsset, step.localFinding, estate)]
+          : evaluateDistinctActions(evalStateSnapshot, step.sourceAsset, step.targetAsset, step.route, estate);
+
+        // Filter by attackerProfile repertoire & policy
+        const policyAllowed = feasibleActions.filter(a =>
+          a.eligible &&
+          (!Array.isArray(attackerProfile.supportedActionFamilies) || attackerProfile.supportedActionFamilies.includes(a.actionKind)) &&
+          actionPolicy(a, step.sourceAsset, step.targetAsset, attackerProfile)
+        ).sort((a, b) => lateralRank(a, attackerProfile) - lateralRank(b, attackerProfile));
+
+        const lineageKey = `${step.route?.id || 'EXT'}:${step.targetAsset.id}`;
+        const attemptOrdinal = (attackerKnowledge.attemptOrdinalByLineage.get(lineageKey) || 0) + 1;
+        attackerKnowledge.attemptOrdinalByLineage.set(lineageKey, attemptOrdinal);
+
+        // If no action is eligible, check whether this was a policy skip, route prerequisite failure, or actual denied/failed attempt
+        if (policyAllowed.length === 0) {
+          const rawFailure = feasibleActions[0] || { eligible: false, reason: 'No eligible action.' };
+          const isRouteMissingCap = /Required source capability|No directed relationship|Relationship direction/i.test(rawFailure.reason || '');
+          const routeHasOnlyUnsupportedMethods = (() => {
+            if (!attackerProfile?.gangId) return false;
+            const methods = step.localFinding
+              ? [step.localFinding]
+              : (estate.findings || []).filter(f => f.assetId === step.targetAsset.id && (!step.route || !f.requiredInterface || f.requiredInterface === step.route.protocol));
+            return methods.length > 0 && methods.every(finding => !actionPolicy({ finding, technique: finding.technique }, step.sourceAsset, step.targetAsset, attackerProfile));
+          })();
+          const isPolicyUnsupported = feasibleActions.some(a => a.eligible) || routeHasOnlyUnsupportedMethods;
+
+          if (isRouteMissingCap || isPolicyUnsupported) {
+            // Not dispatched as an external attack attempt
+            recordEvent({
+              kind: 'action_result',
+              actionId: `action-${step.targetAsset.id}-not-attempted`,
+              causalParentIds: step.causalParentIds,
+              branchId: step.branchId,
+              actor,
+              sourceId: step.sourceAsset?.id || null,
+              targetId: step.targetAsset.id,
+              routeId: step.route?.id || null,
+              outcome: 'not_attempted',
+              reasonCode: isPolicyUnsupported ? 'OUTSIDE_ATTACKER_REPERTOIRE' : 'PREREQUISITE_NOT_ESTABLISHED',
+              reason: isPolicyUnsupported
+                ? `No applicable action in attacker profile repertoire for ${step.targetAsset.label}.`
+                : rawFailure.reason,
+              meta: { policySkipped: isPolicyUnsupported, finding: rawFailure.finding || null }
+            });
+            continue;
+          }
+
+          // Dispatched probe that failed or was denied by target access/credential/MFA rules (F01, F02, F09)
+          actionAttempts += 1;
+          const isCredentialOrPolicyDenial = /revoked|expired|wrong audience|lacks .* permission|requires MFA|blocked by MFA|rate limiting|denied|authorized/i.test(rawFailure.reason || '');
+          if (isCredentialOrPolicyDenial) policyDenials += 1;
+          else actionFailures += 1;
+
+          const reasonCode = /wrong audience/i.test(rawFailure.reason || '') ? 'CREDENTIAL_WRONG_AUDIENCE'
+            : /revoked/i.test(rawFailure.reason || '') ? 'CREDENTIAL_REVOKED'
+            : /expired/i.test(rawFailure.reason || '') ? 'CREDENTIAL_EXPIRED'
+            : /lacks .* permission/i.test(rawFailure.reason || '') ? 'CREDENTIAL_MISSING_PERMISSION'
+            : /MFA/i.test(rawFailure.reason || '') ? 'MFA_REQUIRED_DENIED'
+            : /Protocol mismatch/i.test(rawFailure.reason || '') ? 'PROTOCOL_INTERFACE_MISMATCH'
+            : 'PREREQUISITE_CHECK_FAILED';
+
+          // Check if failed attempt used a honeytoken credential (Fixture F09: denied honeytoken use at instrumented verifier still triggers canary!)
+          const attemptedHoneytoken = [...preBatchCredentials.values()].find(c =>
+            c.isHoneytoken || (estate.decoys || []).some(d => d.credentialId === c.id)
+          );
+          const failActionObj = {
+            actionKind: attemptedHoneytoken ? 'valid_credential' : (rawFailure.finding?.kind || 'access_probe'),
+            finding: rawFailure.finding || null,
+            credentialUsed: attemptedHoneytoken || null
+          };
+
+          const failEv = recordEvent({
+            kind: 'action_result',
+            actionId: `action-${step.targetAsset.id}-attempt-${attemptOrdinal}`,
+            causalParentIds: step.causalParentIds,
+            branchId: step.branchId,
+            actor,
+            sourceId: step.sourceAsset?.id || null,
+            targetId: step.targetAsset.id,
+            routeId: step.route?.id || null,
+            outcome: isCredentialOrPolicyDenial ? 'denied' : 'failed',
+            reasonCode,
+            reason: rawFailure.reason,
+            meta: {
+              finding: rawFailure.finding || null,
+              credentialUsed: attemptedHoneytoken || null,
+              variantId: step.variantId || 'default'
+            }
+          });
+
+          // Evaluate decoy interaction even on denied/failed request (Spec Section 10, R06, F09)
+          const decoyAlert = evaluateDecoyInteraction({
+            estate,
+            targetAsset: step.targetAsset,
+            action: failActionObj,
+            actor,
+            outcome: isCredentialOrPolicyDenial ? 'denied' : 'failed',
+            defenseConfig,
+            triggeredDecoyKeys: defenderState.triggeredDecoyKeys
+          });
+          if (decoyAlert) {
+            defenderState.decoyAlerts.push(decoyAlert);
+            recordEvent({
+              kind: 'decoy_interaction',
+              causalParentIds: failEv ? [failEv.id] : [],
+              branchId: step.branchId,
+              actor,
+              sourceId: step.sourceAsset?.id || null,
+              targetId: step.targetAsset.id,
+              routeId: step.route?.id || null,
+              outcome: 'succeeded',
+              reasonCode: 'CANARY_DECOY_TRIGGERED',
+              reason: `Canary decoy '${decoyAlert.decoyId}' triggered on ${decoyAlert.triggeredOnOutcome} request (${decoyAlert.triggerPredicate}).`,
+              controlId: decoyAlert.decoyId,
+              meta: { decoyAlert }
+            });
+          }
+
+          const newObs = emitSensorObservations({
+            estate,
+            targetAsset: step.targetAsset,
+            sourceAsset: step.sourceAsset,
+            route: step.route,
+            action: failActionObj,
+            actor,
+            outcome: isCredentialOrPolicyDenial ? 'denied' : 'failed',
+            trialSeed: runConfig.trialSeed,
+            attemptOrdinal
+          });
+          for (const obs of newObs) {
+            defenderState.observations.push(obs);
+            recordEvent({
+              kind: 'observation',
+              causalParentIds: failEv ? [failEv.id] : [],
+              branchId: step.branchId,
+              actor,
+              sourceId: obs.sourceAssetId,
+              targetId: obs.targetAssetId,
+              routeId: obs.routeId,
+              outcome: 'succeeded',
+              reasonCode: obs.suspiciousHypothesis ? 'SUSPICIOUS_OBSERVATION' : 'TELEMETRY_COLLECTED',
+              reason: obs.suspiciousHypothesis || `Telemetry collected by ${obs.sensorId}.`,
+              controlId: obs.sensorId,
+              meta: { observation: obs }
+            });
+          }
+          if (failEv) {
+            processSocObservations(newObs, decoyAlert, failEv.id, { ...step, credentialUsed: attemptedHoneytoken });
+          }
+          continue;
+        }
+
+        // Execute the first distinct eligible action
+        const existingReach = worldState.reachedAssets.get(step.targetAsset.id);
+        const distinctCandidates = existingReach
+          ? policyAllowed.filter(c => !existingReach.capabilities.has(c.yieldsCapability))
+          : policyAllowed;
+
+        if (distinctCandidates.length === 0) {
+          attackerKnowledge.duplicatedWork += 1;
+          continue;
+        }
+
+        const chosenAction = { ...distinctCandidates[0], variantId: step.variantId || 'default' };
+
+        // Check if this action requires human assistance under the attacker profile (Spec Section 8.1)
+        if (chosenAction.finding?.requiresHumanAssist || (step.targetAsset.conditions?.requiresContextContinuation && attackerProfile.humanAssistancePolicy?.requiredForAmbiguousContinuation)) {
+          const assistCost = attackerProfile.humanAssistancePolicy?.assistCost ?? 1;
+          if (humanAssistsUsed + assistCost > runConfig.limits.maxHumanAssists) {
+            assistanceBudgetExhausted = true;
+            attackerKnowledge.abandonedBranches += 1;
+            recordEvent({
+              kind: 'action_result',
+              actionId: `action-${step.targetAsset.id}-assist-exhausted`,
+              causalParentIds: step.causalParentIds,
+              branchId: step.branchId,
+              actor,
+              sourceId: step.sourceAsset?.id || null,
+              targetId: step.targetAsset.id,
+              routeId: step.route?.id || null,
+              outcome: 'budget_exhausted',
+              reasonCode: 'MAX_HUMAN_ASSISTS_REACHED',
+              reason: `Human assistance budget (${runConfig.limits.maxHumanAssists}) exhausted on ${step.targetAsset.label}.`
+            });
+            continue;
+          }
+          humanAssistsUsed += assistCost;
+          attackerKnowledge.assistanceRequests += 1;
+        }
+
+        // Check if public exposure was closed by SOC earlier
+        if (chosenAction.actionKind === 'anonymous_access' && worldState.closedExposures.has(step.targetAsset.id)) {
+          actionAttempts += 1;
+          controlBlocks += 1;
+          recordEvent({
+            kind: 'action_result',
+            actionId: `action-${step.targetAsset.id}-exposure-closed`,
+            causalParentIds: step.causalParentIds,
+            branchId: step.branchId,
+            actor,
+            sourceId: step.sourceAsset?.id || null,
+            targetId: step.targetAsset.id,
+            routeId: step.route?.id || null,
+            outcome: 'denied',
+            reasonCode: 'PUBLIC_EXPOSURE_CLOSED',
+            reason: `Public exposure on ${step.targetAsset.label} was closed by a confirmed SOC response.`
+          });
+          continue;
+        }
+
+        // Dispatch the attempt!
+        actionAttempts += 1;
+
+        // 2. Evaluate inline Virtual Patching at traversed enforcementPoints (Spec Section 9, F03–F07)
+        const patchResult = evaluateVirtualPatch({
+          estate,
+          route: step.route,
+          targetAsset: step.targetAsset,
+          action: chosenAction,
+          variantId: chosenAction.variantId,
+          defenseConfig
+        });
+
+        // Also check collection host egress policy for data_exfiltration
+        const egressBlocked = chosenAction.actionKind === 'data_exfiltration' && chosenAction.egressAllowed === false;
+
+        if (patchResult.enforced || egressBlocked) {
+          controlBlocks += 1;
+          const blockEv = recordEvent({
+            kind: 'action_result',
+            actionId: `action-${step.targetAsset.id}-attempt-${attemptOrdinal}`,
+            causalParentIds: step.causalParentIds,
+            branchId: step.branchId,
+            actor,
+            sourceId: step.sourceAsset?.id || null,
+            targetId: step.targetAsset.id,
+            routeId: step.route?.id || null,
+            outcome: 'denied',
+            reasonCode: egressBlocked ? 'EGRESS_POLICY_DENIED' : patchResult.reasonCode,
+            reason: egressBlocked ? 'Outbound transfer is denied by the collection host egress policy.' : patchResult.reason,
+            controlId: egressBlocked ? 'egress-policy' : patchResult.ruleId,
+            meta: {
+              finding: chosenAction.finding || null,
+              credentialUsed: chosenAction.credentialUsed || null,
+              technique: chosenAction.technique || null,
+              variantId: chosenAction.variantId,
+              patchEvaluation: patchResult
+            }
+          });
+
+          // Fallible adaptation after a blocked request (Spec Section 8.3, F04, F05):
+          // The blocked request supplies only that the attempt was rejected; if the profile has untried variants
+          // in its adaptationRepertoire and retry budget remains, it may enqueue an adaptation attempt.
+          if (patchResult.enforced && step.retryCount < runConfig.limits.maxRetriesPerAction && retriesUsed < runConfig.limits.maxActionAttempts) {
+            const triedKey = `${step.route?.id || 'EXT'}:${step.targetAsset.id}:${chosenAction.finding?.id || ''}`;
+            if (!attackerKnowledge.triedVariantsByTarget.has(triedKey)) {
+              attackerKnowledge.triedVariantsByTarget.set(triedKey, new Set([chosenAction.variantId]));
+            }
+            const triedSet = attackerKnowledge.triedVariantsByTarget.get(triedKey);
+            const repertoire = attackerProfile.adaptationRepertoire || ['default'];
+            const nextVariant = repertoire.find(v => !triedSet.has(v));
+            if (nextVariant) {
+              triedSet.add(nextVariant);
+              // Optional discovery probability for alternative variant (F05)
+              const canDiscoverVariant = typeof attackerProfile.variantDiscoveryProbability === 'number'
+                ? hashSemanticKey(runConfig.trialSeed, 'attacker_adapt', step.targetAsset.id, nextVariant, attemptOrdinal) < attackerProfile.variantDiscoveryProbability
+                : true;
+              if (canDiscoverVariant) {
+                retriesUsed += 1;
+                enqueueCandidate({
+                  ...step,
+                  variantId: nextVariant,
+                  retryCount: step.retryCount + 1,
+                  causalParentIds: blockEv ? [blockEv.id] : step.causalParentIds
+                });
+              }
+            }
+          }
+          continue;
+        }
+
+        // Check if target is a honeytoken or decoy asset (Spec Section 10, R06, R07:
+        // "A honeytoken must not silently grant production access; a real credential intentionally used as a monitored lure needs an explicit, separately labeled scenario.")
+        const isTargetDecoy = !!(step.targetAsset.isDecoy || step.targetAsset.isDecoyAsset ||
+          (estate.decoys || []).some(d => d.assetId === step.targetAsset.id));
+        const isCredHoneytoken = !!(chosenAction.credentialUsed?.isHoneytoken ||
+          (estate.decoys || []).some(d => d.credentialId && d.credentialId === chosenAction.credentialUsed?.id && !d.assetId));
+
+        if (isCredHoneytoken && !chosenAction.credentialUsed?.grantsProductionAccessAsMonitoredLure) {
+          policyDenials += 1;
+          const honeyEv = recordEvent({
+            kind: 'action_result',
+            actionId: `action-${step.targetAsset.id}-attempt-${attemptOrdinal}`,
+            causalParentIds: step.causalParentIds,
+            branchId: step.branchId,
+            actor,
+            sourceId: step.sourceAsset?.id || null,
+            targetId: step.targetAsset.id,
+            routeId: step.route?.id || null,
+            outcome: 'denied',
+            reasonCode: 'HONEYTOKEN_VERIFIER_DENIED',
+            reason: `Honeytoken credential '${chosenAction.credentialUsed.label}' was rejected by instrumented verifier on ${step.targetAsset.label}; no production access granted.`,
+            meta: {
+              finding: chosenAction.finding || null,
+              credentialUsed: chosenAction.credentialUsed,
+              variantId: chosenAction.variantId
+            }
+          });
+          const decoyAlert = evaluateDecoyInteraction({
+            estate,
+            targetAsset: step.targetAsset,
+            action: chosenAction,
+            actor,
+            outcome: 'denied',
+            defenseConfig,
+            triggeredDecoyKeys: defenderState.triggeredDecoyKeys
+          });
+          if (decoyAlert) {
+            defenderState.decoyAlerts.push(decoyAlert);
+            recordEvent({
+              kind: 'decoy_interaction',
+              causalParentIds: honeyEv ? [honeyEv.id] : [],
+              branchId: step.branchId,
+              actor,
+              sourceId: step.sourceAsset?.id || null,
+              targetId: step.targetAsset.id,
+              routeId: step.route?.id || null,
+              outcome: 'succeeded',
+              reasonCode: 'CANARY_HONEYTOKEN_TRIGGERED',
+              reason: `Honeytoken '${decoyAlert.credentialId}' triggered alert at verifier ${step.targetAsset.label}.`,
+              controlId: decoyAlert.decoyId,
+              meta: { decoyAlert }
+            });
+            if (honeyEv) processSocObservations([], decoyAlert, honeyEv.id, { ...step, credentialUsed: chosenAction.credentialUsed });
+          }
+          continue;
+        }
+
+        // 4. Commit successful action effects to worldState and attackerKnowledge
+        const stateChanges = [];
+        const objectiveChanges = [];
+        let activeSessionId = step.sessionId;
+
+        // Mint new session if credential specifies session-minting behavior (Spec Section 6.2 & 11.2, F15)
+        if (chosenAction.credentialUsed && chosenAction.credentialUsed.mintsSession !== false) {
+          const mintedSessionId = chosenAction.credentialUsed.mintedSessionId || `${step.sessionId}-via-${chosenAction.credentialUsed.id}`;
+          if (!worldState.sessionLineage.has(mintedSessionId)) {
+            worldState.sessionLineage.set(mintedSessionId, {
+              principalId: chosenAction.credentialUsed.principal || step.principalId,
+              rootAssetId: worldState.sessionLineage.get(step.sessionId)?.rootAssetId || step.targetAsset.id,
+              mintedByCredentialId: chosenAction.credentialUsed.id,
+              parentSessionId: step.sessionId
+            });
+            stateChanges.push({ kind: 'session_minted', sessionId: mintedSessionId, credentialId: chosenAction.credentialUsed.id });
+          }
+          if (chosenAction.credentialUsed.useMintedSessionId) {
+            activeSessionId = mintedSessionId;
+          }
+        }
+
+        const currentReach = worldState.reachedAssets.get(step.targetAsset.id);
+        if (currentReach) {
+          currentReach.capabilities.add(chosenAction.yieldsCapability);
+        } else {
+          worldState.reachedAssets.set(step.targetAsset.id, {
+            layerIdx: step.targetAsset.layerIdx,
+            sourceId: step.sourceAsset?.id || null,
+            sessionId: activeSessionId,
+            capabilities: new Set([chosenAction.yieldsCapability]),
+            endpointPermissions: new Map()
+          });
+        }
+        const updatedReach = worldState.reachedAssets.get(step.targetAsset.id);
+        const accessibleEndpoints = step.targetAsset.endpointIds ? (chosenAction.endpointScope || []) : [step.targetAsset.id];
+        for (const epId of accessibleEndpoints) {
+          if (!updatedReach.endpointPermissions.has(epId)) updatedReach.endpointPermissions.set(epId, new Set());
+          for (const perm of chosenAction.grantedPermissions || []) updatedReach.endpointPermissions.get(epId).add(perm);
+        }
+        stateChanges.push({
+          kind: 'capability_granted',
+          assetId: step.targetAsset.id,
+          capability: chosenAction.yieldsCapability,
+          sessionId: activeSessionId
+        });
+
+        // Discover credentials stored on targetAsset that are now readable by acquired capabilities
+        // (Attacker discovers stored credentials regardless of whether the verifier later rejects them as revoked/expired, F02)
+        const newlyAcquiredCreds = [];
+        for (const cred of estate.credentials || []) {
+          if (cred.sourceAssetId !== step.targetAsset.id) continue;
+          const capOk = !!cred.requiredSourceCapability && updatedReach.capabilities.has(cred.requiredSourceCapability);
+          const epOk = !cred.sourceEndpointIds || cred.sourceEndpointIds.some(id => updatedReach.endpointPermissions.has(id));
+          if (capOk && epOk && !worldState.acquiredCredentials.has(cred.id)) {
+            const clonedCred = structuredClone(cred);
+            worldState.acquiredCredentials.set(cred.id, clonedCred);
+            attackerKnowledge.knownCredentialIds.add(cred.id);
+            newlyAcquiredCreds.push(clonedCred);
+            stateChanges.push({ kind: 'credential_acquired', credentialId: cred.id, sourceAssetId: step.targetAsset.id });
+          }
+        }
+
+        // Discover outbound routes and adjacent assets from targetAsset (R02: only after reaching targetAsset)
+        const outRoutes = routes.filter(r => r.sourceId === step.targetAsset.id);
+        for (const r of outRoutes) {
+          attackerKnowledge.knownRouteIds.add(r.id);
+          if (!attackerKnowledge.knownAssetIds.has(r.targetId)) {
+            attackerKnowledge.knownAssetIds.add(r.targetId);
+            attackerKnowledge.validatedDiscoveries += 1;
+          }
+        }
+
+        // Evaluate dataset & objective impact (Spec Section 6.2 & 13.3, R09, F17)
+        const ownedDatasets = (estate.datasets || []).filter(ds =>
+          ds.ownerAssetId === step.targetAsset.id && ds.sensitivity === 'sensitive' && !ds.isDecoy
+        );
+        const readDatasets = !isTargetDecoy && chosenAction.yieldsCapability === 'data_read'
+          ? ownedDatasets.filter(ds => ds.allowedOperations?.includes('read')) : [];
+        const sensitiveRead = readDatasets.length > 0;
+        if (sensitiveRead) {
+          for (const ds of readDatasets) {
+            objectiveChanges.push({
+              kind: 'dataset_read',
+              datasetId: ds.id,
+              ownerAssetId: step.targetAsset.id,
+              records: ds.records ?? null,
+              bytes: ds.bytes ?? null
+            });
+          }
+
+        }
+        if (chosenAction.actionKind === 'data_exfiltration' && chosenAction.dataTransfer) {
+          objectiveChanges.push({
+            kind: 'dataset_export',
+            datasetId: chosenAction.dataTransfer.datasetId,
+            records: chosenAction.dataTransfer.records ?? null,
+            bytes: chosenAction.dataTransfer.bytes ?? null,
+            destination: chosenAction.dataTransfer.destination
+          });
+        }
+
+        const reasonCode = chosenAction.actionKind === 'valid_credential' ? 'AUTHORIZED_SCOPED_CREDENTIALS'
+          : chosenAction.actionKind === 'cve' || chosenAction.actionKind === 'cve_authenticated' ? 'EXPLOITED_MODELED_WEAKNESS'
+          : chosenAction.actionKind === 'anonymous_access' ? 'PUBLIC_EXPOSURE_ACCESS'
+          : chosenAction.actionKind === 'data_exfiltration' ? 'AUTHORIZED_EGRESS_EXPORT'
+          : 'ACTION_SUCCEEDED';
+
+        const actionEv = recordEvent({
+          kind: 'action_result',
+          actionId: `action-${step.targetAsset.id}-attempt-${attemptOrdinal}`,
+          causalParentIds: step.causalParentIds,
+          branchId: step.branchId,
+          actor: { principalId: step.principalId, sessionId: activeSessionId },
+          sourceId: step.sourceAsset?.id || null,
+          targetId: step.targetAsset.id,
+          routeId: step.route?.id || null,
+          outcome: 'succeeded',
+          reasonCode,
+          reason: chosenAction.reason,
+          stateChanges,
+          objectiveChanges,
+          assumptionIds: (estate.assumptions || []).slice(0, 2).map(a => a.id),
+          meta: {
+            actionKind: chosenAction.actionKind,
+            finding: chosenAction.finding || null,
+            credentialUsed: chosenAction.credentialUsed || null,
+            technique: chosenAction.technique || null,
+            tool: chosenAction.tool || null,
+            variantId: chosenAction.variantId,
+            grantedCapability: chosenAction.yieldsCapability,
+            acquiredCredentials: newlyAcquiredCreds,
+            isProtectedRead: sensitiveRead,
+            dataTransfer: chosenAction.dataTransfer || null,
+            affectedEndpointIds: chosenAction.affectedEndpointIds || null,
+            patchEvaluation: patchResult
+          }
+        });
+
+        if (objectiveChanges.length > 0) {
+          recordEvent({
+            kind: 'objective_impact',
+            causalParentIds: actionEv ? [actionEv.id] : [],
+            branchId: step.branchId,
+            actor: { principalId: step.principalId, sessionId: activeSessionId },
+            sourceId: step.sourceAsset?.id || null,
+            targetId: step.targetAsset.id,
+            routeId: step.route?.id || null,
+            outcome: 'succeeded',
+            reasonCode: sensitiveRead ? 'SENSITIVE_DATASET_READ' : 'SENSITIVE_DATASET_EXPORTED',
+            reason: sensitiveRead
+              ? `Sensitive dataset read on ${step.targetAsset.label}.`
+              : `Sensitive dataset exported from ${step.targetAsset.label}.`,
+            objectiveChanges
+          });
+        }
+
+        // 5. Evaluate decoy interaction & sensor observations for this action
+        const decoyAlert = evaluateDecoyInteraction({
+          estate,
+          targetAsset: step.targetAsset,
+          action: chosenAction,
+          actor: { principalId: step.principalId, sessionId: activeSessionId },
+          outcome: 'succeeded',
+          defenseConfig,
+          triggeredDecoyKeys: defenderState.triggeredDecoyKeys
+        });
+        if (decoyAlert) {
+          defenderState.decoyAlerts.push(decoyAlert);
+          recordEvent({
+            kind: 'decoy_interaction',
+            causalParentIds: actionEv ? [actionEv.id] : [],
+            branchId: step.branchId,
+            actor: { principalId: step.principalId, sessionId: activeSessionId },
+            sourceId: step.sourceAsset?.id || null,
+            targetId: step.targetAsset.id,
+            routeId: step.route?.id || null,
+            outcome: 'succeeded',
+            reasonCode: 'CANARY_DECOY_TRIGGERED',
+            reason: `Canary decoy '${decoyAlert.decoyId}' triggered on ${step.targetAsset.label}.`,
+            controlId: decoyAlert.decoyId,
+            meta: { decoyAlert }
+          });
+        }
+
+        const newObs = emitSensorObservations({
+          estate,
+          targetAsset: step.targetAsset,
+          sourceAsset: step.sourceAsset,
+          route: step.route,
+          action: chosenAction,
+          actor: { principalId: step.principalId, sessionId: activeSessionId },
+          outcome: 'succeeded',
+          trialSeed: runConfig.trialSeed,
+          attemptOrdinal
+        });
+        for (const obs of newObs) {
+          defenderState.observations.push(obs);
+          recordEvent({
+            kind: 'observation',
+            causalParentIds: actionEv ? [actionEv.id] : [],
+            branchId: step.branchId,
+            actor: { principalId: step.principalId, sessionId: activeSessionId },
+            sourceId: obs.sourceAssetId,
+            targetId: obs.targetAssetId,
+            routeId: obs.routeId,
+            outcome: 'succeeded',
+            reasonCode: obs.suspiciousHypothesis ? 'SUSPICIOUS_OBSERVATION' : 'TELEMETRY_COLLECTED',
+            reason: obs.suspiciousHypothesis || `Telemetry collected by ${obs.sensorId}.`,
+            controlId: obs.sensorId,
+            meta: { observation: obs }
+          });
+        }
+
+        if (actionEv) {
+          processSocObservations(newObs, decoyAlert, actionEv.id, {
+            ...step,
+            sessionId: activeSessionId,
+            credentialUsed: chosenAction.credentialUsed
+          });
+          confirmDeferredAfterActionInterventions(step, actionEv.id);
+        }
+
+        // 6. Expand frontier with newly discovered routes, post-compromise actions, and capability/credential revisits (F20)
+        if (!step.localFinding) {
+          // Enqueue data exfiltration if sensitive dataset was read
+          const exportableDataset = readDatasets.find(ds => ds.allowedOperations.includes('export'));
+          if (exportableDataset) {
+            const responseExport = !attackerProfile.gangId;
+            const method = DATA_EXPORT_METHODS[attackerProfile.gangId];
+            if (responseExport || method) {
+              let collectorId = step.sourceAsset?.id || step.targetAsset.id;
+              if (!responseExport) {
+                while (collectorId && !worldState.reachedAssets.get(collectorId)?.capabilities.has('app_exec')) {
+                  collectorId = worldState.reachedAssets.get(collectorId)?.sourceId;
+                }
+              }
+              const ds = exportableDataset;
+              const records = ds?.records ?? (Number.isSafeInteger(step.targetAsset.dataHandling?.records) ? step.targetAsset.dataHandling.records : null);
+              const bytes = ds?.bytes ?? (Number.isSafeInteger(step.targetAsset.dataHandling?.bytes) ? step.targetAsset.dataHandling.bytes : null);
+              const exfilFinding = {
+                id: `EXFIL:${step.targetAsset.id}`,
+                kind: 'data_exfiltration',
+                assetId: step.targetAsset.id,
+                collectorId: collectorId || step.targetAsset.id,
+                responseExport,
+                transferScope: activeSessionId,
+                technique: method?.technique || 'T1041',
+                title: responseExport ? 'HTTP/API bulk data export' : 'Data exfiltration',
+                dataTransfer: {
+                  datasetId: ds?.id || step.targetAsset.id,
+                  dataset: ds?.label || step.targetAsset.dataHandling?.label || `Sensitive records · ${step.targetAsset.label}`,
+                  records,
+                  bytes,
+                  tool: responseExport ? 'HTTP/API bulk extraction' : method.tool,
+                  destination: responseExport ? 'Attacker-controlled workspace' : method.destination
+                }
+              };
+              enqueueCandidate({
+                sourceAsset: step.targetAsset,
+                targetAsset: step.targetAsset,
+                route: null,
+                localFinding: exfilFinding,
+                variantId: 'default',
+                retryCount: 0,
+                branchId: step.branchId,
+                sessionId: activeSessionId,
+                principalId: step.principalId,
+                causalParentIds: actionEv ? [actionEv.id] : [],
+                credentialSnapshot: getCredentialSnapshot(step.targetAsset),
+                sourceCapSnapshot: getSourceCapSnapshot(step.targetAsset)
+              });
+            }
+          }
+
+          // Enqueue local persistence / encryption findings if app_exec was established
+          if (updatedReach.capabilities.has('app_exec')) {
+            for (const lf of (estate.findings || []).filter(f => f.assetId === step.targetAsset.id && ['persistence', 'encryption'].includes(f.kind))) {
+              if (!actionPolicy({ actionKind: lf.kind, finding: lf, technique: lf.technique }, step.targetAsset, step.targetAsset, attackerProfile)) continue;
+              enqueueCandidate({
+                sourceAsset: step.targetAsset,
+                targetAsset: step.targetAsset,
+                route: null,
+                localFinding: lf,
+                variantId: 'default',
+                retryCount: 0,
+                branchId: step.branchId,
+                sessionId: activeSessionId,
+                principalId: step.principalId,
+                causalParentIds: actionEv ? [actionEv.id] : [],
+                credentialSnapshot: getCredentialSnapshot(step.targetAsset),
+                sourceCapSnapshot: getSourceCapSnapshot(step.targetAsset)
+              });
+            }
+          }
+
+          // Enqueue outbound routes from targetAsset (including same-layer, cross-layer, or return paths, Spec Section 7.1, F20)
+          for (const r of outRoutes) {
+            const nextTarget = assetById.get(r.targetId);
+            if (!nextTarget) continue;
+            enqueueCandidate({
+              sourceAsset: step.targetAsset,
+              targetAsset: nextTarget,
+              route: r,
+              localFinding: null,
+              variantId: 'default',
+              retryCount: 0,
+              branchId: step.branchId,
+              sessionId: activeSessionId,
+              principalId: step.principalId,
+              causalParentIds: actionEv ? [actionEv.id] : [],
+              credentialSnapshot: getCredentialSnapshot(nextTarget),
+              sourceCapSnapshot: getSourceCapSnapshot(step.targetAsset)
+            });
+          }
+        }
+
+        // Revisit previously reached routes when newly acquired credentials or capabilities unlock them (Spec Section 7.1, F20)
+        if (newlyAcquiredCreds.length > 0) {
+          for (const r of routes) {
+            if (!worldState.reachedAssets.has(r.sourceId)) continue;
+            const srcAsset = assetById.get(r.sourceId);
+            const tgtAsset = assetById.get(r.targetId);
+            if (!srcAsset || !tgtAsset) continue;
+            const matchesNewCred = newlyAcquiredCreds.some(c =>
+              c.targetAssetIds?.includes(tgtAsset.id) || (!c.targetAssetIds?.length && c.targetGroupIds?.includes(tgtAsset.groupId))
+            );
+            if (matchesNewCred) {
+              const srcReach = worldState.reachedAssets.get(r.sourceId);
+              enqueueCandidate({
+                sourceAsset: srcAsset,
+                targetAsset: tgtAsset,
+                route: r,
+                localFinding: null,
+                variantId: 'default',
+                retryCount: 0,
+                branchId: step.branchId,
+                sessionId: srcReach.sessionId || activeSessionId,
+                principalId: step.principalId,
+                causalParentIds: actionEv ? [actionEv.id] : [],
+                credentialSnapshot: getCredentialSnapshot(tgtAsset),
+                sourceCapSnapshot: getSourceCapSnapshot(srcAsset)
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Reaching the end of the frontier is not itself a confirmation.
+    if (!guardrailExhausted && !orderingUnresolved) {
+      for (const pending of defenderState.pendingInterventions) {
+        const contract = resolveInterventionContract(pending, {
+          targetAsset: { id: null }, sessionId: pending.targetScopeId
+        });
+        if (contract.dependentTargetId || contract.dependentActionId ||
+            contract.contract !== 'confirmed_before_action') {
+          const unconfirmed = contract.contract === 'not_confirmed';
+          pending.incident.status = unconfirmed ? 'enforcement_failed' : 'awaiting_confirmation';
+          recordEvent({
+            kind: 'response_confirmation',
+            causalParentIds: [pending.proposalEventId],
+            targetId: pending.targetAssetId,
+            outcome: unconfirmed ? 'failed' : 'unresolved',
+            reasonCode: unconfirmed ? 'INTERVENTION_NOT_CONFIRMED' : 'NO_CONFIRMATION_RECORDED',
+            reason: 'The run ended without confirmation for this response.'
+          });
+          continue;
+        }
+        const execResult = executeScopedResponse({
+          estate,
+          proposedAction: pending,
+          worldState,
+          defenderState
+        });
+        pending.incident.status = execResult.status === 'confirmed' ? 'enforcement_confirmed' : 'enforcement_failed';
+        recordEvent({
+          kind: 'response_confirmation',
+          causalParentIds: [pending.proposalEventId],
+          actor: { principalId: `soc-${defenseConfig.responsePolicy}`, sessionId: pending.targetScopeId || 'unattributed' },
+          targetId: pending.targetAssetId,
+          outcome: execResult.status === 'confirmed' ? 'succeeded' : 'failed',
+          reasonCode: execResult.reasonCode,
+          reason: execResult.reason,
+          controlId: execResult.integrationId,
+          stateChanges: execResult.stateChanges
+        });
+      }
+      defenderState.pendingInterventions = [];
+    }
+
+    // Derive final outcomes & metrics (Spec Section 13.3)
+    const sensitiveDatasetsRead = [];
+    const sensitiveDatasetsExported = [];
+    for (const ev of events) {
+      if (ev.kind === 'action_result' && ev.outcome === 'succeeded') {
+        for (const oc of ev.objectiveChanges || []) {
+          if (oc.kind === 'dataset_read' && !sensitiveDatasetsRead.some(d => d.datasetId === oc.datasetId)) {
+            sensitiveDatasetsRead.push(oc);
+          }
+          if (oc.kind === 'dataset_export' && !sensitiveDatasetsExported.some(d => d.datasetId === oc.datasetId)) {
+            sensitiveDatasetsExported.push(oc);
+          }
+        }
+      }
+    }
+
+    const objectiveResults = runConfig.objectives.map(objective => {
+      const { id, kind, datasetId, targetAssetId, requiredCapability } = objective;
+      let achieved;
+      if (kind === 'asset_privilege') {
+        achieved = worldState.reachedAssets.get(targetAssetId)?.capabilities.has(requiredCapability) ?? false;
+      } else {
+        const impact = kind === 'dataset_read' ? sensitiveDatasetsRead : sensitiveDatasetsExported;
+        achieved = impact.some(change => change.datasetId === datasetId);
+      }
+      return { id, achieved };
+    });
+    const achievedCount = objectiveResults.filter(result => result.achieved).length;
+    if (!guardrailExhausted && assistanceBudgetExhausted) {
+      guardrailExhausted = true;
+      guardrailReason = 'maxHumanAssists';
+    }
+    const objectiveState = guardrailExhausted ? 'incomplete'
+      : orderingUnresolved ? 'conditional'
+      : achievedCount && achievedCount === objectiveResults.length ? 'achieved'
+      : achievedCount ? 'partially_achieved'
+      : objectiveResults.length && actionAttempts > 0 ? 'not_achieved' : 'not_attempted';
+
+    return {
+      engineVersion: ENGINE_VERSION,
+      schemaVersion: SCHEMA_VERSION,
+      manifestVersion: RUN_MANIFEST_VERSION,
+      estateId: estate.id,
+      archetypeId: estate.archetypeId,
+      trialSeed: runConfig.trialSeed,
+      attackerProfile: structuredClone(attackerProfile),
+      defenseConfig,
+      runConfig,
+      events,
+      conditionalOutcomes,
+      outcomes: {
+        objectiveState,
+        objectiveResults,
+        terminationReason: guardrailExhausted ? `guardrail_exhausted:${guardrailReason}`
+          : orderingUnresolved ? 'ordering_unresolved' : 'frontier_exhausted',
+        guardrailExhausted,
+        guardrailReason,
+        access: {
+          reachedAssetIds: [...worldState.reachedAssets.keys()],
+          privilegesByAsset: Object.fromEntries(
+            [...worldState.reachedAssets.entries()].map(([id, r]) => [id, [...r.capabilities]])
+          ),
+          sessions: Object.fromEntries(worldState.sessionLineage.entries()),
+          acquiredCredentialIds: [...worldState.acquiredCredentials.keys()]
+        },
+        impact: {
+          sensitiveDatasetsRead,
+          sensitiveDatasetsExported,
+          totalSensitiveRecordsRead: sensitiveDatasetsRead.reduce((sum, d) => sum + (d.records || 0), 0),
+          totalSensitiveUnitsExported: sensitiveDatasetsExported.reduce((sum, d) => sum + (d.records || 0), 0)
+        },
+        detection: {
+          totalObservations: defenderState.observations.length,
+          suspiciousObservations: defenderState.observations.filter(o => o.suspiciousHypothesis).length,
+          incidents: [...defenderState.incidents.values()],
+          decoyAlerts: defenderState.decoyAlerts,
+          missedActivityCount: events.filter(e => e.kind === 'action_result' && e.outcome === 'succeeded').length - defenderState.observations.filter(o => o.outcome === 'succeeded').length
+        },
+        response: {
+          proposedCount: [...defenderState.incidents.values()].reduce((s, inc) => s + inc.proposedActions.length, 0),
+          confirmedResponses: [...defenderState.confirmedResponses.values()],
+          invalidatedSessionIds: [...worldState.invalidatedSessions],
+          revokedCredentialIds: [...worldState.revokedCredentials],
+          isolatedHostIds: [...worldState.isolatedHosts],
+          closedExposureIds: [...worldState.closedExposures]
+        },
+        costs: {
+          actionAttempts,
+          maxActionAttempts: runConfig.limits.maxActionAttempts,
+          retriesUsed,
+          humanAssistsUsed,
+          investigationsExecuted: defenderState.investigationsExecuted,
+          controlBlocks,
+          policyDenials,
+          actionFailures,
+          canceledActions,
+          branchBreadth: branchCounter,
+          duplicatedWork: attackerKnowledge.duplicatedWork,
+          abandonedBranches: attackerKnowledge.abandonedBranches,
+          validatedDiscoveries: attackerKnowledge.validatedDiscoveries,
+          legitimateWorkflowsDisrupted: defenderState.legitimateWorkflowsDisrupted,
+          legitimateIdentitiesAffected: [...defenderState.legitimateIdentitiesAffected],
+          falseBlocks: defenderState.falseBlocks
+        }
+      }
+    };
+  }
+
+  /**
+   * Projects a completed causal run trace (`simulateScenario` or `simulateWireRun` result)
+   * with historical elapsed-time context, UI node/route states, "Why" explanations, and tickets,
+   * without mutating the trace or altering its causal outcomes (Spec Sections 5, 12, 14, WP5).
+   */
+  function projectRun(run, presentationConfig = {}) {
+    if (!run || typeof run !== 'object') {
+      throw new Error('projectRun requires a valid simulation run object');
+    }
+    const pace = presentationConfig.pace || (run.attackerProfile?.behaviorPreset === 'agentic_orchestration' || run.attackerProfile?.id === 'artex' ? 'artex' : 'pre2023');
+    const seed = presentationConfig.seed ?? run.trialSeed ?? 1;
+    const timingContext = presentationConfig.timingContext || wireTiming(seed, pace);
+    const stageTimes = timingContext.stageTimes || [0, 900, 1800, 2700];
+
+    const projectedEvents = (run.events || []).map((ev, idx) => {
+      const copy = structuredClone(ev);
+      if (typeof copy.timeSec !== 'number') {
+        const stepIncrement = Math.max(5, Math.round((timingContext.modeledPathDurationSec || 2700) / Math.max(8, run.events.length)));
+        copy.startSec = idx * stepIncrement;
+        copy.timeSec = (idx + 1) * stepIncrement;
+      }
+      copy.displayElapsedLabel = formatDurationSeconds(copy.timeSec);
+      copy.provenanceClassification = 'simulated_outcome';
+      return copy;
+    });
+
+    // Derive node and route visual states & "Why" explanations (Spec Section 14)
+    const nodeStates = {};
+    const routeStates = {};
+    const tickets = [];
+
+    for (const ev of projectedEvents) {
+      if (ev.kind && ev.kind !== 'action_result' && ev.kind !== 'decoy_interaction' && ev.kind !== 'response_confirmation') {
+        continue;
+      }
+      const targetId = ev.targetId;
+      if (!targetId) continue;
+      if (!nodeStates[targetId]) {
+        nodeStates[targetId] = {
+          assetId: targetId,
+          visualState: 'no_access',
+          compromised: false,
+          contained: false,
+          patchPrevented: false,
+          policyDenied: false,
+          decoyAlerted: false,
+          impacted: false,
+          conditional: false,
+          incomplete: false,
+          why: []
+        };
+      }
+      const ns = nodeStates[targetId];
+      if (ev.outcome === 'succeeded' && ev.kind !== 'decoy_interaction' && ev.kind !== 'response_confirmation') {
+        ns.compromised = true;
+        if (ev.isProtectedRead || (ev.objectiveChanges && ev.objectiveChanges.length > 0)) {
+          ns.impacted = true;
+          ns.visualState = 'impact';
+        } else if (ns.visualState !== 'impact') {
+          ns.visualState = 'access_established';
+        }
+      } else if ((ev.outcome === 'denied' || ev.outcome === 'blocked') && (ev.controlId || ev.mitigation?.addressed)) {
+        ns.patchPrevented = true;
+        if (!ns.compromised) ns.visualState = 'patch_prevention';
+      } else if (ev.outcome === 'denied' || ev.outcome === 'ineligible') {
+        ns.policyDenied = true;
+        if (!ns.compromised && !ns.patchPrevented) ns.visualState = 'policy_denial';
+      } else if (ev.outcome === 'suppressed' || (ev.kind === 'response_confirmation' && ev.outcome === 'succeeded')) {
+        ns.contained = true;
+        // Spec Section 14: "A contained session and an already compromised dataset may coexist visually."
+        if (!ns.impacted && !ns.compromised) ns.visualState = 'confirmed_containment';
+      } else if (ev.outcome === 'conditional') {
+        ns.conditional = true;
+        ns.visualState = 'conditional_outcome';
+      } else if (ev.outcome === 'budget_exhausted') {
+        ns.incomplete = true;
+        if (!ns.compromised) ns.visualState = 'incomplete_exploration';
+      }
+
+      if (ev.kind === 'decoy_interaction' || ev.outcome === 'alert_only' || ev.grantedCapability === 'decoy_alert') {
+        ns.decoyAlerted = true;
+        if (!ns.compromised && !ns.contained) ns.visualState = 'decoy_alert';
+      }
+
+      ns.why.push({
+        eventId: ev.id || null,
+        sequence: ev.sequence ?? null,
+        timeSec: ev.timeSec,
+        outcome: ev.outcome,
+        reasonCode: ev.reasonCode || null,
+        reason: ev.reason || '',
+        prerequisites: ev.requiredAccess || null,
+        controlId: ev.controlId || ev.mitigation?.control || null,
+        scope: ev.actor?.sessionId || ev.scope || null,
+        assumptionIds: ev.assumptionIds || []
+      });
+
+      const routeId = ev.routeId || ev.relationshipId;
+      if (routeId) {
+        routeStates[routeId] = {
+          routeId,
+          visualState: ns.visualState,
+          lastOutcome: ev.outcome,
+          reasonCode: ev.reasonCode || null,
+          reason: ev.reason || ''
+        };
+      }
+
+      if (['succeeded', 'denied', 'blocked', 'suppressed', 'alert_only', 'conditional'].includes(ev.outcome)) {
+        tickets.push({
+          id: `ticket-${tickets.length + 1}`,
+          eventId: ev.id || null,
+          targetId,
+          severity: ns.impacted ? 'CRITICAL' : (ns.decoyAlerted || ns.contained || ns.patchPrevented) ? 'HIGH' : 'INFO',
+          title: ev.reasonCode || ev.technique || ev.outcome.toUpperCase(),
+          detail: ev.reason || '',
+          elapsedLabel: ev.displayElapsedLabel
+        });
+      }
+    }
+
+    return {
+      ...structuredClone(run),
+      projectedEvents,
+      nodeStates,
+      routeStates,
+      tickets,
+      presentationContext: {
+        pace,
+        nominalPathDurationSec: timingContext.modeledPathDurationSec,
+        stageTimes,
+        provenanceClassification: 'synthetic_assumption',
+        referencedAssumptionId: pace === 'artex' ? 'assumption-artex-nominal-path-duration' : 'assumption-pre2023-nominal-path-duration',
+        note: 'Historical elapsed time is presentation context only and does not determine control or attack outcomes.'
+      }
+    };
+  }
+
+  /**
+   * Paired comparison evaluator across multiple attacker profiles and defense configurations
+   * on the same immutable estate and shared runConfig budgets (Spec Sections 5 & 13, R08, WP5).
+   */
+  function evaluateComparison({ estate, attackerProfiles, defenseConfigs, runConfig } = {}) {
+    if (!estate || typeof estate !== 'object') {
+      throw new Error('evaluateComparison requires a valid estate');
+    }
+    const baseEstateJson = JSON.stringify(estate);
+    const profiles = (Array.isArray(attackerProfiles) && attackerProfiles.length > 0
+      ? attackerProfiles
+      : ['operator_with_tools', 'agentic_orchestration']
+    ).map(normalizeAttackerProfile);
+
+    const defenses = (Array.isArray(defenseConfigs) && defenseConfigs.length > 0
+      ? defenseConfigs
+      : ['baseline', 'patch', 'canaries', 'soc', 'soc-canary', 'combined']
+    ).map(normalizeDefenseConfig);
+
+    const sharedRunConfig = createDefaultRunConfig(estate, runConfig || {});
+    const validation = validateRunConfig(estate, sharedRunConfig);
+    if (!validation.valid) {
+      throw new Error(`Invalid comparison configuration: ${validation.errors.join('; ')}`);
+    }
+
+    const cells = {};
+    for (const profile of profiles) {
+      cells[profile.id] = {};
+      for (const defense of defenses) {
+        const simRun = simulateScenario({
+          estate,
+          attackerProfile: profile,
+          defenseConfig: defense,
+          runConfig: sharedRunConfig
+        });
+        cells[profile.id][defense.id] = projectRun(simRun, {
+          seed: sharedRunConfig.trialSeed,
+          pace: profile.behaviorPreset === 'agentic_orchestration' ? 'artex' : 'pre2023'
+        });
+      }
+      // Compute incremental prevented impact against corresponding baseline cell (Spec Section 13.3, F23)
+      const baselineCell = Object.values(cells[profile.id]).find(cell => {
+        const cfg = cell.defenseConfig;
+        return !cfg.virtualPatching && !cfg.canaries && cfg.responsePolicy === 'observe_only';
+      });
+      const baselineViable = baselineCell && baselineCell.outcomes.impact.sensitiveDatasetsRead.length > 0;
+      for (const defense of defenses) {
+        const cell = cells[profile.id][defense.id];
+        const cellImpact = cell.outcomes.impact.sensitiveDatasetsRead.length > 0;
+        const hasAttributableIntervention = cell.outcomes.costs.controlBlocks > 0 || cell.outcomes.response.confirmedResponses.length > 0;
+        cell.outcomes.comparisonSummary = {
+          baselineViablePath: baselineViable,
+          preventedImpact: !!(baselineViable && !cellImpact && hasAttributableIntervention &&
+            !['incomplete', 'conditional'].includes(cell.outcomes.objectiveState)),
+          attributionNote: !baselineViable
+            ? 'No viable modeled path in baseline; safety is not attributed to optional defenses (F23).'
+            : (!cellImpact && hasAttributableIntervention)
+              ? 'Impact prevented by attributable control intervention.'
+              : cellImpact
+                ? 'Sensitive dataset impact occurred.'
+                : 'No sensitive dataset impact.'
+        };
+      }
+    }
+
+    if (JSON.stringify(estate) !== baseEstateJson) {
+      throw new Error('Invariant violation: evaluateComparison mutated input estate');
+    }
+
+    return {
+      manifestVersion: RUN_MANIFEST_VERSION,
+      engineVersion: ENGINE_VERSION,
+      schemaVersion: SCHEMA_VERSION,
+      estate: structuredClone(estate),
+      attackerProfiles: profiles,
+      defenseConfigs: defenses,
+      runConfig: sharedRunConfig,
+      calibrationProvenance: {
+        schemaVersion: CALIBRATION_REGISTER.schemaVersion,
+        asOfDate: CALIBRATION_REGISTER.asOfDate,
+        observedStatisticIds: CALIBRATION_REGISTER.observedStatistics.map(s => s.id),
+        simulationAssumptionIds: CALIBRATION_REGISTER.simulationAssumptions.map(a => a.id)
+      },
+      cells
+    };
+  }
+
+  /**
+   * Exports a durable, deterministic manifest containing the full estate, profiles, control overlays,
+   * initial state, objective definitions, budgets, intervention contracts, seeds, engine version,
+   * assumption provenance, and event trace (Spec Section 5 & 13.2, Fixture F26).
+   */
+  function exportManifest(comparisonOrRun) {
+    if (!comparisonOrRun || typeof comparisonOrRun !== 'object') {
+      throw new Error('exportManifest requires a comparison or simulation run object');
+    }
+    const isComparison = !!comparisonOrRun.cells && !!comparisonOrRun.estate;
+    const payload = {
+      format: 'wire-simulation-manifest',
+      manifestVersion: RUN_MANIFEST_VERSION,
+      engineVersion: ENGINE_VERSION,
+      schemaVersion: SCHEMA_VERSION,
+      exportedAt: '2026-11-21T00:00:00.000Z',
+      kind: isComparison ? 'comparison' : 'single_run',
+      estate: structuredClone(comparisonOrRun.estate || null),
+      attackerProfiles: structuredClone(comparisonOrRun.attackerProfiles || (comparisonOrRun.attackerProfile ? [comparisonOrRun.attackerProfile] : [])),
+      defenseConfigs: structuredClone(comparisonOrRun.defenseConfigs || (comparisonOrRun.defenseConfig ? [comparisonOrRun.defenseConfig] : [])),
+      runConfig: structuredClone(comparisonOrRun.runConfig || null),
+      assumptions: structuredClone(CALIBRATION_REGISTER.simulationAssumptions),
+      observedStatistics: structuredClone(CALIBRATION_REGISTER.observedStatistics),
+      ...(isComparison
+        ? { cells: structuredClone(comparisonOrRun.cells) }
+        : { events: structuredClone(comparisonOrRun.events || []), outcomes: structuredClone(comparisonOrRun.outcomes || null) })
+    };
+    return JSON.stringify(payload, null, 2);
+  }
+
+  /**
+   * Imports and validates a JSON manifest or returns an explicit compatibility error (Spec Section 5, 13.2, 15, F26, F27).
+   * Never silently regenerates a legacy v3 snapshot.
+   */
+  function importManifest(jsonOrObject) {
+    try {
+      return replayManifest(jsonOrObject);
+    } catch (err) {
+      return { ok: false, errors: [`Invalid manifest: ${err.message}`] };
+    }
+  }
+
+  function exportWirePlayback(estate, attackerId, run) {
+    return JSON.stringify({
+      format: 'wire-simulation-manifest',
+      manifestVersion: RUN_MANIFEST_VERSION,
+      engineVersion: ENGINE_VERSION,
+      schemaVersion: SCHEMA_VERSION,
+      kind: 'wire_playback',
+      estate,
+      attackerId,
+      defenseConfig: run.defenseConfig,
+      events: run.events,
+      controls: run.controls
+    }, null, 2);
+  }
+
+  function replayManifest(jsonOrObject) {
+    let parsed;
+    try {
+      parsed = typeof jsonOrObject === 'string' ? JSON.parse(jsonOrObject) : structuredClone(jsonOrObject);
+    } catch (err) {
+      return {
+        ok: false,
+        valid: false,
+        errors: [`Invalid JSON manifest: ${err.message}`]
+      };
+    }
+
+    if (!parsed || typeof parsed !== 'object') {
+      return { ok: false, valid: false, errors: ['Manifest must be a JSON object'] };
+    }
+
+    // Check if user passed a raw legacy v3 estate snapshot instead of a v4 manifest (Fixture F27)
+    if (parsed.schemaVersion && parsed.schemaVersion !== SCHEMA_VERSION) {
+      return convertLegacySnapshot(parsed);
+    }
+    if (parsed.estate && parsed.estate.schemaVersion !== SCHEMA_VERSION) {
+      return convertLegacySnapshot(parsed.estate);
+    }
+
+    if (parsed.format !== 'wire-simulation-manifest' || parsed.manifestVersion !== RUN_MANIFEST_VERSION) {
+      return {
+        ok: false,
+        valid: false,
+        errors: [`Unsupported manifest format or version (expected format='wire-simulation-manifest', manifestVersion=${RUN_MANIFEST_VERSION})`]
+      };
+    }
+
+    if (!parsed.estate) {
+      return { ok: false, valid: false, errors: ['Manifest is missing required estate object'] };
+    }
+
+    if (parsed.engineVersion !== ENGINE_VERSION || !['single_run', 'comparison', 'wire_playback'].includes(parsed.kind)) {
+      return { ok: false, errors: ['Unsupported simulation engine version or manifest kind.'] };
+    }
+    if (parsed.kind === 'wire_playback') {
+      const { estate, attackerId, defenseConfig, events, controls } = parsed;
+      if (!defenseConfig || typeof defenseConfig.virtualPatching !== 'boolean' ||
+          typeof defenseConfig.canaries !== 'boolean' || !defenseConfig.responsePolicy) {
+        return { ok: false, errors: ['Playback manifest requires explicit defense switches.'] };
+      }
+      const replayed = simulateWireRun(estate, 'baseline', attackerId, { defenseConfig });
+      if (JSON.stringify(events) !== JSON.stringify(replayed.events) ||
+          JSON.stringify(controls) !== JSON.stringify(replayed.controls)) {
+        return { ok: false, errors: ['Playback trace differs from the recorded run.'] };
+      }
+      return { ok: true, kind: parsed.kind, manifest: parsed, replayed };
+    }
+    if (!Array.isArray(parsed.attackerProfiles) || !parsed.attackerProfiles.length ||
+        !Array.isArray(parsed.defenseConfigs) || !parsed.defenseConfigs.length) {
+      return { ok: false, errors: ['Manifest requires explicit attacker profiles and defense configurations.'] };
+    }
+
+    const validation = validateRunConfig(parsed.estate, parsed.runConfig);
+    if (!validation.valid) {
+      return {
+        ok: false,
+        valid: false,
+        errors: validation.errors,
+        details: validation.details
+      };
+    }
+
+    // Re-run deterministically to verify replay integrity
+    if (parsed.kind === 'comparison') {
+      const replayed = evaluateComparison({
+        estate: parsed.estate,
+        attackerProfiles: parsed.attackerProfiles,
+        defenseConfigs: parsed.defenseConfigs,
+        runConfig: parsed.runConfig
+      });
+      if (JSON.stringify(parsed.cells) !== JSON.stringify(replayed.cells)) {
+        return { ok: false, errors: ['Replayed comparison cells differ from the recorded results.'] };
+      }
+      return {
+        ok: true,
+        valid: true,
+        kind: 'comparison',
+        manifest: parsed,
+        replayed
+      };
+    }
+
+    const replayedRun = simulateScenario({
+      estate: parsed.estate,
+      attackerProfile: parsed.attackerProfiles?.[0] || 'operator_with_tools',
+      defenseConfig: parsed.defenseConfigs?.[0] || 'baseline',
+      runConfig: parsed.runConfig
+    });
+    if (JSON.stringify(parsed.events) !== JSON.stringify(replayedRun.events) ||
+        JSON.stringify(parsed.outcomes) !== JSON.stringify(replayedRun.outcomes)) {
+      return { ok: false, errors: ['Replayed events or outcomes differ from the recorded run.'] };
+    }
+    return {
+      ok: true,
+      valid: true,
+      kind: 'single_run',
+      manifest: parsed,
+      replayed: replayedRun
+    };
+  }
+
   // Dataset classification and objective predicates determine sensitive data impact,
   // independently of diagram layer or public reachability (Spec Invariant R09, WP1 Exit Gate, F17).
   function isSensitiveDatasetRead(targetAsset, action, estate, isCanary) {
@@ -1964,6 +4513,8 @@
     const rankOf = id => orderRank.get(id);
 
     const defensePosture = estate.defensePosture || null;
+    const defenseConfig = timing?.defenseConfig;
+    const canariesEnabled = defenseConfig?.canaries ?? ['canaries', 'soc-canary', 'combined'].includes(mode);
     const canaryAssets = new Set(
       defensePosture && Array.isArray(defensePosture.decoys)
         ? defensePosture.decoys.map(d => d.assetId).filter(Boolean)
@@ -2038,9 +4589,9 @@
     function recordTelemetry(source, target, action, scope, timeSec, isCanary) {
       if (!timing) return;
       if (isCanary) {
-        if ((mode === 'canaries' || mode === 'soc-canary' || mode === 'combined') && !triggeredDecoys.has(target.id)) {
+        if (canariesEnabled && !triggeredDecoys.has(target.id)) {
           triggeredDecoys.add(target.id);
-          signal(scope, target.id, 'canary', timeSec, mode === 'soc-canary' || mode === 'combined');
+          signal(scope, target.id, 'canary', timeSec, timing.respond);
         }
         return;
       }
@@ -2187,8 +4738,10 @@
 
         eligibleTransitions++;
         // Timed SOC consumes evidence through the response lifecycle, never an instant lookup block.
-        const preventionMode = timing && ['soc', 'soc-canary', 'combined'].includes(mode)
-          ? (isCanary ? 'canaries' : mode === 'combined' ? 'patch' : 'baseline') : mode;
+        const preventionMode = defenseConfig
+          ? (isCanary && canariesEnabled ? 'canaries' : defenseConfig.virtualPatching ? 'patch' : 'baseline')
+          : timing && ['soc', 'soc-canary', 'combined'].includes(mode)
+            ? (isCanary ? 'canaries' : mode === 'combined' ? 'patch' : 'baseline') : mode;
         const mitigation = evaluateDefense(targetAsset, action, preventionMode, estate.seed, isCanary, {
           attackerProfile,
           defensePosture
@@ -2199,7 +4752,7 @@
           if (mitigation.revokeCredentialId) {
             state.revokedCredentials.add(mitigation.revokeCredentialId);
           }
-          if (isCanary && (mode === 'soc-canary' || mode === 'combined')) {
+          if (isCanary && canariesEnabled && timing?.respond) {
             recordTelemetry(sourceAsset, targetAsset, action, scope, timeSec, true);
           }
           events.push({
@@ -2290,7 +4843,7 @@
           acquiredCredentials: newlyAcquired,
           ...(scope && { scope }),
           mitigation,
-          outcome: isCanary && mode === 'canaries' ? 'alert_only' : 'succeeded',
+          outcome: isCanary && canariesEnabled && (timing ? !timing.respond : mode === 'canaries') ? 'alert_only' : 'succeeded',
           reason: mitigation.alertOnly ? mitigation.reason : action.reason
         });
         if (localFinding) {
@@ -2432,7 +4985,7 @@
           const out = estate.relationships.filter(r => r.sourceId === activeStep.targetAsset.id)
             .sort((a,b) => rankOf(a.targetId) - rankOf(b.targetId));
           for (const rel of out) {
-            if (assetById.get(rel.targetId)?.isDecoy && !['canaries','soc-canary','combined'].includes(mode)) continue;
+            if (assetById.get(rel.targetId)?.isDecoy && !canariesEnabled) continue;
             const key = routeKey(activeStep.targetAsset,assetById.get(rel.targetId),rel);
             if (enqueued.has(key)) continue;
             enqueued.add(key);
@@ -4561,22 +7114,28 @@
 
   const ATTACKER_PROFILES = {
     pre2023: {
+      ...BEHAVIOR_PRESETS.operator_with_tools,
       id: 'pre2023',
       maxConcurrentBranches: 1,
       adaptiveWafEvasion: false,
       allowsUserInteraction: true,
       allowsPersistence: true,
-      allowsRansomwareImpact: true,
-      detectionMultiplier: 1.0
+      allowsRansomwareImpact: true
     },
     artex: {
+      ...BEHAVIOR_PRESETS.agentic_orchestration,
       id: 'artex',
       maxConcurrentBranches: 3,
       adaptiveWafEvasion: true,
       allowsUserInteraction: false,
       allowsPersistence: false,
-      allowsRansomwareImpact: false,
-      detectionMultiplier: 0.72
+      allowsRansomwareImpact: false
+    },
+    operator_with_tools: {
+      ...BEHAVIOR_PRESETS.operator_with_tools
+    },
+    agentic_orchestration: {
+      ...BEHAVIOR_PRESETS.agentic_orchestration
     }
   };
 
@@ -4784,11 +7343,26 @@
   function simulateWireRun(estate, mode, attackerId, options = {}) {
     const attacker = WIRE_ATTACKERS[attackerId];
     if (!attacker) throw new Error(`Unknown Wire attacker: ${attackerId}`);
-    if (!['baseline','patch','canaries','soc','soc-canary','combined'].includes(mode)) throw new Error(`Unknown Wire defense: ${mode}`);
+    const defenseConfig = options.defenseConfig
+      ? normalizeDefenseConfig(options.defenseConfig)
+      : (() => {
+          if (!['baseline','patch','canaries','soc','soc-canary','combined'].includes(mode)) {
+            throw new Error(`Unknown Wire defense: ${mode}`);
+          }
+          return normalizeDefenseConfig(mode);
+        })();
+    const effectiveMode = options.defenseConfig
+      ? (defenseConfig.virtualPatching && defenseConfig.canaries && defenseConfig.responsePolicy !== 'observe_only' ? 'combined'
+        : defenseConfig.canaries && defenseConfig.responsePolicy !== 'observe_only' ? 'soc-canary'
+        : defenseConfig.responsePolicy !== 'observe_only' ? 'soc'
+        : defenseConfig.virtualPatching ? 'patch'
+        : defenseConfig.canaries ? 'canaries'
+        : 'baseline')
+      : mode;
     const attackerProfile = {...ATTACKER_PROFILES[attacker.pace],
       availableTools:[...(COBALT_STRIKE_SOURCES[attackerId]?['cobalt_strike']:[]),...(PSEXEC_SOURCES[attackerId]?['psexec']:[])], ...options.attackerProfile,
       gangId: attacker.pace === 'pre2023' ? attackerId : null};
-    const timing = {...wireTiming(estate.seed, attacker.pace), respond: ['soc','soc-canary','combined'].includes(mode),
+    const timing = {...wireTiming(estate.seed, attacker.pace), respond: defenseConfig.responsePolicy !== 'observe_only', defenseConfig,
       collectionDelay: estate.defensePosture?.collectionDelaySec ?? 0,
       decisionDelay: estate.defensePosture?.decisionDelaySec ?? 15,
       responseDelay: estate.defensePosture?.responseDelaySec ?? 60,
@@ -4799,10 +7373,23 @@
     if (!Number.isInteger(attackerProfile.maxConcurrentBranches) || attackerProfile.maxConcurrentBranches < 1) throw new Error('Worker count must be a positive integer');
     if (timing.explorationLimit != null && (!Number.isInteger(timing.explorationLimit) || timing.explorationLimit < 1)) throw new Error('Exploration limit must be a positive integer');
     for (const key of ['collectionDelay','decisionDelay','responseDelay','reentryDurationSec']) if (!Number.isFinite(timing[key]) || timing[key] < 0) throw new Error(`Invalid ${key}`);
-    const result = simulateEstate(estate, mode, timing);
+    const result = simulateEstate(estate, effectiveMode, timing);
     result.events.sort((a,b) => a.timeSec-b.timeSec);
     result.controls.sort((a,b) => a.timeSec-b.timeSec);
-    const run = {...result, lanes: attackerProfile.maxConcurrentBranches, attackerProfile,
+    const causalScenario = options.includeCausalScenario
+      ? simulateScenario({ estate, attackerProfile, defenseConfig, runConfig: options.runConfig })
+      : null;
+    const projected = projectRun({
+      trialSeed: estate.seed,
+      attackerProfile,
+      defenseConfig,
+      events: result.events
+    }, { seed: estate.seed, pace: attacker.pace, timingContext: timing });
+    const run = {...result, lanes: attackerProfile.maxConcurrentBranches, attackerProfile, defenseConfig,
+      nodeStates: projected.nodeStates,
+      routeStates: projected.routeStates,
+      presentationContext: projected.presentationContext,
+      ...(causalScenario && { causalScenario }),
       assumptions: {stageDurationsSec: timing.actionDurations, nominalPathDurationSec: timing.modeledPathDurationSec, responseDelaySec: timing.responseDelay,
         progressionStrategy:attackerProfile.gangId?'Follow a foothold, collect and transfer data, then apply impact':'Parallel access and collection with prompt bulk transfer',
         lateralMethodPreference:attackerProfile.gangId ? {order:GANG_LATERAL_ORDER[attackerId],basis:'authored_order_among_reported_methods'} : null,
@@ -5263,6 +7850,8 @@
     RUN_MANIFEST_VERSION,
     ENGINE_VERSION,
     CALIBRATION_REGISTER,
+    BEHAVIOR_PRESETS,
+    DEFENSE_CONFIG_PRESETS,
     INFRASTRUCTURE_ARCHETYPES,
     SCENARIO_TEMPLATES,
     SURFACE_COVERAGE_MANIFEST,
@@ -5293,6 +7882,7 @@
     evaluateComparisonRun,
     evaluateComparisonMatrix,
     createRng,
+    hashSemanticKey,
     cveTooltip,
     validateCalibrationRegister,
     validateEstate,
@@ -5302,6 +7892,19 @@
     isSensitiveDatasetRead,
     instantiateScenario,
     convertLegacySnapshot,
+    normalizeDefenseConfig,
+    normalizeAttackerProfile,
+    evaluateVirtualPatch,
+    evaluateDecoyInteraction,
+    emitSensorObservations,
+    executeScopedResponse,
+    createDefaultRunConfig,
+    simulateScenario,
+    projectRun,
+    evaluateComparison,
+    exportManifest,
+    exportWirePlayback,
+    importManifest,
     evaluateAction,
     evaluateDistinctActions,
     evaluateDefense,

@@ -50,7 +50,8 @@ button:focus-visible, input:focus-visible, .node:focus-visible, a:focus-visible 
 .run-status.running::before { animation: statusPulse 1.6s ease-in-out infinite; }
 .elapsed-clock { display: inline-flex; align-items: baseline; gap: 8px; color: var(--muted); margin-left: 8px; font-size: 11px; }
 #model-clock { color: #e1edf5; font: 600 16px/1.2 'Segoe UI', Arial, sans-serif; font-variant-numeric: tabular-nums; }
-#catalog-example { padding: 0 22px 5px; color: #7e97ac; background: var(--panel); font-size: 10px; }
+.single-stage.feed-hidden { grid-template-columns: minmax(1440px,1fr); }
+.single-stage.feed-hidden #single-activity { display: none; }
 #run-hud { min-height: 30px; padding: 4px 22px 10px; color: #95aabf; background: var(--panel); font-size: 11px; line-height: 1.6; border-bottom: 1px solid var(--border); }
 #run-hud.breached { color: #ef9eb3; }
 #run-hud.contained { color: #80d7cf; }
@@ -121,7 +122,7 @@ button:focus-visible, input:focus-visible, .node:focus-visible, a:focus-visible 
 @keyframes probeSweep { 0%,100% { opacity: 0; } 15%,70% { opacity: .9; } 100% { stroke-dashoffset: -24; } }
 @keyframes socLoop { to { transform: translateY(-50%); } }
 @media (max-width: 900px) { .mode-strip { display: grid; grid-template-columns: 1fr 1fr; padding: 10px 16px; } .mode-btn { min-width: 0; } .brand-row { flex-wrap: wrap; gap: 7px; } .canvas-tools { gap: 8px; } .soc-ticker { display: none; } }
-@media (max-width: 480px) { .brand-context { font-size: 10px; } .version { font-size: 10px; } .brand-row { padding: 6px 10px; gap: 6px; } .attacker-option { font-size: 11px; padding: 4px; } .attacker-option[data-attacker="artex"] { font-size: 14px; } .mode-strip { gap: 6px; padding: 9px 10px; } .mode-btn { padding: 8px; gap: 8px; min-height: 65px; } .mode-icon { width: 24px; height: 24px; } .mode-title { font-size: 11px; } .mode-desc { font-size: 9px; } .canvas-tools { padding: 10px; } .trace-control { padding: 7px 9px; } #run-hud { padding: 4px 12px 8px; } .run-status { font-size: 10px; padding: 6px 8px; } #catalog-example { padding-left: 12px; } #viewport { margin-left: 10px; } }
+@media (max-width: 480px) { .brand-context { font-size: 10px; } .version { font-size: 10px; } .brand-row { padding: 6px 10px; gap: 6px; } .attacker-option { font-size: 11px; padding: 4px; } .attacker-option[data-attacker="artex"] { font-size: 14px; } .mode-strip { gap: 6px; padding: 9px 10px; } .mode-btn { padding: 8px; gap: 8px; min-height: 65px; } .mode-icon { width: 24px; height: 24px; } .mode-title { font-size: 11px; } .mode-desc { font-size: 9px; } .canvas-tools { padding: 10px; } .trace-control { padding: 7px 9px; } #run-hud { padding: 4px 12px 8px; } .run-status { font-size: 10px; padding: 6px 8px; } #viewport { margin-left: 10px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 
 /* Activity stream shared by the single and paired demonstrations. */

@@ -48,13 +48,13 @@
       <button id="map-replay-btn" class="trace-control" type="button">Replay</button>
       <button id="map-results-btn" class="trace-control" type="button">Results</button>
       <a id="dual-view-link" class="trace-control" href="dual.html">Dual view</a>
+      <button id="activity-toggle" class="trace-control" type="button" aria-controls="single-activity" aria-expanded="true">Hide CVE stream</button>
     </div>
     <div class="run-context">
       <div id="run-status" class="run-status running" role="status">Preparing infrastructure</div>
       <div class="elapsed-clock" role="timer" aria-label="Elapsed time"><span>Elapsed</span><strong id="model-clock">0 min</strong></div>
     </div>
   </div>
-  <div id="catalog-example" hidden></div>
   <div id="run-hud" role="status"></div>
 </header>
 <div class="single-stage">
@@ -88,7 +88,7 @@ const {
 
 const svg = document.getElementById('wire-svg');
 const nodesLayer = document.getElementById('nodes-layer');
-const catalogLabel = document.getElementById('catalog-example');
+const activityToggle = document.getElementById('activity-toggle');
 const runHud = document.getElementById('run-hud');
 const attackerButtons = document.querySelectorAll('[data-attacker]');
 let attackerChoice = 'artex';
@@ -781,14 +781,14 @@ function newInfra() {
       preferredIngress: referenceCase?.context.groups[0]
     });
   } while (applianceRoster(estate) === previous);
-  catalogLabel.hidden = !referenceCase;
-  if (referenceCase) {
-    const { example, context } = referenceCase;
-    catalogLabel.textContent = `${context.title} · Reference KEV Context (${example.id})`;
-    catalogLabel.title = `${example.vendor} ${example.product}\n${context.defensiveFocus}\nATT&CK · ${example.techniques.join(', ')}`;
-  }
   playRun();
 }
+activityToggle.addEventListener('click', () => {
+  const stage = document.querySelector('.single-stage');
+  const hidden = stage.classList.toggle('feed-hidden');
+  activityToggle.setAttribute('aria-expanded', String(!hidden));
+  activityToggle.textContent = hidden ? 'Reveal CVE stream' : 'Hide CVE stream';
+});
 document.getElementById('new-run-btn').addEventListener('click', newInfra);
 document.getElementById('map-replay-btn').addEventListener('click', playRun);
 document.getElementById('map-results-btn').addEventListener('click', finishRun);

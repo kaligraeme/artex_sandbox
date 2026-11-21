@@ -41,7 +41,7 @@ async function main(){
     const errors=[];page.on('pageerror',e=>errors.push(e.message));
     await page.goto(`http://127.0.0.1:${server.address().port}/wire.html`);await page.waitForSelector('.node');
     await page.evaluate(example=>{
-      cancelAnimationFrame(frame);estate=example;referenceCase=null;catalogLabel.hidden=true;pre2023Group='lockbit';infrastructureNumber=1;runNumber=0;resetGraph();
+      cancelAnimationFrame(frame);estate=example;referenceCase=null;pre2023Group='lockbit';infrastructureNumber=1;runNumber=0;resetGraph();
       const caption=document.createElement('div');caption.id='capture-caption';document.body.appendChild(caption);
       const cover=document.createElement('section');cover.id='capture-cover';document.body.appendChild(cover);
     },estate);

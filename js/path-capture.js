@@ -5,7 +5,7 @@ if (new URLSearchParams(location.search).get('capture') === 'path') {
   style.textContent=`
     .path-capture body{min-width:0!important;overflow:hidden}
     .path-capture .brand-row,.path-capture .mode-strip,.path-capture .run-row,
-    .path-capture .canvas-tools,.path-capture #catalog-example,
+    .path-capture .canvas-tools,
     .path-capture .soc-ticker,.path-capture #asset-details{display:none!important}
     .path-capture #run-hud{margin:0 6px;padding:5px 10px;font-size:12px;min-height:30px;line-height:1.4}
     .path-capture #viewport{margin:0 6px 6px;min-width:0;min-height:0!important}

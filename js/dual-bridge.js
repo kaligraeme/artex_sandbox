@@ -3,7 +3,7 @@ if (new URLSearchParams(location.search).has('embedded')) {
   document.documentElement.classList.add('comparison-embedded');
   const style = document.createElement('style');
   style.textContent = `.comparison-embedded .brand-row,.comparison-embedded .mode-strip,
-    .comparison-embedded .run-row,.comparison-embedded #catalog-example {display:none!important}
+    .comparison-embedded .run-row {display:none!important}
     .comparison-embedded .canvas-tools {justify-content:flex-end}
     .comparison-embedded,.comparison-embedded body {overflow:hidden}
     .comparison-embedded #viewport {min-height:0;margin:0}

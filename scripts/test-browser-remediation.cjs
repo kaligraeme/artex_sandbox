@@ -23,7 +23,7 @@ async function main(){
     assert.equal(await page.locator('.mode-btn').count(),4);
     assert.equal(await page.locator('[data-mode="canaries"], [data-mode="soc-canary"], select').count(),0);
     if(process.env.REMEDIATION_SCREENSHOT){
-      await page.evaluate(()=>{estate=generateEstate({preset:'demo',seed:777,seedExercise:true});referenceCase=null;catalogLabel.hidden=true;playRun();finishRun();});
+      await page.evaluate(()=>{estate=generateEstate({preset:'demo',seed:777,seedExercise:true});referenceCase=null;playRun();finishRun();});
       await page.waitForTimeout(250); // Allow the 200 ms state-color transition to settle for visual assertions.
       const cues=await page.evaluate(()=>[...document.querySelectorAll('.node.hit')].map(n=>({color:getComputedStyle(n.querySelector('.node-icon')).backgroundColor,labelTop:n.querySelector('.node-label').getBoundingClientRect().top,haloBottom:n.querySelector('.node-halo').getBoundingClientRect().bottom})));
       assert(cues.length>0);
@@ -33,7 +33,7 @@ async function main(){
     for(const viewport of [{width:1440,height:900},{width:1280,height:720},{width:390,height:844}]){
       await page.setViewportSize(viewport);
       for(const seed of [1,42,99]){
-        await page.evaluate(seed=>{estate=generateEstate({seed,seedExercise:true});referenceCase=null;catalogLabel.hidden=true;pre2023Group='lockbit';playRun();finishRun();},seed);
+        await page.evaluate(seed=>{estate=generateEstate({seed,seedExercise:true});referenceCase=null;pre2023Group='lockbit';playRun();finishRun();},seed);
         const collisions=await page.evaluate(()=>{
           const boxes=[...document.querySelectorAll('.node-label')].map(n=>({id:n.parentElement.id,r:n.getBoundingClientRect()}));
           return boxes.flatMap((a,i)=>boxes.slice(i+1).filter(b=>a.r.left<b.r.right&&a.r.right>b.r.left&&a.r.top<b.r.bottom&&a.r.bottom>b.r.top).map(b=>[a.id,b.id]));
@@ -146,7 +146,7 @@ async function main(){
     console.log('PASS browser: external-only start, no future search leaks, expanding anchored map, resize, results filtering, immutable model and replay reset');
     await page.evaluate(()=>{
       estate=generateEstate({preset:'demo',seed:404,seedExercise:false});
-      estate.findings=[];estate.credentials=[];referenceCase=null;catalogLabel.hidden=true;playRun();finishRun();
+      estate.findings=[];estate.credentials=[];referenceCase=null;playRun();finishRun();
     });
     const neutral=await page.evaluate(()=>({label:run.result.label,style:runHud.className,text:runHud.textContent}));
     assert.equal(neutral.label,'No protected read established');

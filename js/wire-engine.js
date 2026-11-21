@@ -34,8 +34,25 @@
       techniqueSources: { 'T1021.001': 'https://www.ic3.gov/CSA/2021/210825.pdf',
         'T1047':'https://www.trendmicro.com/vinfo/us/security/news/ransomware-spotlight/ransomware-spotlight-hive' },
       source: 'https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-321a' },
-    revil: { techniques: ['T1567.002','T1021.001'], analystMapped: ['T1567.002','T1021.001'],
-      source: 'https://unit42.paloaltonetworks.com/revil-threat-actors/' }
+    revil: { techniques: ['T1567.002','T1021.001','T1190','T1199','T1059.001'], analystMapped: ['T1567.002','T1021.001','T1190','T1199','T1059.001'],
+      techniqueSources: {
+        'T1190': 'https://www.cisa.gov/news-events/alerts/2021/07/04/cisa-fbi-guidance-msps-and-their-customers-affected-kaseya-vsa-supply-chain-attack',
+        'T1199': 'https://www.cisa.gov/news-events/alerts/2021/07/04/cisa-fbi-guidance-msps-and-their-customers-affected-kaseya-vsa-supply-chain-attack',
+        'T1059.001': 'https://www.cisa.gov/news-events/alerts/2021/07/04/cisa-fbi-guidance-msps-and-their-customers-affected-kaseya-vsa-supply-chain-attack'
+      },
+      source: 'https://unit42.paloaltonetworks.com/revil-threat-actors/' },
+    solarwinds: { techniques: ['T1195.002','T1190','T1078','T1550.001','T1552','T1059','T1021.001','T1041','T1530'],
+      analystMapped: ['T1190','T1552','T1021.001','T1041','T1530'],
+      source: 'https://www.cisa.gov/news-events/directives/ed-21-01-mitigate-solarwinds-orion-code-compromise' },
+    darkside: { techniques: ['T1078','T1133','T1110.003','T1190','T1021.001','T1021.002','T1047','T1486','T1567.002'],
+      analystMapped: ['T1190'],
+      source: 'https://www.cisa.gov/news-events/cybersecurity-advisories/aa21-131a' },
+    log4shell: { techniques: ['T1190','T1059','T1505','T1068','T1552','T1078','T1041','T1567.002'],
+      analystMapped: ['T1552','T1078','T1041','T1567.002'],
+      source: 'https://www.cisa.gov/news-events/cybersecurity-advisories/aa21-356a' },
+    cl0p: { techniques: ['T1190','T1505','T1505.003','T1059','T1068','T1552','T1078','T1041','T1567.002'],
+      analystMapped: ['T1552','T1078','T1567.002'],
+      source: 'https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-158a' }
   };
   // Tool use is attributed separately from the ransomware software's technique list.
   const COBALT_STRIKE_SOURCES = {
@@ -43,7 +60,8 @@
     conti:'https://thedfirreport.com/2021/11/29/continuing-the-bazar-ransomware-story/',
     blackcat:'https://www.sygnia.co/blog/blackcat-ransomware/',
     hive:'https://www.hhs.gov/sites/default/files/ransomware-trends-q1-2022.pdf',
-    revil:'https://unit42.paloaltonetworks.com/revil-threat-actors/'
+    revil:'https://unit42.paloaltonetworks.com/revil-threat-actors/',
+    darkside:'https://www.cisa.gov/news-events/cybersecurity-advisories/aa21-131a'
   };
   const COBALT_STRIKE_METHOD_SOURCE = 'https://hstechdocs.helpsystems.com/manuals/cobaltstrike/current/userguide/content/topics/post-exploitation_lateral-movement.htm';
   const PSEXEC_SOURCES = {
@@ -51,7 +69,8 @@
     conti:'https://www.hhs.gov/sites/default/files/ransomware-trends-q1-2022.pdf',
     blackcat:'https://www.microsoft.com/en-us/security/blog/2022/06/13/the-many-lives-of-blackcat-ransomware/',
     hive:'https://www.trendmicro.com/vinfo/us/security/news/ransomware-spotlight/ransomware-spotlight-hive',
-    revil:'https://unit42.paloaltonetworks.com/revil-threat-actors/'
+    revil:'https://unit42.paloaltonetworks.com/revil-threat-actors/',
+    darkside:'https://www.cisa.gov/news-events/cybersecurity-advisories/aa21-131a'
   };
   const PSEXEC_METHOD_SOURCE = 'https://learn.microsoft.com/en-us/sysinternals/downloads/psexec';
   const LATERAL_TOOL_METHODS = [
@@ -66,7 +85,11 @@
     conti:['cobalt_strike:wmi','cobalt_strike:smb','psexec','T1021.001','T1021.002','T1047'],
     blackcat:['psexec','T1021.001','cobalt_strike:smb','cobalt_strike:wmi','T1021.002','T1047'],
     hive:['T1021.001','T1047','psexec','cobalt_strike:wmi','cobalt_strike:smb'],
-    revil:['cobalt_strike:smb','cobalt_strike:wmi','T1021.001','psexec']
+    revil:['cobalt_strike:smb','cobalt_strike:wmi','T1021.001','psexec'],
+    solarwinds:['T1021.001','T1078'],
+    darkside:['psexec','cobalt_strike:smb','T1021.001','T1021.002','cobalt_strike:wmi','T1047'],
+    log4shell:['T1021.001','T1078'],
+    cl0p:['T1021.001','T1078']
   };
   function lateralMethod(action) {
     return action.finding?.tool === 'cobalt_strike' ? `cobalt_strike:${action.finding.requiredInterface}`
@@ -83,13 +106,21 @@
     conti:{technique:'T1567.002',tool:'Rclone',destination:'External cloud file-sharing account'},
     blackcat:{technique:'T1567.002',tool:'MEGAsync / Rclone',destination:'External cloud storage'},
     hive:{technique:'T1537',tool:'Rclone',destination:'External MEGA account'},
-    revil:{technique:'T1567.002',tool:'Rclone',destination:'External cloud storage'}
+    revil:{technique:'T1567.002',tool:'Rclone',destination:'External cloud storage'},
+    solarwinds:{technique:'T1041',tool:'Encrypted C2 / HTTPS staging',destination:'External actor staging infrastructure'},
+    darkside:{technique:'T1567.002',tool:'Rclone',destination:'External cloud storage'},
+    log4shell:{technique:'T1041',tool:'JNDI / HTTP outbound transfer',destination:'External actor endpoint'},
+    cl0p:{technique:'T1041',tool:'LEMURLOOT web shell HTTPS export',destination:'External extortion staging server'}
   };
   const ARTEX_EVIDENCE_SOURCE = 'https://github.com/RuoJi6/ARTEX/blob/6997a4661921395072290becc50380db8dacb04e/evidence/store.go';
   // Authored ordering among documented methods, not measured gang probabilities.
   const GANG_ENTRY_ORDER = {
     lockbit: ['T1133','T1190','T1566'], conti: ['T1566','T1133'],
-    blackcat: ['T1133','T1190'], hive: ['T1566','T1133','T1190'], revil: ['T1566','T1189']
+    blackcat: ['T1133','T1190'], hive: ['T1566','T1133','T1190'], revil: ['T1566','T1189','T1190'],
+    solarwinds: ['T1195.002','T1190','T1078','T1552'],
+    darkside: ['T1133','T1078','T1190'],
+    log4shell: ['T1190','T1552'],
+    cl0p: ['T1190','T1552']
   };
 
   function techniqueMatches(documented, actionTechnique) {
@@ -106,12 +137,12 @@
         source:COBALT_STRIKE_SOURCES[gangId],methodSource:COBALT_STRIKE_METHOD_SOURCE,
         interpretation:'Reported affiliate tool use; transport is an authored choice from documented tool capabilities.'} : null;
     const profile = gangCatalogue.gangs[gangId];
-    if (!profile || !technique) return null;
-    const mapped = Object.keys(profile.techniques).find(id => techniqueMatches(id, technique));
+    const supplement = GANG_SUPPLEMENTS[gangId];
+    if ((!profile && !supplement) || !technique) return null;
+    const mapped = profile && Object.keys(profile.techniques).find(id => techniqueMatches(id, technique));
     if (mapped) return { basis: 'threat_vision_attack_mapping', technique: mapped,
       evidence: profile.techniques[mapped].evidence, source: gangCatalogue.sources.threatVision };
-    const supplement = GANG_SUPPLEMENTS[gangId];
-    const documented = supplement.techniques.find(id => techniqueMatches(id, technique));
+    const documented = supplement?.techniques.find(id => techniqueMatches(id, technique));
     return documented ? { basis: 'affiliate_reporting', technique: documented,
       analystMapped: supplement.analystMapped?.includes(documented) || false,
       source: supplement.techniqueSources?.[documented] || supplement.source } : null;
@@ -236,10 +267,12 @@
     "CVE-2018-8340": "AD FS authentication bypass can allow an attacker to bypass multi-factor authentication.",
     "CVE-2019-11510": "Pulse Connect Secure path traversal lets an unauthenticated attacker read server files.",
     "CVE-2020-0618": "SQL Server Reporting Services deserialization can lead to remote code execution.",
+    "CVE-2020-10148": "SolarWinds Orion API authentication bypass allows remote command execution and supply-chain update compromise.",
     "CVE-2020-1472": "Zerologon abuses Netlogon authentication to gain domain controller privileges.",
     "CVE-2020-14882": "WebLogic console access controls can be bypassed, allowing remote compromise.",
     "CVE-2020-4888": "IBM QRadar deserialization of crafted Java objects can execute commands.",
     "CVE-2021-26855": "ProxyLogon uses server-side request forgery to send requests through Exchange.",
+    "CVE-2021-30116": "Kaseya VSA authentication bypass and SQL injection allows RMM supply-chain ransomware deployment.",
     "CVE-2021-35225": "A SolarWinds NPM flaw can disclose information to a user with limited access.",
     "CVE-2021-3827": "A Keycloak flaw can allow authentication protections to be bypassed.",
     "CVE-2021-42013": "Apache path traversal can expose files and, in some configurations, execute commands.",
@@ -413,6 +446,8 @@
     'CVE-2020-14882': { waf: { mitigates: false, reason: 'The internal WebLogic console is outside the perimeter WAF.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Monitoring flags anomalous console access.' } },
     'CVE-2022-0543': { waf: { mitigates: false, reason: 'Redis protocol traffic is outside the HTTP WAF.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Monitoring flags unexpected Redis child processes.' } },
     'CVE-2020-0618': { waf: { mitigates: false, reason: 'The internal reporting service is outside the perimeter WAF.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Monitoring flags unexpected reporting-service execution.' } },
+    'CVE-2020-10148': { waf: { mitigates: false, reason: 'Signed build-pipeline and internal Orion management traffic bypasses perimeter HTTP WAF filters.' }, ml: { mitigates: true, control: 'NIST SI-4 / CM-14', reason: 'Behavioral monitoring flags anomalous Orion child-process execution and unauthorized SAML/AD token minting.' } },
+    'CVE-2021-30116': { waf: { mitigates: true, ruleStrictness: 'strict_virtual_patch', control: 'NIST SI-2 / SC-7', reason: 'Virtual patch blocks unauthenticated Kaseya VSA /dl.asp and SQLi parameter payloads when covered by an inline WAF.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Behavioral monitoring detects anomalous RMM mass agent package deployment and encoded PowerShell execution.' } },
     'CVE-2023-46747': { waf: { mitigates: false, reason: 'The BIG-IP management interface is assumed reachable outside the protected application path.' }, ml: { mitigates: false, reason: 'The appliance management plane is outside internal host monitoring.' } },
     'CVE-2023-32707': { waf: { mitigates: false, reason: 'The Splunk management service is internal.' }, ml: { mitigates: true, control: 'NIST SI-4', reason: 'Monitoring flags anomalous administrative role changes.' } },
     'CVE-2020-3452': { waf: { mitigates: true, appliesToGroups: ['cisco-asa'], inspectedProtocols: ['https'], control: 'NIST SI-2 / SC-7', reason: 'Virtual patch filters directory-traversal requests to the Cisco ASA WebVPN web services when covered.' }, ml: { mitigates: false, reason: 'The edge appliance is outside internal behavioral monitoring.' } },
@@ -3476,15 +3511,163 @@
     }
   };
 
-  // Gang identity selects its documented repertoire at spawn. Defense deployment
-  // and topology still come exclusively from the shared estate.
+  // Historical Pre-2023 (Pre-LLM) attack patterns & RaaS profiles.
+  // Per spec Section 8.1 / R04 / R14, historical identity and incident metadata
+  // supply sourced technique context and display labels under the
+  // `operator_with_tools` behavior preset; defense deployment and topology
+  // come exclusively from the shared estate.
+  const PRE2023_ATTACK_PATTERNS = {
+    lockbit: {
+      id: 'lockbit',
+      label: 'LockBit',
+      year: 2022,
+      actor: 'LockBit (2.0 / 3.0)',
+      incident: 'Enterprise RaaS campaigns',
+      primaryVector: 'Perimeter appliance & valid-account intrusion with StealBit exfiltration',
+      cveIds: ['CVE-2023-4966', 'CVE-2023-3519'],
+      techniques: ['T1190', 'T1078', 'T1486'],
+      targetGroups: ['citrix-adc', 'iam-idp', 'db-rds'],
+      behaviorPreset: 'operator_with_tools',
+      systemicImpact: 'Most prolific RaaS operation by 2022 (~1/3 of enterprise ransomware incidents globally).',
+      provenanceType: 'historical_source',
+      sourceUrl: 'https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-075a'
+    },
+    conti: {
+      id: 'conti',
+      label: 'Conti',
+      year: 2021,
+      actor: 'Conti Syndicate',
+      incident: 'Enterprise & healthcare RaaS campaigns',
+      primaryVector: 'Phishing loader to Cobalt Strike, Kerberoasting, and AD lateral movement',
+      cveIds: ['CVE-2021-26855', 'CVE-2020-1472'],
+      techniques: ['T1190', 'T1558.003', 'T1003'],
+      targetGroups: ['exchange', 'ad-identity', 'mssql-db'],
+      behaviorPreset: 'operator_with_tools',
+      systemicImpact: 'Dominant syndicate through mid-2022 targeting critical infrastructure and government entities.',
+      provenanceType: 'historical_source',
+      sourceUrl: 'https://www.cisa.gov/news-events/cybersecurity-advisories/aa21-265a'
+    },
+    blackcat: {
+      id: 'blackcat',
+      label: 'BlackCat',
+      year: 2022,
+      actor: 'BlackCat (ALPHV / Noberus)',
+      incident: 'Cross-platform Windows/Linux/ESXi RaaS campaigns',
+      primaryVector: 'Exposed VPN/firewall credentials and unpatched edge gateways to hypervisor/data stores',
+      cveIds: ['CVE-2024-37085', 'CVE-2018-13379'],
+      techniques: ['T1078', 'T1190', 'T1486'],
+      targetGroups: ['forti-vpn', 'iam-idp', 'lake-cust'],
+      behaviorPreset: 'operator_with_tools',
+      systemicImpact: 'First major Rust-based cross-platform RaaS targeting enterprise Windows, Linux, and ESXi estates.',
+      provenanceType: 'historical_source',
+      sourceUrl: 'https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-353a'
+    },
+    hive: {
+      id: 'hive',
+      label: 'Hive',
+      year: 2022,
+      actor: 'Hive RaaS',
+      incident: 'Healthcare & critical infrastructure double-extortion campaigns',
+      primaryVector: 'RDP/VPN single-factor logins and ProxyShell/Exchange exploitation with rclone exfiltration',
+      cveIds: ['CVE-2021-26855', 'CVE-2019-11510'],
+      techniques: ['T1133', 'T1190', 'T1567.002'],
+      targetGroups: ['forti-vpn', 'exchange', 'mssql-db'],
+      behaviorPreset: 'operator_with_tools',
+      systemicImpact: 'Compromised over 1,500 victims globally before international law-enforcement disruption in early 2023.',
+      provenanceType: 'historical_source',
+      sourceUrl: 'https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-321a'
+    },
+    revil: {
+      id: 'revil',
+      label: 'REvil · Kaseya VSA',
+      year: 2021,
+      actor: 'REvil (Sodinokibi)',
+      incident: 'Kaseya VSA Supply Chain Ransomware Attack',
+      primaryVector: 'Zero-day authentication bypass & SQLi in RMM (CVE-2021-30116)',
+      cveIds: ['CVE-2021-30116'],
+      techniques: ['T1190', 'T1199', 'T1059.001'],
+      targetGroups: ['ivanti-epm', 'weblogic', 'db-rds'],
+      behaviorPreset: 'operator_with_tools',
+      systemicImpact: 'Cascaded ransomware through ~60 MSPs to 1,500+ downstream businesses globally across 17+ countries.',
+      provenanceType: 'historical_source',
+      sourceUrl: 'https://www.cisa.gov/news-events/alerts/2021/07/04/cisa-fbi-guidance-msps-and-their-customers-affected-kaseya-vsa-supply-chain-attack'
+    },
+    solarwinds: {
+      id: 'solarwinds',
+      label: 'APT29 · SolarWinds',
+      year: 2020,
+      actor: 'APT29 (SVR / Nobelium)',
+      incident: 'SolarWinds (SUNBURST) Supply Chain Compromise',
+      primaryVector: 'CI/CD build pipeline compromise & trojanized Orion software update',
+      cveIds: ['CVE-2020-10148', 'CVE-2021-35225'],
+      techniques: ['T1195.002', 'T1078', 'T1550.001'],
+      targetGroups: ['cicd-runner', 'vuln-scan', 'iam-idp', 'db-rds'],
+      behaviorPreset: 'operator_with_tools',
+      systemicImpact: 'Up to 18,000 organizations trojanized via signed Orion updates; catalyzed Executive Order 14028 and federal SBOM/zero-trust mandates.',
+      provenanceType: 'historical_source',
+      sourceUrl: 'https://www.cisa.gov/news-events/directives/ed-21-01-mitigate-solarwinds-orion-code-compromise'
+    },
+    darkside: {
+      id: 'darkside',
+      label: 'DarkSide · Colonial VPN',
+      year: 2021,
+      actor: 'DarkSide',
+      incident: 'Colonial Pipeline Ransomware Attack',
+      primaryVector: 'Compromised legacy VPN credentials (no MFA)',
+      cveIds: [],
+      openingId: 'legacy-vpn',
+      techniques: ['T1078', 'T1133', 'T1486'],
+      targetGroups: ['external-misconfig', 'forti-vpn', 'ad-identity', 'mssql-db'],
+      behaviorPreset: 'operator_with_tools',
+      systemicImpact: 'Halted 45% of U.S. East Coast fuel supply for 6 days; triggered mandatory TSA critical infrastructure cybersecurity directives.',
+      provenanceType: 'historical_source',
+      sourceUrl: 'https://www.govinfo.gov/content/pkg/CHRG-117hhrg45085/html/CHRG-117hhrg45085.htm'
+    },
+    log4shell: {
+      id: 'log4shell',
+      label: 'Log4Shell · Log4j',
+      year: 2021,
+      actor: 'Nation-states & eCrime',
+      incident: 'Log4Shell / Apache Log4j Exploitation (CVE-2021-44228)',
+      primaryVector: 'Unauthenticated JNDI injection in Apache Log4j 2',
+      cveIds: ['CVE-2021-44228'],
+      techniques: ['T1190', 'T1059', 'T1105'],
+      targetGroups: ['cust-api', 'log4j-svc', 'iot-hub', 'lake-ops'],
+      behaviorPreset: 'operator_with_tools',
+      systemicImpact: 'Ubiquitous open-source transitive dependency flaw affecting hundreds of millions of enterprise Java instances worldwide.',
+      provenanceType: 'historical_source',
+      sourceUrl: 'https://www.cisa.gov/news-events/cybersecurity-advisories/aa21-356a'
+    },
+    cl0p: {
+      id: 'cl0p',
+      label: 'Cl0p · MOVEit Transfer',
+      year: 2023,
+      actor: 'Cl0p (TA505)',
+      incident: 'MOVEit Transfer Zero-Day Campaign (CVE-2023-34362)',
+      primaryVector: 'Zero-day SQL injection & LEMURLOOT web shell in managed file transfer',
+      cveIds: ['CVE-2023-34362'],
+      techniques: ['T1190', 'T1505.003', 'T1041'],
+      targetGroups: ['partner-api', 'moveit-sftp', 'lake-cust'],
+      behaviorPreset: 'operator_with_tools',
+      systemicImpact: 'Pure-extortion mass exploitation compromising 2,700+ organizations and exposing 93M+ individuals without file encryption.',
+      provenanceType: 'historical_source',
+      sourceUrl: 'https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-158a'
+    }
+  };
+
+  // Gang/pattern identity selects its documented repertoire at spawn. Defense
+  // deployment and topology come exclusively from the shared estate.
   const WIRE_ATTACKERS = {
-    lockbit: { pace: 'pre2023' },
-    conti: { pace: 'pre2023' },
-    blackcat: { pace: 'pre2023' },
-    hive: { pace: 'pre2023' },
-    revil: { pace: 'pre2023' },
-    artex: { pace: 'artex' }
+    lockbit: { pace: 'pre2023', behaviorPreset: 'operator_with_tools', patternId: 'lockbit' },
+    conti: { pace: 'pre2023', behaviorPreset: 'operator_with_tools', patternId: 'conti' },
+    blackcat: { pace: 'pre2023', behaviorPreset: 'operator_with_tools', patternId: 'blackcat' },
+    hive: { pace: 'pre2023', behaviorPreset: 'operator_with_tools', patternId: 'hive' },
+    revil: { pace: 'pre2023', behaviorPreset: 'operator_with_tools', patternId: 'revil' },
+    solarwinds: { pace: 'pre2023', behaviorPreset: 'operator_with_tools', patternId: 'solarwinds' },
+    darkside: { pace: 'pre2023', behaviorPreset: 'operator_with_tools', patternId: 'darkside' },
+    log4shell: { pace: 'pre2023', behaviorPreset: 'operator_with_tools', patternId: 'log4shell' },
+    cl0p: { pace: 'pre2023', behaviorPreset: 'operator_with_tools', patternId: 'cl0p' },
+    artex: { pace: 'artex', behaviorPreset: 'agentic_orchestration', patternId: null }
   };
 
   const WIRE_READ_MINUTES = {
@@ -3557,7 +3740,7 @@
         additionalIngressDurationSec:timing.reentryDurationSec,
         postCompromiseTiming: 'Additional synthetic local-action durations from estate findings; not measured ransomware throughput',
         techniquePolicy: attackerProfile.gangId ? { gangId: attackerId, sources: gangCatalogue.sources,
-          roots: gangCatalogue.gangs[attackerId].roots, affiliateSupplement: GANG_SUPPLEMENTS[attackerId],
+          roots: gangCatalogue.gangs[attackerId]?.roots || [], affiliateSupplement: GANG_SUPPLEMENTS[attackerId],
           interpretation: 'Documented technique filter plus ordinary scoped access after foothold; authored entry ordering. Historical-style operator on a modern estate.' } : null,
         collectionDelaySec: timing.collectionDelay, decisionDelaySec: timing.decisionDelay,
         telemetryLayers: estate.defensePosture?.telemetryLayers ?? null,
@@ -4026,6 +4209,7 @@
     COMPARISON_PROFILES,
     COMPARISON_DEFENSES,
     COMPARISON_FIXTURES,
+    PRE2023_ATTACK_PATTERNS,
     createComparisonEstate,
     formatDurationSeconds,
     formatSignedDelta,

@@ -21,7 +21,8 @@ async function main(){
     await page.goto(`http://127.0.0.1:${server.address().port}/`);
     await page.waitForURL('**/wire.html');await page.waitForSelector('.node');
     assert.equal(await page.locator('.mode-btn').count(),4);
-    assert.equal(await page.locator('[data-mode="canaries"], [data-mode="soc-canary"], select').count(),0);
+    assert.equal(await page.locator('[data-mode="canaries"], [data-mode="soc-canary"], select#map-profile').count(),0);
+    assert.equal(await page.locator('select#pre2023-pattern').inputValue(),'rotation');
     if(process.env.REMEDIATION_SCREENSHOT){
       await page.evaluate(()=>{estate=generateEstate({preset:'demo',seed:777,seedExercise:true});referenceCase=null;playRun();finishRun();});
       await page.waitForTimeout(250); // Allow the 200 ms state-color transition to settle for visual assertions.

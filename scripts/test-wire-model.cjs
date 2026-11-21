@@ -13,9 +13,26 @@ assert(html.includes('id="map-profile"'), 'wire.html must include the attacker p
 assert(!html.includes('id="estate-preset"'), 'Wire should have one estate generator');
 assert.deepEqual([...html.matchAll(/data-mode="([^"]+)"/g)].map(match => match[1]),
   ['baseline', 'patch', 'soc', 'combined'], 'Wire must offer the four reference-design defense cards');
-const demoAttackers = ['lockbit', 'conti', 'blackcat', 'hive', 'revil', 'artex'];
-assert(!html.includes('<select'), 'Attacker selection belongs in the title toggle');
+const demoAttackers = ['lockbit', 'conti', 'blackcat', 'hive', 'revil', 'solarwinds', 'darkside', 'log4shell', 'cl0p', 'artex'];
+const pre2023PatternIds = ['lockbit', 'conti', 'blackcat', 'hive', 'revil', 'solarwinds', 'darkside', 'log4shell', 'cl0p'];
+assert(!html.includes('<select id="map-profile"'), 'Attacker selection belongs in the title toggle');
 assert.deepEqual([...html.matchAll(/data-attacker="([^"]+)"/g)].map(match => match[1]), ['artex', 'pre2023']);
+const patternSelect = html.match(/<select id="pre2023-pattern"[^>]*>([\s\S]*?)<\/select>/)[1];
+assert.deepEqual([...patternSelect.matchAll(/<option value="([^\"]+)"/g)].map(match => match[1]), ['rotation', ...pre2023PatternIds]);
+assert.match(patternSelect, /<option value="rotation" selected>/, 'Pre-LLM Path dropdown must default to rotation');
+for (const patternId of pre2023PatternIds) {
+  assert(html.includes(`${patternId}:`), `wire.html pre2023Groups must include ${patternId}`);
+  const pattern = engine.PRE2023_ATTACK_PATTERNS[patternId];
+  assert(pattern, `PRE2023_ATTACK_PATTERNS must define ${patternId}`);
+  assert.equal(pattern.behaviorPreset, 'operator_with_tools');
+  assert.equal(pattern.provenanceType, 'historical_source');
+  assert(pattern.sourceUrl && pattern.primaryVector && pattern.systemicImpact && pattern.techniques.length > 0);
+  for (const cveId of pattern.cveIds) {
+    assert(engine.CVE_ATTACK_DESCRIPTIONS[cveId], `Missing CVE description for ${cveId}`);
+    assert(engine.KEV_MITIGATION_RULES[cveId]?.waf && engine.KEV_MITIGATION_RULES[cveId]?.ml,
+      `Missing explicit KEV_MITIGATION_RULES coverage for ${cveId}`);
+  }
+}
 
 {
   const catalog = require('../assets/wire-defense-catalog.json');

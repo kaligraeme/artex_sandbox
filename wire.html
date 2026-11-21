@@ -45,6 +45,18 @@
         <span id="search-count" role="status"></span>
       </div>
       <button id="new-run-btn" class="trace-control" type="button">New Infra</button>
+      <select id="pre2023-pattern" class="trace-control" aria-label="Pre-LLM attack pattern" title="Choose a specific Pre-2023 attack pattern or keep the randomized rotation across estates">
+        <option value="rotation" selected>Pre-LLM: Rotation (auto)</option>
+        <option value="lockbit">LockBit</option>
+        <option value="conti">Conti</option>
+        <option value="blackcat">BlackCat</option>
+        <option value="hive">Hive</option>
+        <option value="revil">REvil · Kaseya VSA</option>
+        <option value="solarwinds">APT29 · SolarWinds</option>
+        <option value="darkside">DarkSide · Colonial VPN</option>
+        <option value="log4shell">Log4Shell · Log4j</option>
+        <option value="cl0p">Cl0p · MOVEit Transfer</option>
+      </select>
       <button id="map-replay-btn" class="trace-control" type="button">Replay</button>
       <button id="map-results-btn" class="trace-control" type="button">Results</button>
       <a id="dual-view-link" class="trace-control" href="dual.html">Dual view</a>
@@ -80,6 +92,7 @@
 <script src="js/attack-feed.js"></script>
 <script>
 const {
+  PRE2023_ATTACK_PATTERNS,
   cveTooltip,
   generateEstate,
   referenceServiceFlow,
@@ -91,6 +104,7 @@ const nodesLayer = document.getElementById('nodes-layer');
 const activityToggle = document.getElementById('activity-toggle');
 const runHud = document.getElementById('run-hud');
 const attackerButtons = document.querySelectorAll('[data-attacker]');
+const pre2023Pattern = document.getElementById('pre2023-pattern');
 let attackerChoice = 'artex';
 let runNumber = 0;
 let infrastructureNumber = 0;
@@ -370,7 +384,17 @@ let estate = generateEstate({ seedExercise: true });
 let catalog;
 let catalogDeck = [];
 let referenceCase = null;
-const pre2023Groups = { lockbit: 'LockBit', conti: 'Conti', blackcat: 'BlackCat', hive: 'Hive', revil: 'REvil' };
+const pre2023Groups = {
+  lockbit: 'LockBit',
+  conti: 'Conti',
+  blackcat: 'BlackCat',
+  hive: 'Hive',
+  revil: 'REvil',
+  solarwinds: 'APT29 · SolarWinds',
+  darkside: 'DarkSide · Colonial VPN',
+  log4shell: 'Log4Shell · Log4j',
+  cl0p: 'Cl0p · MOVEit Transfer'
+};
 let pre2023Deck = [];
 let pre2023Group;
 const defenseLabels = {baseline: 'BASELINE', patch: 'VIRTUAL PATCH', soc: 'AGENTIC SOAR', combined: 'DEFENSE-IN-DEPTH'};
@@ -639,9 +663,10 @@ function finishRun() {
   runHud.className = run.result.style;
   const illustration = run.events.some(event => event.outcome === 'succeeded' && event.finding?.illustration === 'git-to-idp')
     ? 'Illustrative branch ends at IdP admin' : '';
-  const group = run.lanes === 1 ? pre2023Groups[pre2023Group] : '';
+  const activeGroup = activePre2023Group();
+  const group = run.lanes === 1 ? pre2023Groups[activeGroup] : '';
   const entryFailure = run.lanes === 1 && !successes.length && run.events.find(event => !event.sourceId && event.outcome === 'ineligible' &&
-    event.finding?.kind === 'phishing_attachment' && WireEngine.gangTechniqueEvidence(pre2023Group,event.finding.technique));
+    event.finding?.kind === 'phishing_attachment' && WireEngine.gangTechniqueEvidence(activeGroup,event.finding.technique));
   const lateral = RunDiscovery.lateralStatus(estate,run);
   runHud.textContent = [group, run.result.label, result, evidence, limit, sampleLogs?.finding.title, `${count} external ${count === 1 ? 'entry' : 'entries'} reached`,
     entryFailure?.reason,
@@ -654,9 +679,29 @@ function finishRun() {
     blockedTransitions ? `${blockedTransitions} blocked` : '', run.summary.suppressedTransitions ? `${run.summary.suppressedTransitions} effects suppressed` : '', response, illustration].filter(Boolean).join(' · ');
 }
 
+function activePre2023Group() {
+  if (pre2023Pattern && pre2023Pattern.value !== 'rotation' && pre2023Groups[pre2023Pattern.value]) {
+    return pre2023Pattern.value;
+  }
+  return (pre2023Group ??= drawPre2023Group());
+}
+
+function updatePre2023PatternTooltip() {
+  if (!pre2023Pattern) return;
+  const activeId = activePre2023Group();
+  const meta = PRE2023_ATTACK_PATTERNS?.[activeId];
+  const modeNote = pre2023Pattern.value === 'rotation'
+    ? `Rotation (current estate: ${pre2023Groups[activeId]})`
+    : `Pinned pattern: ${pre2023Groups[activeId]}`;
+  pre2023Pattern.title = meta
+    ? `${modeNote}\n${meta.incident} (${meta.year}) · ${meta.actor}\nVector: ${meta.primaryVector}\nATT&CK · ${meta.techniques.join(', ')}`
+    : modeNote;
+}
+
 function playRun() {
   cancelAnimationFrame(frame);
-  const attackerId = attackerChoice === 'pre2023' ? (pre2023Group ??= drawPre2023Group()) : 'artex';
+  const attackerId = attackerChoice === 'pre2023' ? activePre2023Group() : 'artex';
+  updatePre2023PatternTooltip();
   run = simulateWireRun(estate, defense, attackerId);
   discoveryPlan = RunDiscovery.create(estate,run);
   discoveryStarted = false;
@@ -729,6 +774,17 @@ attackerButtons.forEach(button => button.addEventListener('click', () => {
   });
   playRun();
 }));
+pre2023Pattern.addEventListener('change', () => {
+  if (pre2023Pattern.value !== 'rotation' && attackerChoice !== 'pre2023') {
+    attackerChoice = 'pre2023';
+    attackerButtons.forEach(candidate => {
+      const selected = candidate.dataset.attacker === 'pre2023';
+      candidate.classList.toggle('selected', selected);
+      candidate.setAttribute('aria-pressed', String(selected));
+    });
+  }
+  playRun();
+});
 function applyAssetSearch() {
   const query = document.getElementById('asset-search').value.trim().toLowerCase();
   const matches = new Set();

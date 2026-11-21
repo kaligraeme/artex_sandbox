@@ -1,4 +1,6 @@
-# UI freeze: Range Operations v2
+# UI freeze: Range Operations v2 (lifted)
+
+**Lifted on 21 November 2026 at the user's request.** UI changes are open again. This file records the frozen state for reference only; the snapshot tag below still identifies it.
 
 Frozen at the user's request on 16 November 2026. Snapshot tag: `ui-freeze-v2-2026-11-16`.
 
@@ -19,4 +21,4 @@ Model suites pass. Browser checks pass for 72 combinations across two attackers,
 
 Subsequent user-requested correction: canary-enabled modes show `Canary deployed` on an existing decoy from the start, changing to `Canary alert` on a real signal. This uses the existing badge styling and preserves the frozen layout and controls. The full-estate GIF adds a recording overview of all generated assets; it does not replace the application's layout. See [current tool state](current-tool-state.md).
 
-Stop UI work here. Future work must preserve this presentation unless the user explicitly requests reopening UI changes. Model/backend changes do not imply approval to alter the frozen UI. The snapshot tag identifies the local frozen commit; remote publication depends on a successful push.
+The snapshot tag identifies the frozen commit.

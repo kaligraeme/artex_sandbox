@@ -1,8 +1,8 @@
 # Project intent and rules for future changes
 
-## UI freeze — 16 November 2026
+## UI status — freeze lifted 21 November 2026
 
-The user has frozen the UI at the completed Range Operations / v2 animation state. Do not redesign or extend the UI, its visual styles, controls, layout, icons or animation presentation unless the user explicitly reopens UI work. Preserve the four defense cards, ARTEX / Pre-LLM title toggle and visual attacker concurrency. Backend or model work does not implicitly authorize UI changes. The approved snapshot is identified by tag `ui-freeze-v2-2026-11-16`; see [freeze record](docs/ui-freeze.md).
+The user lifted the 16 November UI freeze on 21 November 2026. UI changes are open again; make them when the user asks. Keep the four defense cards, the ARTEX / Pre-LLM title toggle and visible attacker concurrency unless the user asks to change them. The earlier frozen snapshot remains available as tag `ui-freeze-v2-2026-11-16`; see the [historical freeze record](docs/ui-freeze.md).
 
 This guidance records the user's six-phase product model, supplied on 16 November 2026. Use it when planning, implementing, reviewing and testing fixes. The product is an animated enterprise attack-and-defense demonstration with historically informed timing. Preserve that purpose as the simulation becomes more coherent.
 

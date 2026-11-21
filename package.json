@@ -1,0 +1,14 @@
+{
+  "name": "artex-sandbox",
+  "private": true,
+  "description": "ARTEX attack and defense wire diagram demo",
+  "license": "Apache-2.0",
+  "scripts": {
+    "start": "python start.py",
+    "test": "node scripts/run-tests.cjs",
+    "test:model": "node scripts/run-tests.cjs --headless-only"
+  },
+  "devDependencies": {
+    "playwright-core": "1.65.1"
+  }
+}

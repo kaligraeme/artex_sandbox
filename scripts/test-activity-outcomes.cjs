@@ -14,6 +14,9 @@ const context=vm.createContext({
   window:{},RunDiscovery,estate,run,discoveryStarted:true,modeledTime:Infinity,
   formatEstimate:seconds=>`${seconds}s`
 });
+// The page loads attack-feed.js before dual-bridge.js and exposes AttackFeed globally.
+vm.runInContext(fs.readFileSync(path.join(root,'js/attack-feed.js'),'utf8'),context);
+context.AttackFeed=context.window.AttackFeed;
 vm.runInContext(fs.readFileSync(path.join(root,'js/dual-bridge.js'),'utf8'),context);
 const activity=()=>context.window.comparison.activity();
 const transfer=run.events.find(event=>event.actionKind==='data_exfiltration'&&event.outcome==='succeeded');

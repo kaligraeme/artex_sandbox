@@ -33,10 +33,8 @@ On macOS or Linux, run `./start.sh` from the repository folder. It looks for `py
 
 ## Demo branches
 
-- **`artex-codex`** has a separate local worktree at `E:\work\artex-codex` for the Codex implementation of the wire simulation improvements.
-
 - **`main`** runs the demo on the full wire diagram. The site root and old Table View address (`/index.html`) redirect to `/wire.html`.
-- **`artex-gemini`** (`e:\work\artex_sandbox-gemini` worktree) implements the realistic attack-and-defense improvements specified in [docs/wire-improvement-engineering-spec.md](docs/wire-improvement-engineering-spec.md).
+- **`artex-codex`**, **`artex-claude`** and **`artex-gemini`** hold earlier per-tool implementations of the attack-and-defense improvements specified in [docs/wire-improvement-engineering-spec.md](docs/wire-improvement-engineering-spec.md).
 - **`wire-combined`** preserves the demo before that change, including the standalone Range Operations dashboard and the original **Compare Combined** toggle. Use this branch to revisit that version.
 
 ## Run the wire diagram
@@ -44,7 +42,15 @@ On macOS or Linux, run `./start.sh` from the repository folder. It looks for `py
 1. Use the header toggle to choose **ARTEX** or **Pre-LLM Attacks**. Each new estate draws LockBit, Conti, BlackCat, Hive, or REvil in randomized order and keeps that group for replay and defense comparisons. Nominal path-duration assumptions are **80–270 minutes** for conventional examples and **45–75 minutes** for ARTEX-like. Actual completion includes queued work. These illustrative ranges are not measured breach-time distributions; see [timing assumptions and historical sources](docs/timing-assumptions.md). ARTEX-like uses three workers and conventional profiles use one.
 2. Start with **Baseline**, then compare **Virtual Patch**, **Agentic SOAR**, and **Defense-in-Depth** for virtual patching + SOC + canary together. Changing the attacker or defense replays the same topology.
 3. Use **Replay** to repeat the run or **Results** to jump to its outcome. The **Elapsed** clock shows cumulative modeled time from the assumed edge foothold.
-4. Use **New Infra** to generate a fresh topology and a different mix of five to seven appliance families from the [Layer 1 appliance pool](docs/wire_diagram_logic.md#layer-1-appliance-pool). Most baseline runs include a simulated path to a sample record. Credential exposure in logs can appear as an opening in the same mix.
+4. Use **Hide CVE stream** / **Reveal CVE stream** to collapse or restore the TTP / CVE activity panel beside the diagram. **Dual view** opens Pre-LLM and ARTEX side by side on the same estate.
+5. Use **New Infra** to generate a fresh topology and a different mix of five to seven appliance families from the [Layer 1 appliance pool](docs/wire_diagram_logic.md#layer-1-appliance-pool). Most baseline runs include a simulated path to a sample record. Credential exposure in logs can appear as an opening in the same mix.
+
+### Why ARTEX is faster
+
+A conventional attack is one human operator at a keyboard. ARTEX is three LLM agents running in a shared harness. The model reflects this in two ways:
+
+- **Faster steps.** Each ARTEX action takes less modeled time, so a direct path completes in 45–75 minutes instead of 80–270. This is a stated assumption, not a simulated result.
+- **Three agents sharing state.** Access, credentials and footholds that one agent obtains are immediately available to the others, and the three work in parallel. On a single straight path this saves no time. It pays off when routes branch, fail or are blocked: ARTEX tries alternatives concurrently while the human works through them one at a time.
 
 **New Infra** draws from 100 CISA KEV and CTID references. Each entry selects one of four representative infrastructure profiles, and the remaining topology is generated around it. The simulation shows which generated services were reached or defended. See the [JSON catalog](assets/wire-defense-catalog.json).
 
@@ -74,6 +80,17 @@ An environment may include one network-monitoring system, selected from Cacti, L
 The SOC tickets are illustrative, generated as activity occurs. A node can produce one or several tickets, with a title, severity and short alert description. Severity and breach detection are demonstration choices, not CVSS scores or actual SIEM findings. Remediation tickets appear when a modeled virtual patch, agentic SOAR response or canary triggers.
 
 See [wire diagram logic](docs/wire_diagram_logic.md) for the topology and scenario assumptions, [Pre-LLM vs. ARTEX comparison notes](docs/pre-llm-vs-artex-comparison.md) for field context and fixture limits, and the [threat matrix](docs/cisa_kev_threat_matrix.md) for additional vulnerability background.
+
+## Testing
+
+The simulation runs headlessly under Node, so most suites need nothing beyond Node.js. Install the one dependency once, then run everything:
+
+```powershell
+npm install
+npm test
+```
+
+`npm test` runs every `scripts/test-*.cjs` suite and reports each result. The browser suites drive Microsoft Edge through `playwright-core`; set `EDGE_PATH` if Edge is not at its default Windows location. To run only the headless model suites, use `npm run test:model`.
 
 ## License
 

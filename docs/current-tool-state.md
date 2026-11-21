@@ -52,4 +52,4 @@ The full-estate GIF was recorded before the subsequent `Canary deployed` badge f
 
 The latest model and remediation suites passed after the canary correction. The browser suite passed 72 attacker/defense/seed/viewport combinations, plus neutral-result, canary-deployment visibility, New Infra, replay, search, keyboard and animation checks. The integration sweep previously passed 7,200 runs at `fe110c1`, with independent paired sensitivity probes; the subsequent changes affect recording and canary presentation rather than model behavior. The full-estate capture validated eight runs, unchanged estate inputs, marker counts and browser console errors. The encoder checked dimensions, duration and looping metadata; the initial full-estate frame was visually inspected.
 
-Changes in this handoff preserve the frozen layout and controls. Documentation and source are committed locally; pushing or publishing is a separate action.
+Changes in this handoff preserved the layout and controls frozen at the time; the freeze was lifted on 21 November 2026. Documentation and source are committed locally; pushing or publishing is a separate action.

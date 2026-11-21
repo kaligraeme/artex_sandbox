@@ -153,7 +153,6 @@ function getDefaultNodeBadge(asset, findings) {
   if (f.kind === 'diagnostic_access') {
     return { code: f.title.toUpperCase(), title: 'Signed-in diagnostics viewer' };
   }
-  if (f.kind === 'exercise') return { code: f.technique || 'FINDING', title: f.title };
   if (f.kind === 'anonymous_access') {
     return { code: `${f.technique} · PUBLIC`, title: f.title };
   }
@@ -283,15 +282,16 @@ function markReferenceFlow(estate, { context, example }) {
   const flow = referenceServiceFlow(estate, context.groups);
   if (!flow) return;
 
+  const isContextOnly = example?.referenceRole === 'context_only';
   const vendorToken = (example?.vendor || '').toLowerCase();
   const productToken = (example?.product || '').toLowerCase();
   flow.assets.forEach((id, index) => {
     const node = currentNodes.get(id);
     if (!node) return;
     const el = node.el;
-    el.title += `\nReference KEV Context · ${context.roles[index]}`;
+    el.title += `\nReference KEV Context (${example?.referenceRole || 'context_only'}) · ${context.roles[index]}`;
     const labelLower = node.label.toLowerCase();
-    const matchesVendor = !vendorToken || labelLower.includes(vendorToken) || labelLower.includes(productToken) || node.groupId === context.groups[index];
+    const matchesVendor = !isContextOnly && (!vendorToken || labelLower.includes(vendorToken) || labelLower.includes(productToken) || node.groupId === example?.matchedGroupId);
     if (index === context.focus && matchesVendor) {
       el.classList.add('catalog-focus');
       el.title += `\n${context.defensiveFocus}`;
@@ -380,7 +380,7 @@ function revealNodeWires(node, duration = 1200) {
   }
 }
 
-let estate = generateEstate({ seedExercise: true });
+let estate = generateEstate({ generationMode: 'authored_walkthrough' });
 let catalog;
 let catalogDeck = [];
 let referenceCase = null;
@@ -833,7 +833,8 @@ function newInfra() {
   pre2023Group = drawPre2023Group();
   do {
     estate = generateEstate({
-      seedExercise: true,
+      generationMode: 'authored_walkthrough',
+      archetypeId: referenceCase?.context.archetypeId,
       preferredIngress: referenceCase?.context.groups[0]
     });
   } while (applianceRoster(estate) === previous);

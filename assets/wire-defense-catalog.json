@@ -23,7 +23,8 @@
         "db-rds"
       ],
       "focus": 0,
-      "defensiveFocus": "Review gateway exposure, patch coverage and ingress telemetry."
+      "defensiveFocus": "Review gateway exposure, patch coverage and ingress telemetry.",
+      "archetypeId": "public-web"
     },
     "web": {
       "title": "Web applications",
@@ -40,7 +41,8 @@
         "db-rds"
       ],
       "focus": 2,
-      "defensiveFocus": "Review application patching, web request logging and isolation between the service and its records."
+      "defensiveFocus": "Review application patching, web request logging and isolation between the service and its records.",
+      "archetypeId": "public-web"
     },
     "collaboration": {
       "title": "Messaging and collaboration",
@@ -57,7 +59,8 @@
         "mssql-db"
       ],
       "focus": 1,
-      "defensiveFocus": "Review external access and correlate messaging, identity and content-access logs."
+      "defensiveFocus": "Review external access and correlate messaging, identity and content-access logs.",
+      "archetypeId": "cloud-saas"
     },
     "management": {
       "title": "Infrastructure administration",
@@ -74,7 +77,8 @@
         "db-rds"
       ],
       "focus": 1,
-      "defensiveFocus": "Review separation of management access and alerting on privileged administrative changes."
+      "defensiveFocus": "Review separation of management access and alerting on privileged administrative changes.",
+      "archetypeId": "enterprise-identity"
     }
   },
   "examples": [
@@ -85,7 +89,9 @@
       "product": "NetScaler ADC and Gateway",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2024-0769",
@@ -94,7 +100,9 @@
       "product": "DIR-859 Router",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2023-33538",
@@ -103,7 +111,9 @@
       "product": "Multiple Routers",
       "techniques": [
         "T1068"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2023-39780",
@@ -114,7 +124,9 @@
         "T1078",
         "T1133",
         "T1588"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2021-32030",
@@ -123,7 +135,9 @@
       "product": "Routers",
       "techniques": [
         "T1068"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2024-12987",
@@ -132,7 +146,9 @@
       "product": "Vigor Routers",
       "techniques": [
         "T1068"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2023-44221",
@@ -142,7 +158,9 @@
       "techniques": [
         "T1068",
         "T1548"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2025-22457",
@@ -151,7 +169,9 @@
       "product": "Connect Secure, Policy Secure, and ZTA Gateways",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2025-21590",
@@ -160,7 +180,9 @@
       "product": "Junos OS",
       "techniques": [
         "T1068"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2023-20118",
@@ -170,7 +192,9 @@
       "techniques": [
         "T1068",
         "T1078"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2025-0111",
@@ -179,7 +203,9 @@
       "product": "PAN-OS",
       "techniques": [
         "T1068"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2024-53704",
@@ -189,7 +215,9 @@
       "techniques": [
         "T1199",
         "T1212"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2025-23006",
@@ -198,7 +226,9 @@
       "product": "SMA1000 Appliances",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2024-55591",
@@ -207,7 +237,9 @@
       "product": "FortiOS and FortiProxy",
       "techniques": [
         "T1068"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2024-24919",
@@ -216,7 +248,9 @@
       "product": "Quantum Security Gateways",
       "techniques": [
         "T1202"
-      ]
+      ],
+      "referenceRole": "modeled_weakness",
+      "matchedGroupId": "checkpoint-quantum"
     },
     {
       "id": "CVE-2021-40655",
@@ -225,7 +259,9 @@
       "product": "DIR-605 Router",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2024-20359",
@@ -234,7 +270,9 @@
       "product": "Adaptive Security Appliance (ASA) and Firepower Threat Defense (FTD)",
       "techniques": [
         "T1078"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2024-21762",
@@ -243,7 +281,9 @@
       "product": "FortiOS",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2024-21893",
@@ -252,7 +292,9 @@
       "product": "Connect Secure, Policy Secure, and Neurons",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2023-6549",
@@ -261,7 +303,9 @@
       "product": "NetScaler ADC and NetScaler Gateway",
       "techniques": [
         "T1574"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2024-21887",
@@ -270,7 +314,9 @@
       "product": "Connect Secure and Policy Secure",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "modeled_weakness",
+      "matchedGroupId": "ivanti-connect"
     },
     {
       "id": "CVE-2023-20269",
@@ -279,7 +325,9 @@
       "product": "Adaptive Security Appliance and Firepower Threat Defense",
       "techniques": [
         "T1133"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2023-27997",
@@ -289,7 +337,9 @@
       "techniques": [
         "T1190",
         "T1574"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2022-1388",
@@ -298,7 +348,9 @@
       "product": "BIG-IP",
       "techniques": [
         "T1548"
-      ]
+      ],
+      "referenceRole": "modeled_chain",
+      "matchedGroupId": "f5-gateway"
     },
     {
       "id": "CVE-2021-45382",
@@ -307,7 +359,9 @@
       "product": "Multiple Routers",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2025-35939",
@@ -316,7 +370,9 @@
       "product": "Craft CMS",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2025-42999",
@@ -326,7 +382,9 @@
       "techniques": [
         "T1190",
         "T1203"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2024-38475",
@@ -335,7 +393,9 @@
       "product": "HTTP Server",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2023-22527",
@@ -344,7 +404,9 @@
       "product": "Confluence Data Center and Server",
       "techniques": [
         "T1221"
-      ]
+      ],
+      "referenceRole": "modeled_weakness",
+      "matchedGroupId": "confluence-node"
     },
     {
       "id": "CVE-2023-38203",
@@ -353,7 +415,9 @@
       "product": "ColdFusion",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2022-26138",
@@ -362,7 +426,9 @@
       "product": "Confluence",
       "techniques": [
         "T1552.001"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2022-26134",
@@ -371,7 +437,9 @@
       "product": "Confluence Server/Data Center",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "modeled_weakness",
+      "matchedGroupId": "confluence-node"
     },
     {
       "id": "CVE-2021-26085",
@@ -380,7 +448,9 @@
       "product": "Confluence Server",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2021-44228",
@@ -389,7 +459,9 @@
       "product": "Log4j2",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "modeled_weakness",
+      "matchedGroupId": "log4j-svc"
     },
     {
       "id": "CVE-2020-17530",
@@ -398,7 +470,9 @@
       "product": "Struts",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2019-3398",
@@ -407,7 +481,9 @@
       "product": "Confluence Server and Data Center",
       "techniques": [
         "T1202"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2019-3396",
@@ -416,7 +492,9 @@
       "product": "Confluence Server and Data Server",
       "techniques": [
         "T1133"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2018-7600",
@@ -425,7 +503,9 @@
       "product": "Drupal Core",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2024-56145",
@@ -434,7 +514,9 @@
       "product": "Craft CMS",
       "techniques": [
         "T1055"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2025-31324",
@@ -444,7 +526,9 @@
       "techniques": [
         "T1055",
         "T1505.003"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2021-42013",
@@ -453,7 +537,9 @@
       "product": "HTTP Server",
       "techniques": [
         "T1210"
-      ]
+      ],
+      "referenceRole": "modeled_weakness",
+      "matchedGroupId": "apache-edge"
     },
     {
       "id": "CVE-2023-22518",
@@ -462,7 +548,9 @@
       "product": "Confluence Data Center and Server",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2023-29300",
@@ -471,7 +559,9 @@
       "product": "ColdFusion",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2018-11776",
@@ -480,7 +570,9 @@
       "product": "Struts",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2017-12637",
@@ -489,7 +581,9 @@
       "product": "NetWeaver",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2021-41773",
@@ -498,7 +592,9 @@
       "product": "HTTP Server",
       "techniques": [
         "T1210"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2023-22515",
@@ -507,7 +603,9 @@
       "product": "Confluence Data Center and Server",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "modeled_weakness",
+      "matchedGroupId": "confluence-admin"
     },
     {
       "id": "CVE-2023-26359",
@@ -516,7 +614,9 @@
       "product": "ColdFusion",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2017-9805",
@@ -525,7 +625,9 @@
       "product": "Struts",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2019-0211",
@@ -534,7 +636,9 @@
       "product": "HTTP Server",
       "techniques": [
         "T1068"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2025-54309",
@@ -543,7 +647,9 @@
       "product": "CrushFTP",
       "techniques": [
         "T1068"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2025-49706",
@@ -552,7 +658,9 @@
       "product": "SharePoint",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2024-42009",
@@ -561,7 +669,9 @@
       "product": "Webmail",
       "techniques": [
         "T1566.002"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2024-27443",
@@ -570,7 +680,9 @@
       "product": "Zimbra Collaboration Suite (ZCS)",
       "techniques": [
         "T1566.002"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2024-21413",
@@ -579,7 +691,9 @@
       "product": "Office Outlook",
       "techniques": [
         "T1566.002"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2023-34362",
@@ -588,7 +702,9 @@
       "product": "MOVEit Transfer",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "modeled_weakness",
+      "matchedGroupId": "moveit-sftp"
     },
     {
       "id": "CVE-2023-0669",
@@ -597,7 +713,9 @@
       "product": "GoAnywhere MFT",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "modeled_weakness",
+      "matchedGroupId": "moveit-sftp"
     },
     {
       "id": "CVE-2022-41082",
@@ -607,7 +725,9 @@
       "techniques": [
         "T1059.001",
         "T1078"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2022-36804",
@@ -616,7 +736,9 @@
       "product": "Bitbucket Server and Data Center",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2022-24682",
@@ -625,7 +747,9 @@
       "product": "Zimbra Collaborate Suite (ZCS)",
       "techniques": [
         "T1204.001"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2021-27104",
@@ -634,7 +758,9 @@
       "product": "FTA",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2025-31161",
@@ -643,7 +769,9 @@
       "product": "CrushFTP",
       "techniques": [
         "T1078"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2025-49704",
@@ -652,7 +780,9 @@
       "product": "SharePoint",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2023-43770",
@@ -661,7 +791,9 @@
       "product": "Webmail",
       "techniques": [
         "T1189"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2023-34192",
@@ -670,7 +802,9 @@
       "product": "Zimbra Collaboration Suite (ZCS)",
       "techniques": [
         "T1055"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2021-34523",
@@ -679,7 +813,9 @@
       "product": "Exchange Server",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2021-27103",
@@ -688,7 +824,9 @@
       "product": "FTA",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2025-53770",
@@ -698,7 +836,9 @@
       "techniques": [
         "T1059",
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2023-5631",
@@ -707,7 +847,9 @@
       "product": "Webmail",
       "techniques": [
         "T1204.001"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2021-34473",
@@ -716,7 +858,9 @@
       "product": "Exchange Server",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2021-27102",
@@ -725,7 +869,9 @@
       "product": "FTA",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2019-0604",
@@ -734,7 +880,9 @@
       "product": "SharePoint",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2021-31207",
@@ -743,7 +891,9 @@
       "product": "Exchange Server",
       "techniques": [
         "T1548.002"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2021-27065",
@@ -752,7 +902,9 @@
       "product": "Exchange Server",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2021-26858",
@@ -761,7 +913,9 @@
       "product": "Exchange Server",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2025-3935",
@@ -770,7 +924,9 @@
       "product": "ScreenConnect",
       "techniques": [
         "T1203"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2025-4428",
@@ -779,7 +935,9 @@
       "product": "Endpoint Manager Mobile (EPMM)",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2024-13161",
@@ -789,7 +947,9 @@
       "techniques": [
         "T1190",
         "T1558"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2025-22225",
@@ -798,7 +958,9 @@
       "product": "ESXi",
       "techniques": [
         "T1068"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2025-22224",
@@ -807,7 +969,9 @@
       "product": "ESXi and Workstation",
       "techniques": [
         "T1055"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2022-22948",
@@ -816,7 +980,9 @@
       "product": "vCenter Server",
       "techniques": [
         "T1078"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2021-44529",
@@ -825,7 +991,9 @@
       "product": "Endpoint Manager Cloud Service Appliance (EPM CSA)",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2024-27198",
@@ -834,7 +1002,9 @@
       "product": "TeamCity",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "modeled_weakness",
+      "matchedGroupId": "cicd-runner"
     },
     {
       "id": "CVE-2023-27532",
@@ -843,7 +1013,9 @@
       "product": "Backup & Replication",
       "techniques": [
         "T1133"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2022-28810",
@@ -852,7 +1024,9 @@
       "product": "ManageEngine",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2021-21973",
@@ -861,7 +1035,9 @@
       "product": "vCenter Server and Cloud Foundation",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2021-21975",
@@ -870,7 +1046,9 @@
       "product": "vRealize Operations Manager API",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2021-44077",
@@ -879,7 +1057,9 @@
       "product": "ManageEngine ServiceDesk Plus (SDP) / SupportCenter Plus",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2021-37415",
@@ -888,7 +1068,9 @@
       "product": "ManageEngine ServiceDesk Plus (SDP)",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2021-1498",
@@ -897,7 +1079,9 @@
       "product": "HyperFlex HX",
       "techniques": [
         "T1133"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2025-4427",
@@ -907,7 +1091,9 @@
       "techniques": [
         "T1190",
         "T1203"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2024-13160",
@@ -917,7 +1103,9 @@
       "techniques": [
         "T1190",
         "T1558"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2024-37085",
@@ -926,7 +1114,9 @@
       "product": "ESXi",
       "techniques": [
         "T1078"
-      ]
+      ],
+      "referenceRole": "modeled_weakness",
+      "matchedGroupId": "ad-identity"
     },
     {
       "id": "CVE-2021-22017",
@@ -935,7 +1125,9 @@
       "product": "vCenter Server",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2023-42793",
@@ -944,7 +1136,9 @@
       "product": "TeamCity",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "modeled_weakness",
+      "matchedGroupId": "cicd-runner"
     },
     {
       "id": "CVE-2022-26501",
@@ -953,7 +1147,9 @@
       "product": "Backup & Replication",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2022-47966",
@@ -962,7 +1158,9 @@
       "product": "ManageEngine",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "modeled_weakness",
+      "matchedGroupId": "vuln-scan"
     },
     {
       "id": "CVE-2021-1497",
@@ -971,7 +1169,9 @@
       "product": "HyperFlex HX",
       "techniques": [
         "T1133"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2023-35081",
@@ -980,7 +1180,9 @@
       "product": "Endpoint Manager Mobile (EPMM)",
       "techniques": [
         "T1190"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     },
     {
       "id": "CVE-2024-13159",
@@ -990,7 +1192,9 @@
       "techniques": [
         "T1190",
         "T1558"
-      ]
+      ],
+      "referenceRole": "context_only",
+      "matchedGroupId": null
     }
   ]
 }

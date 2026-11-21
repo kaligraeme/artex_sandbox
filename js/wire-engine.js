@@ -1,17 +1,281 @@
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory(require('./gang-techniques.js'));
+    module.exports = factory(require('./gang-techniques.js'), require('../assets/calibration.json'));
   } else {
-    root.WireEngine = factory(root.GangTechniques);
+    root.WireEngine = factory(root.GangTechniques, root.WireCalibration || null);
   }
-}(typeof self !== 'undefined' ? self : this, function (gangCatalogue) {
+}(typeof self !== 'undefined' ? self : this, function (gangCatalogue, externalCalibration) {
   'use strict';
 
-  const SCHEMA_VERSION = 3;
+  const SCHEMA_VERSION = 4;
+  const RUN_MANIFEST_VERSION = 1;
+  const ENGINE_VERSION = '4.0.0-phase-a';
   const MAX_ONWARD_PER_SOURCE = 2;
   const MAX_SUCCESS_PER_LAYER = 3;
   const WAF_PORTAL_COVERAGE = 0.66;
   const SOAR_DETECTION_RATE = 0.32;
+
+  const DEFAULT_CALIBRATION_REGISTER = {
+    schemaVersion: 1,
+    asOfDate: '2026-11-16',
+    scope: 'Versioned calibration and provenance register separating historical source statistics from synthetic simulation assumptions (Spec Section 6.4, Invariant R14).',
+    observedStatistics: [
+      {
+        id: 'crowdstrike-2021-ecrime-breakout-mean',
+        provenanceType: 'historical_source',
+        displayClassification: 'source_fact',
+        sourceTitle: 'CrowdStrike 2023 Global Threat Report',
+        sourceUrl: 'https://www.crowdstrike.com/wp-content/uploads/2023/05/CrowdStrike2023GlobalThreatReport.pdf#page=9',
+        publicationDate: '2023-02-28',
+        observationPeriod: '2021-01-01/2021-12-31',
+        population: 'Interactive eCrime intrusions observed by CrowdStrike OverWatch',
+        statisticType: 'mean',
+        value: 98,
+        unit: 'minutes',
+        reportedQuantiles: null,
+        startMilestone: 'Initial host compromise',
+        endMilestone: 'First lateral movement to another host (breakout)',
+        notes: 'Reports an observed mean breakout time only. Does not establish time to sensitive record access, median (p50), p90, or distribution shape.'
+      },
+      {
+        id: 'crowdstrike-2022-ecrime-breakout-mean',
+        provenanceType: 'historical_source',
+        displayClassification: 'source_fact',
+        sourceTitle: 'CrowdStrike 2023 Global Threat Report Executive Summary',
+        sourceUrl: 'https://www.crowdstrike.com/wp-content/uploads/2023/02/2023-Global-Threat-Report-Executive-Summary.pdf',
+        publicationDate: '2023-02-28',
+        observationPeriod: '2022-01-01/2022-12-31',
+        population: 'Interactive eCrime intrusions observed by CrowdStrike OverWatch',
+        statisticType: 'mean',
+        value: 84,
+        unit: 'minutes',
+        reportedQuantiles: null,
+        startMilestone: 'Initial host compromise',
+        endMilestone: 'First lateral movement to another host (breakout)',
+        notes: 'Reports an observed mean breakout time only. Does not establish time to sensitive record access, median (p50), p90, or distribution shape.'
+      },
+      {
+        id: 'crowdstrike-2023-ecrime-breakout-mean',
+        provenanceType: 'historical_source',
+        displayClassification: 'source_fact',
+        sourceTitle: 'CrowdStrike 2024 Global Threat Report Overview',
+        sourceUrl: 'https://www.crowdstrike.com/en-us/blog/crowdstrike-2024-global-threat-report/',
+        publicationDate: '2024-02-21',
+        observationPeriod: '2023-01-01/2023-12-31',
+        population: 'Interactive eCrime intrusions observed by CrowdStrike OverWatch',
+        statisticType: 'mean',
+        value: 62,
+        unit: 'minutes',
+        reportedQuantiles: null,
+        startMilestone: 'Initial host compromise',
+        endMilestone: 'First lateral movement to another host (breakout)',
+        notes: 'Reports an observed mean breakout time only. Does not identify quantiles or AI attribution share.'
+      },
+      {
+        id: 'crowdstrike-2023-ecrime-breakout-fastest',
+        provenanceType: 'historical_source',
+        displayClassification: 'source_fact',
+        sourceTitle: 'CrowdStrike 2024 Global Threat Report Overview',
+        sourceUrl: 'https://www.crowdstrike.com/en-us/blog/crowdstrike-2024-global-threat-report/',
+        publicationDate: '2024-02-21',
+        observationPeriod: '2023-01-01/2023-12-31',
+        population: 'Fastest single interactive eCrime breakout observed by CrowdStrike in 2023',
+        statisticType: 'minimum_single_case',
+        value: 127,
+        unit: 'seconds',
+        reportedQuantiles: null,
+        startMilestone: 'Initial host compromise',
+        endMilestone: 'First lateral movement to another host (breakout)',
+        notes: 'Single minimum extremum (2 minutes 7 seconds); not a central tendency or population distribution.'
+      },
+      {
+        id: 'mandiant-2022-dwell-median',
+        provenanceType: 'historical_source',
+        displayClassification: 'source_fact',
+        sourceTitle: 'Mandiant M-Trends 2023',
+        sourceUrl: 'https://cloud.google.com/blog/transform/m-trends-2023-lessons-cyberattack-frontlines',
+        publicationDate: '2023-04-18',
+        observationPeriod: '2022-01-01/2022-12-31',
+        population: 'Global intrusions investigated by Mandiant in 2022',
+        statisticType: 'median',
+        value: 16,
+        unit: 'days',
+        reportedQuantiles: { p50: 16 },
+        startMilestone: 'Initial compromise',
+        endMilestone: 'Detection / discovery of compromise',
+        notes: 'Measures dwell time to discovery, which is distinct from operator breakout time or time to first sensitive record read.'
+      },
+      {
+        id: 'gtig-2025-artex-typical-deep-access',
+        provenanceType: 'historical_source',
+        displayClassification: 'source_fact',
+        sourceTitle: 'GTIG: ARTEX and Friends Enter Agentic Offensive Frameworks',
+        sourceUrl: 'https://cloud.google.com/blog/topics/threat-intelligence/artex-and-friends-enter-agentic-offensive-frameworks',
+        publicationDate: '2025-05-01',
+        observationPeriod: '2024/2025 campaign observations',
+        population: 'Observed intrusions by one ARTEX-associated threat actor studied by GTIG/Mandiant',
+        statisticType: 'typical_case_narrative',
+        value: 240,
+        unit: 'minutes',
+        reportedQuantiles: null,
+        startMilestone: 'Initial compromised account foothold',
+        endMilestone: 'Deep internal access',
+        notes: 'Describes typical ~4-hour progression with burst/pause behavior and trial-and-error noise; not a universal parametric distribution.'
+      },
+      {
+        id: 'gtig-2025-artex-fast-deep-access',
+        provenanceType: 'historical_source',
+        displayClassification: 'source_fact',
+        sourceTitle: 'GTIG: ARTEX and Friends Enter Agentic Offensive Frameworks',
+        sourceUrl: 'https://cloud.google.com/blog/topics/threat-intelligence/artex-and-friends-enter-agentic-offensive-frameworks',
+        publicationDate: '2025-05-01',
+        observationPeriod: '2024/2025 campaign observations',
+        population: 'Single fast intrusion case by an ARTEX-associated actor studied by GTIG/Mandiant',
+        statisticType: 'single_case',
+        value: 15,
+        unit: 'minutes',
+        reportedQuantiles: null,
+        startMilestone: 'Initial compromised account foothold',
+        endMilestone: 'Deep internal access',
+        notes: 'Single fast case (15 minutes); does not establish a universal ARTEX median or stealth advantage.'
+      }
+    ],
+    simulationAssumptions: [
+      {
+        id: 'assumption-pre2023-nominal-path-duration',
+        provenanceType: 'expert_assumption',
+        displayClassification: 'synthetic_assumption',
+        parameter: 'WIRE_READ_MINUTES.pre2023',
+        distribution: { shape: 'discrete_uniform', min: 80, max: 270, unit: 'minutes' },
+        applicableConditions: 'Conventional operator_with_tools profile nominal 4-layer path duration context',
+        referencedStatisticIds: ['crowdstrike-2021-ecrime-breakout-mean', 'crowdstrike-2022-ecrime-breakout-mean'],
+        justification: 'Illustrative presentation range anchored near historical 84-98 minute mean breakout figures, extended to 270 minutes to span multi-stage lateral and data-access progression.',
+        uncertaintyTreatment: 'seeded_draw_presentation_context',
+        reviewNote: 'Presentation context only; must not directly force control success or failure without causal prerequisite and response checks.'
+      },
+      {
+        id: 'assumption-artex-nominal-path-duration',
+        provenanceType: 'expert_assumption',
+        displayClassification: 'synthetic_assumption',
+        parameter: 'WIRE_READ_MINUTES.artex',
+        distribution: { shape: 'discrete_uniform', min: 45, max: 75, unit: 'minutes' },
+        applicableConditions: 'Agentic orchestration profile nominal 4-layer path duration context',
+        referencedStatisticIds: ['gtig-2025-artex-typical-deep-access', 'gtig-2025-artex-fast-deep-access'],
+        justification: 'Illustrative presentation band between the 15-minute fast case and 4-hour typical deep-access observation reported by GTIG.',
+        uncertaintyTreatment: 'seeded_draw_presentation_context',
+        reviewNote: 'Presentation context only; does not imply universal agentic speed or guaranteed SOC evasion.'
+      },
+      {
+        id: 'assumption-stage-weight-allocation',
+        provenanceType: 'expert_assumption',
+        displayClassification: 'synthetic_assumption',
+        parameter: 'wireTiming.stageWeights',
+        distribution: { shape: 'seeded_normalized_weights', minWeight: 0.15, maxWeight: 1.15, unit: 'ratio' },
+        applicableConditions: 'Allocation of nominal path duration across layers 1..3',
+        referencedStatisticIds: [],
+        justification: 'Public reporting does not disaggregate total intrusion time into per-layer intervals; weights are synthetic scenario allocations.',
+        uncertaintyTreatment: 'seeded_draw',
+        reviewNote: 'Explicit synthetic stage allocation.'
+      },
+      {
+        id: 'assumption-additional-ingress-duration',
+        provenanceType: 'expert_assumption',
+        displayClassification: 'synthetic_assumption',
+        parameter: 'reentryDurationSec',
+        value: 300,
+        unit: 'seconds',
+        applicableConditions: 'Additional external ingress attempts after the initial foothold attempt',
+        referencedStatisticIds: [],
+        justification: 'Equal 5-minute scenario cost applied identically to all attacker profiles when probing secondary external entry points.',
+        uncertaintyTreatment: 'fixed_parameter',
+        reviewNote: 'Applied identically across conventional and agentic profiles.'
+      },
+      {
+        id: 'assumption-local-persistence-duration',
+        provenanceType: 'expert_assumption',
+        displayClassification: 'synthetic_assumption',
+        parameter: 'persistence.modeledDurationSec',
+        value: 120,
+        unit: 'seconds',
+        applicableConditions: 'Local registry startup persistence action (T1547.001) on executed Windows hosts',
+        referencedStatisticIds: [],
+        justification: 'Synthetic scheduling duration for post-exploitation persistence step.',
+        uncertaintyTreatment: 'fixed_parameter',
+        reviewNote: 'Requires established app_exec and persist_user permission.'
+      },
+      {
+        id: 'assumption-local-encryption-duration',
+        provenanceType: 'expert_assumption',
+        displayClassification: 'synthetic_assumption',
+        parameter: 'encryption.modeledDurationSec',
+        value: 300,
+        unit: 'seconds',
+        applicableConditions: 'Local file encryption action (T1486) on executed Windows hosts',
+        referencedStatisticIds: [],
+        justification: 'Synthetic scheduling duration for local endpoint encryption step.',
+        uncertaintyTreatment: 'fixed_parameter',
+        reviewNote: 'Requires established app_exec and write_local_files permission.'
+      },
+      {
+        id: 'assumption-data-export-duration',
+        provenanceType: 'expert_assumption',
+        displayClassification: 'synthetic_assumption',
+        parameter: 'data_exfiltration.modeledDurationSec',
+        value: { baseSetupSec: 120, bytesPerSec: 524288 },
+        unit: 'seconds',
+        applicableConditions: 'Bulk data export following a confirmed sensitive dataset read',
+        referencedStatisticIds: [],
+        justification: 'Synthetic 120-second setup plus size-proportional transfer duration (or 120 seconds when dataset size is unknown).',
+        uncertaintyTreatment: 'deterministic_formula',
+        reviewNote: 'Requires prior data_read, controlled collection host, and boolean egress permission.'
+      },
+      {
+        id: 'assumption-waf-portal-coverage',
+        provenanceType: 'expert_assumption',
+        displayClassification: 'synthetic_assumption',
+        parameter: 'WAF_PORTAL_COVERAGE',
+        value: 0.66,
+        unit: 'probability',
+        applicableConditions: 'Probability that a public SSL-VPN/GlobalProtect web portal is routed behind an inline WAF enforcement point in exploratory estates',
+        referencedStatisticIds: [],
+        justification: 'Models partial inline WAF coverage across edge portals so virtual patching is neither universally present nor absent.',
+        uncertaintyTreatment: 'seeded_bernoulli',
+        reviewNote: 'Bounded in [0, 1]; held constant across attacker comparisons on the same estate.'
+      },
+      {
+        id: 'assumption-soar-base-detection-rate',
+        provenanceType: 'expert_assumption',
+        displayClassification: 'synthetic_assumption',
+        parameter: 'SOAR_DETECTION_RATE',
+        value: 0.32,
+        unit: 'probability',
+        applicableConditions: 'Per-action baseline behavioral detection probability on monitored layers when a modeled ML hypothesis exists',
+        referencedStatisticIds: [],
+        justification: 'Synthetic per-node detection probability representing imperfect single-event behavioral alerting prior to cross-boundary correlation.',
+        uncertaintyTreatment: 'seeded_bernoulli',
+        reviewNote: 'Bounded in [0, 1]; held constant on the estate.'
+      },
+      {
+        id: 'assumption-soc-response-latencies',
+        provenanceType: 'expert_assumption',
+        displayClassification: 'synthetic_assumption',
+        parameter: 'defensePosture.latencies',
+        distribution: {
+          collectionDelaySec: { min: 0, max: 30 },
+          decisionDelaySec: { min: 15, max: 60 },
+          responseDelaySec: { min: 60, max: 1800 }
+        },
+        unit: 'seconds',
+        applicableConditions: 'Estate-owned telemetry collection, incident decision, and response enforcement latency ranges',
+        referencedStatisticIds: [],
+        justification: 'Models variation in automated and human-assisted SOC response pipelines across generated estates.',
+        uncertaintyTreatment: 'seeded_draw_on_estate',
+        reviewNote: 'Owned by the estate defensePosture; invariant when switching attacker profiles.'
+      }
+    ]
+  };
+
+  const CALIBRATION_REGISTER = externalCalibration || DEFAULT_CALIBRATION_REGISTER;
 
   if (!gangCatalogue?.gangs) throw new Error('Gang technique catalogue must load before WireEngine');
 
@@ -232,6 +496,7 @@
 
   const REVIEWED_EXAMPLES = {
     ...EDGE_APPLIANCES,
+    'apache-edge': { cve: 'CVE-2021-42013', product: 'Apache HTTP Server', version: '2.4.50', conditions: { cgiEnabled: true, pathNormalizationUnpatched: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2021-42013' },
     'cust-api': { cve: 'CVE-2022-29464', product: 'WSO2 API Manager', version: '3.2.0', conditions: { uploadEndpointReachable: true, executableUpload: true }, source: 'https://www.cisa.gov/sites/default/files/2023-08/aa23-215a_joint_csa_2022_top_routinely_exploited_vulnerabilities.pdf' },
     'partner-api': { cve: 'CVE-2022-29464', product: 'WSO2 API Manager', version: '3.2.0', conditions: { uploadEndpointReachable: true, executableUpload: true }, source: 'https://www.cisa.gov/sites/default/files/2023-08/aa23-215a_joint_csa_2022_top_routinely_exploited_vulnerabilities.pdf' },
     'wso2-api': { cve: 'CVE-2022-29464', product: 'WSO2 API Manager', version: '3.2.0', conditions: { uploadEndpointReachable: true, executableUpload: true }, source: 'https://www.cisa.gov/sites/default/files/2023-08/aa23-215a_joint_csa_2022_top_routinely_exploited_vulnerabilities.pdf' },
@@ -253,6 +518,71 @@
     'moveit-sftp': { cve: 'CVE-2023-34362', product: 'Progress MOVEit Transfer', version: '2023.0.0', conditions: { webTransferEnabled: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2023-34362' },
     'ai-core': { cve: 'CVE-2026-42271', product: 'LiteLLM Proxy', version: '1.83.6', conditions: { mcpTestEndpointsEnabled: true }, source: 'https://github.com/BerriAI/litellm/security/advisories/GHSA-v4p8-mg3p-g94g' },
     'redis-debian': { cve: 'CVE-2022-0543', product: 'Debian Redis', version: '5:6.0.16-1', conditions: { luaSandboxUnpatched: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2022-0543' }
+  };
+
+  // Multi-variant product-pool CVE specifications so every displayed kevByVariant
+  // in LAYER_CONFIG has an audited, explicit specification (Spec Section 7.1, F35).
+  const REVIEWED_VARIANT_CVES = {
+    'CVE-2021-42013': { product: 'Apache HTTP Server', version: '2.4.50', conditions: { cgiEnabled: true, pathNormalizationUnpatched: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2021-42013' },
+    'CVE-2023-46747': { product: 'F5 BIG-IP Advanced WAF', version: '17.1.0', conditions: { tmuiReachable: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2023-46747' },
+    'CVE-2025-64446': { product: 'Fortinet FortiWeb WAF', version: '7.4.1', conditions: { managementInterfaceReachable: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2025-64446' },
+    'CVE-2023-3519': { product: 'Citrix NetScaler ADC', version: '13.1-48.47', conditions: { gatewayMode: true }, source: 'https://www.cisa.gov/sites/default/files/2023-07/aa23-201a_csa_threat_actors_exploiting_citrix-cve-2023-3519_to_implant_webshells.pdf' },
+    'CVE-2018-5412': { product: 'Imperva SecureSphere WAF', version: '13.0', conditions: { managementAccessEstablished: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2018-5412' },
+    'CVE-2022-22954': { product: 'VMware Workspace ONE Access', version: '21.08.0.0', conditions: { catalogPortalEnabled: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2022-22954' },
+    'CVE-2018-8340': { product: 'Microsoft AD FS', version: '2016', conditions: { extranetLockoutBypassable: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2018-8340' },
+    'CVE-2021-3827': { product: 'Red Hat Keycloak', version: '13.0.0', conditions: { bruteForceProtectionMisconfigured: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2021-3827' },
+    'CVE-2023-32707': { product: 'Splunk Enterprise', version: '9.0.4', conditions: { editUserCapabilityGranted: true }, source: 'https://advisory.splunk.com/advisories/SVD-2023-0602' },
+    'CVE-2020-4888': { product: 'IBM QRadar SIEM', version: '7.3.3', conditions: { authenticatedSessionPresent: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2020-4888' },
+    'CVE-2026-78597': { product: 'Elastic Security / Kibana', version: '8.15.0', conditions: { entityStoreRolePresent: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2026-78597' },
+    'CVE-2026-25769': { product: 'Wazuh Server', version: '4.8.0', conditions: { workerKeyCompromised: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2026-25769' },
+    'CVE-2023-0669': { product: 'Fortra GoAnywhere MFT', version: '7.1.1', conditions: { adminLicenseServletExposed: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2023-0669' },
+    'CVE-2022-46169': { product: 'Cacti Network Monitoring Server', version: '1.2.22', conditions: { remoteAgentPollerEnabled: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2022-46169' },
+    'CVE-2022-29712': { product: 'LibreNMS', version: '22.3.0', conditions: { serviceParamEditable: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2022-29712' },
+    'CVE-2021-35225': { product: 'SolarWinds NPM', version: '2020.2.6', conditions: { OrionAlertingReadable: true }, source: 'https://nvd.nist.gov/vuln/detail/CVE-2021-35225' }
+  };
+
+  // Coherent infrastructure archetypes (Spec Section 7.1).
+  const INFRASTRUCTURE_ARCHETYPES = {
+    'enterprise-identity': {
+      id: 'enterprise-identity',
+      title: 'Enterprise identity and endpoints',
+      description: 'Remote access, user/service identities, workstation/server access and internal data.',
+      requiredRelationships: ['remote-access-to-identity', 'endpoint-to-management', 'management-to-fileserver', 'fileserver-to-data'],
+      defensiveVariations: ['identity_restrictions', 'endpoint_telemetry', 'management_isolation'],
+      preferredIngressGroups: ['forti-vpn', 'cisco-asa', 'checkpoint-quantum'],
+      layerFocusGroups: [['forti-vpn', 'windows-desktop', 'windows-rdp'], ['ad-identity', 'iam-idp', 'ivanti-epm', 'windows-management'], ['weblogic', 'forti-ems', 'windows-file-server'], ['mssql-db', 'db-rds', 'windows-records']],
+      defaultWalkthroughId: 'walkthrough-enterprise-identity'
+    },
+    'public-web': {
+      id: 'public-web',
+      title: 'Public web and internal data',
+      description: 'Public application, middleware, application identity and datastore permissions.',
+      requiredRelationships: ['edge-to-api-gateway', 'api-gateway-to-app-middleware', 'app-middleware-to-datastore'],
+      defensiveVariations: ['waf_placement', 'exposed_origin', 'application_telemetry', 'least_privilege'],
+      preferredIngressGroups: ['f5-gateway', 'pan-globalprotect', 'apache-edge', 'citrix-adc'],
+      layerFocusGroups: [['f5-gateway', 'pan-globalprotect', 'apache-edge'], ['cust-api', 'waf-proxy', 'wso2-api'], ['app-engine', 'spring-svc', 'log4j-svc', 'moveit-sftp'], ['db-rds', 'lake-cust', 'nosql-doc']],
+      defaultWalkthroughId: 'walkthrough-public-web'
+    },
+    'cloud-saas': {
+      id: 'cloud-saas',
+      title: 'Cloud and SaaS',
+      description: 'Tenant identities, role grants, API permissions and cloud datasets.',
+      requiredRelationships: ['cloud-ingress-to-tenant-idp', 'tenant-idp-to-saas-service', 'saas-service-to-cloud-lake'],
+      defensiveVariations: ['audit_coverage', 'session_controls', 'credential_scope', 'direct_data_access'],
+      preferredIngressGroups: ['public-s3', 'public-blob', 'sophos-firewall', 'ivanti-connect'],
+      layerFocusGroups: [['public-s3', 'public-blob', 'ivanti-connect', 'sophos-firewall'], ['iam-idp', 'exchange', 'cust-api'], ['confluence-admin', 'confluence-node', 'iot-hub', 'ai-core'], ['lake-ops', 'lake-cust', 'litellm-db']],
+      defaultWalkthroughId: 'walkthrough-cloud-saas'
+    },
+    'cicd-secrets': {
+      id: 'cicd-secrets',
+      title: 'CI/CD and operational secrets',
+      description: 'Repository, runner, service identity, artifact/configuration store and deployment target.',
+      requiredRelationships: ['repo-or-edge-to-idp-or-vault', 'idp-to-cicd-runner', 'cicd-runner-to-deployment-datastore'],
+      defensiveVariations: ['secret_handling', 'runner_isolation', 'token_scope', 'deployment_authorization'],
+      preferredIngressGroups: ['public-gitlab', 'public-bitbucket', 'f5-gateway', 'ivanti-connect'],
+      layerFocusGroups: [['public-gitlab', 'public-bitbucket', 'f5-gateway'], ['iam-idp', 'vault-creds', 'cust-api'], ['cicd-runner', 'comp-registry', 'vuln-scan', 'activemq'], ['db-rds', 'redis-debian', 'lake-cust']],
+      defaultWalkthroughId: 'walkthrough-cicd-secrets'
+    }
   };
 
   // Concise attack descriptions based on the linked vulnerability records.
@@ -719,91 +1049,408 @@
     return 'same-zone';
   }
 
+  // Build the surface coverage manifest (Spec Section 7.1, F35) classifying every
+  // advertised group and variant in LAYER_CONFIG as executable vs. contextual.
+  const SURFACE_COVERAGE_MANIFEST = (function buildSurfaceCoverageManifest() {
+    const groups = {};
+    LAYER_CONFIG.forEach((layer, layerIdx) => {
+      layer.clusters.forEach(cluster => {
+        cluster.targets.forEach(target => {
+          const reviewed = REVIEWED_EXAMPLES[target.id];
+          const variants = target.variants.map((label, vIdx) => {
+            const cveId = target.kevByVariant ? target.kevByVariant[vIdx] : null;
+            const cveSpec = (reviewed && reviewed.cve === cveId) ? reviewed : (cveId ? REVIEWED_VARIANT_CVES[cveId] : null);
+            const executableCve = !!(cveId && reviewed && reviewed.cve === cveId && findKev(layerIdx, cveId));
+            const surfaceKind = executableCve
+              ? 'executable_cve'
+              : target.publicExposure
+                ? 'executable_public_exposure'
+                : (target.id === 'support-diagnostics' || target.id === 'external-misconfig')
+                  ? 'executable_misconfiguration'
+                  : (target.supportsSpray || layerIdx === 3 || target.id === 'staging-status')
+                    ? 'executable_credential_or_spray'
+                    : 'contextual_only';
+            return {
+              variantIdx: vIdx,
+              label,
+              cveId,
+              surfaceKind,
+              executableThroughDefaultGenerator: executableCve || !!target.publicExposure || target.supportsSpray || layerIdx === 3 || ['support-diagnostics', 'external-misconfig', 'staging-status'].includes(target.id),
+              hasReviewedCveMetadata: !cveId || !!cveSpec
+            };
+          });
+          groups[target.id] = {
+            groupId: target.id,
+            layerIdx,
+            clusterName: cluster.name,
+            interfaces: [...(target.interfaces || ['https'])],
+            variants
+          };
+        });
+      });
+    });
+    return { schemaVersion: 1, groups };
+  }());
+
+  function auditSurfaceCoverage(estate, attackerProfile = null) {
+    const presentInterfaces = new Set((estate?.assets || []).flatMap(a => a.interfaces || []));
+    const presentFindingKinds = new Set((estate?.findings || []).map(f => f.kind));
+    const displayOnlyAssets = (estate?.assets || []).filter(a => {
+      const hasFinding = (estate?.findings || []).some(f => f.assetId === a.id);
+      const hasInboundCred = (estate?.credentials || []).some(c =>
+        c.targetAssetIds?.includes(a.id) || (!c.targetAssetIds?.length && c.targetGroupIds?.includes(a.groupId)));
+      return !hasFinding && !hasInboundCred;
+    }).map(a => ({ assetId: a.id, groupId: a.groupId, referenceCve: a.referenceCve || null, role: 'contextual_or_healthy' }));
+
+    const advertisedFamilies = [];
+    if (attackerProfile) {
+      if (attackerProfile.allowsUserInteraction) advertisedFamilies.push({ family: 'phishing_attachment', requiredInterface: 'email', requiredKind: 'phishing_attachment' });
+      if (attackerProfile.availableTools?.includes('psexec') || attackerProfile.availableTools?.includes('cobalt_strike')) {
+        advertisedFamilies.push({ family: 'windows_remote_service_tools', requiredInterface: 'smb', requiredKind: 'remote_service' });
+      }
+      if (attackerProfile.allowsRansomwareImpact) advertisedFamilies.push({ family: 'endpoint_encryption', requiredInterface: null, requiredKind: 'encryption' });
+      if (attackerProfile.allowsPersistence) advertisedFamilies.push({ family: 'registry_persistence', requiredInterface: null, requiredKind: 'persistence' });
+    }
+    const unavailableFamilies = advertisedFamilies.filter(item =>
+      (item.requiredInterface && !presentInterfaces.has(item.requiredInterface)) ||
+      (item.requiredKind && !presentFindingKinds.has(item.requiredKind))
+    );
+    return {
+      manifest: SURFACE_COVERAGE_MANIFEST,
+      displayOnlyAssets,
+      advertisedFamilies,
+      unavailableFamilies,
+      hasAdvertisingGap: unavailableFamilies.length > 0
+    };
+  }
+
+  function validateCalibrationRegister(register = CALIBRATION_REGISTER) {
+    const errors = [];
+    const details = [];
+    const fail = (entityId, fieldPath, reason) => {
+      errors.push(`${entityId} (${fieldPath}): ${reason}`);
+      details.push({ entityId, fieldPath, reason });
+    };
+    if (!register || typeof register !== 'object') {
+      fail('calibration', 'root', 'Calibration register must be an object');
+      return { valid: false, errors, warnings: [], details };
+    }
+    if (register.schemaVersion !== 1) fail('calibration', 'schemaVersion', `Expected schemaVersion 1, got ${register.schemaVersion}`);
+    if (!Array.isArray(register.observedStatistics) || register.observedStatistics.length === 0) {
+      fail('calibration', 'observedStatistics', 'observedStatistics must be a non-empty array');
+    }
+    if (!Array.isArray(register.simulationAssumptions) || register.simulationAssumptions.length === 0) {
+      fail('calibration', 'simulationAssumptions', 'simulationAssumptions must be a non-empty array');
+    }
+    if (errors.length) return { valid: false, errors, warnings: [], details };
+
+    const statIds = new Set();
+    for (const stat of register.observedStatistics) {
+      const id = stat?.id || 'unknown_stat';
+      if (!stat?.id || statIds.has(stat.id)) fail(id, 'id', 'Duplicate or missing observedStatistic id');
+      statIds.add(id);
+      if (stat.provenanceType !== 'historical_source') fail(id, 'provenanceType', 'observedStatistic must have provenanceType="historical_source"');
+      if (!stat.sourceUrl || !stat.publicationDate || !stat.population || !stat.statisticType || !stat.unit || !stat.startMilestone || !stat.endMilestone) {
+        fail(id, 'fields', 'Missing required observedStatistic provenance or milestone fields');
+      }
+      // Fixture F33: An observed mean cannot present p50, p90, or a fitted distribution as source_fact without separate evidence.
+      if (stat.statisticType === 'mean' && stat.displayClassification === 'source_fact') {
+        if (stat.reportedQuantiles && (stat.reportedQuantiles.p50 != null || stat.reportedQuantiles.p90 != null)) {
+          fail(id, 'reportedQuantiles', 'An observed mean cannot present p50 or p90 quantiles as source_fact without separate quantile evidence (F33)');
+        }
+        if (stat.fittedDistribution) {
+          fail(id, 'fittedDistribution', 'An observed mean cannot present a fitted distribution as source_fact (F33)');
+        }
+      }
+    }
+
+    const assumptionIds = new Set();
+    for (const assumption of register.simulationAssumptions) {
+      const id = assumption?.id || 'unknown_assumption';
+      if (!assumption?.id || assumptionIds.has(assumption.id)) fail(id, 'id', 'Duplicate or missing simulationAssumption id');
+      assumptionIds.add(id);
+      if (!['historical_source', 'vendor_reference', 'expert_assumption', 'authored_fixture'].includes(assumption.provenanceType)) {
+        fail(id, 'provenanceType', `Invalid provenanceType: ${assumption.provenanceType}`);
+      }
+      if (assumption.displayClassification !== 'synthetic_assumption') {
+        fail(id, 'displayClassification', 'simulationAssumption must carry displayClassification="synthetic_assumption"');
+      }
+      if (assumption.unit === 'probability' && (typeof assumption.value !== 'number' || assumption.value < 0 || assumption.value > 1)) {
+        fail(id, 'value', 'Probability assumption must be a number in [0, 1]');
+      }
+      for (const refId of assumption.referencedStatisticIds || []) {
+        if (!statIds.has(refId)) fail(id, 'referencedStatisticIds', `Unknown referencedStatisticId: ${refId}`);
+      }
+    }
+    return { valid: errors.length === 0, errors, warnings: [], details };
+  }
+
   function validateEstate(estate) {
     const errors = [];
+    const warnings = [];
+    const details = [];
+    const fail = (entityId, fieldPath, reason) => {
+      errors.push(reason);
+      details.push({ entityId, fieldPath, reason });
+    };
     if (!estate || typeof estate !== 'object') {
-      return { valid: false, errors: ['Estate must be an object'] };
+      fail('estate', 'root', 'Estate must be an object');
+      return { valid: false, errors, warnings, details };
     }
     if (estate.schemaVersion !== SCHEMA_VERSION) {
-      errors.push(`Expected schemaVersion ${SCHEMA_VERSION}, got ${estate.schemaVersion}`);
+      fail(estate.id || 'estate', 'schemaVersion', `Expected schemaVersion ${SCHEMA_VERSION}, got ${estate.schemaVersion}`);
     }
     if (!['mixed', 'demo', 'logs', 'comparison'].includes(estate.preset)) {
-      errors.push(`Invalid preset: ${estate.preset}`);
+      fail(estate.id || 'estate', 'preset', `Invalid preset: ${estate.preset}`);
     }
-    if (!Array.isArray(estate.assets)) errors.push('assets must be an array');
-    if (!Array.isArray(estate.findings)) errors.push('findings must be an array');
-    if (!Array.isArray(estate.credentials)) errors.push('credentials must be an array');
-    if (!Array.isArray(estate.relationships)) errors.push('relationships must be an array');
-    if (errors.length) return { valid: false, errors };
+    if (estate.archetypeId != null && !INFRASTRUCTURE_ARCHETYPES[estate.archetypeId]) {
+      fail(estate.id || 'estate', 'archetypeId', `Invalid archetypeId: ${estate.archetypeId}`);
+    }
+    if (estate.generationMode != null && !['exploratory', 'authored_walkthrough'].includes(estate.generationMode)) {
+      fail(estate.id || 'estate', 'generationMode', `Invalid generationMode: ${estate.generationMode}`);
+    }
+    if (!Array.isArray(estate.assets)) fail('estate', 'assets', 'assets must be an array');
+    if (!Array.isArray(estate.findings)) fail('estate', 'findings', 'findings must be an array');
+    if (!Array.isArray(estate.credentials)) fail('estate', 'credentials', 'credentials must be an array');
+    if (!Array.isArray(estate.relationships)) fail('estate', 'relationships', 'relationships must be an array');
+    if (errors.length) return { valid: false, errors, warnings, details };
 
     const assetIds = new Set();
     for (const a of estate.assets) {
-      if (!a.id || assetIds.has(a.id)) errors.push(`Duplicate or missing asset id: ${a.id}`);
+      if (!a.id || assetIds.has(a.id)) fail(a?.id || 'asset', 'id', `Duplicate or missing asset id: ${a.id}`);
       assetIds.add(a.id);
       if (a.endpointIds && (!Array.isArray(a.endpointIds) || !a.endpointIds.length ||
           new Set(a.endpointIds).size !== a.endpointIds.length || a.endpointCount !== a.endpointIds.length)) {
-        errors.push(`Invalid fleet endpoint inventory on ${a.id}`);
+        fail(a.id, 'endpointIds', `Invalid fleet endpoint inventory on ${a.id}`);
       }
       if (typeof a.layerIdx !== 'number' || a.layerIdx < 0 || a.layerIdx > 3) {
-        errors.push(`Invalid layerIdx on asset ${a.id}`);
+        fail(a.id, 'layerIdx', `Invalid layerIdx on asset ${a.id}`);
       }
       if (!Array.isArray(a.interfaces) || a.interfaces.length === 0) {
-        errors.push(`Asset ${a.id} must declare interfaces`);
+        fail(a.id, 'interfaces', `Asset ${a.id} must declare interfaces`);
       } else if (a.interfaces.some(iface => typeof iface !== 'string' || !iface.trim() || iface !== iface.trim())) {
-        errors.push(`Asset ${a.id} has an invalid interface identifier`);
+        fail(a.id, 'interfaces', `Asset ${a.id} has an invalid interface identifier`);
       }
     }
 
-    if (estate.actionOrder != null && !Array.isArray(estate.actionOrder)) errors.push('actionOrder must be an array');
+    if (estate.actionOrder != null && !Array.isArray(estate.actionOrder)) fail('estate', 'actionOrder', 'actionOrder must be an array');
     if (Array.isArray(estate.actionOrder) && estate.actionOrder.length) {
       const order = new Set(estate.actionOrder);
-      if (order.size !== estate.actionOrder.length) errors.push('Duplicate actionOrder IDs');
-      for (const id of order) if (!assetIds.has(id)) errors.push(`Unknown actionOrder ID ${id}`);
-      for (const id of assetIds) if (!order.has(id)) errors.push(`Missing actionOrder ID ${id}`);
+      if (order.size !== estate.actionOrder.length) fail('estate', 'actionOrder', 'Duplicate actionOrder IDs');
+      for (const id of order) if (!assetIds.has(id)) fail(id, 'actionOrder', `Unknown actionOrder ID ${id}`);
+      for (const id of assetIds) if (!order.has(id)) fail(id, 'actionOrder', `Missing actionOrder ID ${id}`);
     }
     if (estate.defensePosture?.decoys) {
-      if (!Array.isArray(estate.defensePosture.decoys)) errors.push('Decoys must be an array');
+      if (!Array.isArray(estate.defensePosture.decoys)) fail('estate', 'defensePosture.decoys', 'Decoys must be an array');
       else for (const decoy of estate.defensePosture.decoys) {
-        if (!estate.assets.some(a => a.id === decoy.assetId && a.isDecoy)) errors.push(`Undeployed decoy ${decoy.assetId}`);
+        if (!estate.assets.some(a => a.id === decoy.assetId && a.isDecoy)) fail(decoy?.assetId || 'decoy', 'defensePosture.decoys', `Undeployed decoy ${decoy.assetId}`);
       }
     }
     const findingIds = new Set();
     for (const f of estate.findings) {
-      if (!f.id || findingIds.has(f.id)) errors.push(`Duplicate or missing finding id: ${f.id}`);
+      if (!f.id || findingIds.has(f.id)) fail(f?.id || 'finding', 'id', `Duplicate or missing finding id: ${f.id}`);
       findingIds.add(f.id);
-      if (!assetIds.has(f.assetId)) errors.push(`Finding ${f.id} references unknown asset ${f.assetId}`);
+      if (!assetIds.has(f.assetId)) fail(f.id, 'assetId', `Finding ${f.id} references unknown asset ${f.assetId}`);
+      if (f.kind === 'exercise') {
+        fail(f.id, 'kind', `Legacy exercise shortcut finding ${f.id} is prohibited in Schema v4; use instantiateScenario with explicit prerequisites`);
+      }
       if (f.kind === 'cve') {
         const rule = KEV_MITIGATION_RULES[f.cveId];
-        if (!rule?.waf || !rule?.ml) errors.push(`Missing declared control coverage for ${f.cveId}`);
+        if (!rule?.waf || !rule?.ml) fail(f.id, 'cveId', `Missing declared control coverage for ${f.cveId}`);
         else for (const control of ['waf', 'ml']) {
           const declaration = rule[control];
           if (!['modeled', 'not_applicable', 'unsupported', 'unknown'].includes(declaration.state) || !declaration.reason?.trim()) {
-            errors.push(`Invalid ${control} coverage declaration for ${f.cveId}`);
+            fail(f.id, `coverage.${control}`, `Invalid ${control} coverage declaration for ${f.cveId}`);
           }
-          if (declaration.state !== 'modeled' && declaration.mitigates) errors.push(`Non-modeled ${control} coverage cannot mitigate ${f.cveId}`);
+          if (declaration.state !== 'modeled' && declaration.mitigates) fail(f.id, `coverage.${control}`, `Non-modeled ${control} coverage cannot mitigate ${f.cveId}`);
         }
       }
     }
 
     const credIds = new Set();
     for (const c of estate.credentials) {
-      if (!c.id || credIds.has(c.id)) errors.push(`Duplicate or missing credential id: ${c.id}`);
+      if (!c.id || credIds.has(c.id)) fail(c?.id || 'credential', 'id', `Duplicate or missing credential id: ${c.id}`);
       credIds.add(c.id);
-      if (!assetIds.has(c.sourceAssetId)) errors.push(`Credential ${c.id} references unknown sourceAssetId ${c.sourceAssetId}`);
+      if (!assetIds.has(c.sourceAssetId)) fail(c.id, 'sourceAssetId', `Credential ${c.id} references unknown sourceAssetId ${c.sourceAssetId}`);
+    }
+
+    const enforcementPointById = new Map();
+    if (estate.enforcementPoints != null) {
+      if (!Array.isArray(estate.enforcementPoints)) fail('estate', 'enforcementPoints', 'enforcementPoints must be an array');
+      else for (const ep of estate.enforcementPoints) {
+        if (!ep.id || enforcementPointById.has(ep.id)) fail(ep?.id || 'enforcementPoint', 'id', `Duplicate or missing enforcementPoint id: ${ep?.id}`);
+        enforcementPointById.set(ep.id, ep);
+        if (ep.assetId && !assetIds.has(ep.assetId)) fail(ep.id, 'assetId', `EnforcementPoint ${ep.id} references unknown asset ${ep.assetId}`);
+        if (!Array.isArray(ep.inspectedProtocols) || ep.inspectedProtocols.length === 0) {
+          fail(ep.id, 'inspectedProtocols', `EnforcementPoint ${ep.id} must declare inspectedProtocols`);
+        }
+      }
     }
 
     const relIds = new Set();
-    for (const r of estate.relationships) {
-      if (!r.id || relIds.has(r.id)) errors.push(`Duplicate or missing relationship id: ${r.id}`);
+    const routesToCheck = estate.routes || estate.relationships;
+    for (const r of routesToCheck) {
+      if (!r.id || relIds.has(r.id)) fail(r?.id || 'relationship', 'id', `Duplicate or missing relationship id: ${r.id}`);
       relIds.add(r.id);
-      if (!assetIds.has(r.sourceId)) errors.push(`Relationship ${r.id} references unknown sourceId ${r.sourceId}`);
-      if (!assetIds.has(r.targetId)) errors.push(`Relationship ${r.id} references unknown targetId ${r.targetId}`);
-      if (r.sourceId === r.targetId) errors.push(`Relationship ${r.id} is a self-loop`);
-      if (r.direction !== 'outbound') errors.push(`Relationship ${r.id} has invalid direction ${r.direction}`);
-      if (typeof r.protocol !== 'string' || !r.protocol.trim() || r.protocol !== r.protocol.trim()) errors.push(`Relationship ${r.id} must declare a valid protocol`);
+      if (!assetIds.has(r.sourceId)) fail(r.id, 'sourceId', `Relationship ${r.id} references unknown sourceId ${r.sourceId}`);
+      if (!assetIds.has(r.targetId)) fail(r.id, 'targetId', `Relationship ${r.id} references unknown targetId ${r.targetId}`);
+      if (r.sourceId === r.targetId) fail(r.id, 'targetId', `Relationship ${r.id} is a self-loop`);
+      if (r.direction !== 'outbound') fail(r.id, 'direction', `Relationship ${r.id} has invalid direction ${r.direction}`);
+      if (typeof r.protocol !== 'string' || !r.protocol.trim() || r.protocol !== r.protocol.trim()) fail(r.id, 'protocol', `Relationship ${r.id} must declare a valid protocol`);
+      if (Array.isArray(r.enforcementPointIds)) {
+        for (const epId of r.enforcementPointIds) {
+          if (!enforcementPointById.has(epId)) fail(r.id, 'enforcementPointIds', `Route ${r.id} references unknown enforcementPoint ${epId}`);
+        }
+      }
     }
 
-    return { valid: errors.length === 0, errors };
+    if (estate.datasets != null) {
+      if (!Array.isArray(estate.datasets)) fail('estate', 'datasets', 'datasets must be an array');
+      else {
+        const dsIds = new Set();
+        for (const ds of estate.datasets) {
+          if (!ds.id || dsIds.has(ds.id)) fail(ds?.id || 'dataset', 'id', `Duplicate or missing dataset id: ${ds?.id}`);
+          dsIds.add(ds.id);
+          if (!assetIds.has(ds.ownerAssetId)) fail(ds.id, 'ownerAssetId', `Dataset ${ds.id} references unknown ownerAssetId ${ds.ownerAssetId}`);
+          if (!['sensitive', 'public', 'internal_non_sensitive', 'decoy'].includes(ds.sensitivity)) {
+            fail(ds.id, 'sensitivity', `Dataset ${ds.id} has invalid sensitivity ${ds.sensitivity}`);
+          }
+          if (typeof ds.isDecoy !== 'boolean' || (ds.sensitivity === 'decoy') !== ds.isDecoy) {
+            fail(ds.id, 'isDecoy', `Dataset ${ds.id} isDecoy flag must match sensitivity="decoy"`);
+          }
+        }
+      }
+    }
+
+    if (estate.sensors != null) {
+      if (!Array.isArray(estate.sensors)) fail('estate', 'sensors', 'sensors must be an array');
+      else {
+        const sensorIds = new Set();
+        for (const s of estate.sensors) {
+          if (!s.id || sensorIds.has(s.id)) fail(s?.id || 'sensor', 'id', `Duplicate or missing sensor id: ${s?.id}`);
+          sensorIds.add(s.id);
+          if (s.assetId && !assetIds.has(s.assetId)) fail(s.id, 'assetId', `Sensor ${s.id} references unknown assetId ${s.assetId}`);
+          if (!Array.isArray(s.observableActions) || s.observableActions.length === 0) {
+            fail(s.id, 'observableActions', `Sensor ${s.id} must declare observableActions`);
+          }
+        }
+      }
+    }
+
+    if (estate.patchRules != null) {
+      if (!Array.isArray(estate.patchRules)) fail('estate', 'patchRules', 'patchRules must be an array');
+      else {
+        const ruleIds = new Set();
+        for (const pr of estate.patchRules) {
+          if (!pr.id || ruleIds.has(pr.id)) fail(pr?.id || 'patchRule', 'id', `Duplicate or missing patchRule id: ${pr?.id}`);
+          ruleIds.add(pr.id);
+          for (const epId of pr.enforcementPointIds || []) {
+            const ep = enforcementPointById.get(epId);
+            if (!ep) fail(pr.id, 'enforcementPointIds', `PatchRule ${pr.id} references unknown enforcementPoint ${epId}`);
+            else if (Array.isArray(pr.inspectedProtocols) && pr.inspectedProtocols.some(p => !ep.inspectedProtocols.includes(p))) {
+              fail(pr.id, 'inspectedProtocols', `PatchRule ${pr.id} requests protocol not inspected by enforcementPoint ${epId}`);
+            }
+          }
+        }
+      }
+    }
+
+    if (estate.responseIntegrations != null) {
+      if (!Array.isArray(estate.responseIntegrations)) fail('estate', 'responseIntegrations', 'responseIntegrations must be an array');
+      else {
+        const riIds = new Set();
+        for (const ri of estate.responseIntegrations) {
+          if (!ri.id || riIds.has(ri.id)) fail(ri?.id || 'responseIntegration', 'id', `Duplicate or missing responseIntegration id: ${ri?.id}`);
+          riIds.add(ri.id);
+          if (!Array.isArray(ri.supportedActions) || ri.supportedActions.length === 0) {
+            fail(ri.id, 'supportedActions', `ResponseIntegration ${ri.id} must declare supportedActions`);
+          }
+          if (!Array.isArray(ri.authorizedScopes) || ri.authorizedScopes.length === 0) {
+            fail(ri.id, 'authorizedScopes', `ResponseIntegration ${ri.id} must declare authorizedScopes`);
+          }
+        }
+      }
+    }
+
+    if (estate.assumptions != null) {
+      if (!Array.isArray(estate.assumptions)) fail('estate', 'assumptions', 'assumptions must be an array');
+      else for (const a of estate.assumptions) {
+        if (!['historical_source', 'vendor_reference', 'expert_assumption', 'authored_fixture'].includes(a?.provenanceType)) {
+          fail(a?.id || 'assumption', 'provenanceType', `Assumption ${a?.id} has invalid provenanceType ${a?.provenanceType}`);
+        }
+        if (a?.unit === 'probability' && (typeof a.value !== 'number' || a.value < 0 || a.value > 1)) {
+          fail(a.id, 'value', `Assumption ${a.id} probability value must be in [0, 1]`);
+        }
+      }
+    }
+
+    return { valid: errors.length === 0, errors, warnings, details };
+  }
+
+  function validateRunConfig(estate, runConfig) {
+    const estateValidation = validateEstate(estate);
+    const errors = [...estateValidation.errors];
+    const warnings = [...(estateValidation.warnings || [])];
+    const details = [...(estateValidation.details || [])];
+    const fail = (entityId, fieldPath, reason) => {
+      errors.push(reason);
+      details.push({ entityId, fieldPath, reason });
+    };
+    if (!runConfig || typeof runConfig !== 'object') {
+      fail('runConfig', 'root', 'runConfig must be an object');
+      return { valid: false, errors, warnings, details };
+    }
+    if (runConfig.manifestVersion !== RUN_MANIFEST_VERSION) {
+      fail('runConfig', 'manifestVersion', `Expected manifestVersion ${RUN_MANIFEST_VERSION}, got ${runConfig.manifestVersion}`);
+    }
+    if (!Number.isInteger(runConfig.trialSeed)) {
+      fail('runConfig', 'trialSeed', 'trialSeed must be an integer');
+    }
+    if (!Array.isArray(runConfig.initialAccess)) fail('runConfig', 'initialAccess', 'initialAccess must be an array');
+    if (!Array.isArray(runConfig.initialKnowledge)) fail('runConfig', 'initialKnowledge', 'initialKnowledge must be an array');
+    if (!Array.isArray(runConfig.objectives) || runConfig.objectives.length === 0) {
+      fail('runConfig', 'objectives', 'objectives must be a non-empty array');
+    }
+    if (!runConfig.limits || typeof runConfig.limits !== 'object') {
+      fail('runConfig', 'limits', 'limits must be an object');
+    } else {
+      for (const key of ['maxActionAttempts', 'maxRetriesPerAction', 'maxInvestigationActions', 'maxHumanAssists', 'maxRecordedEvents', 'maxConditionalBranches']) {
+        if (!Number.isInteger(runConfig.limits[key]) || runConfig.limits[key] < 1) {
+          fail('runConfig', `limits.${key}`, `limits.${key} must be a positive integer`);
+        }
+      }
+    }
+    if (!['report_conditional', 'sample', 'branch', 'unresolved'].includes(runConfig.uncertaintyMode)) {
+      fail('runConfig', 'uncertaintyMode', `Invalid uncertaintyMode: ${runConfig.uncertaintyMode}`);
+    }
+    const assetIds = new Set((estate?.assets || []).map(a => a.id));
+    const datasetIds = new Set((estate?.datasets || []).map(d => d.id));
+    if (Array.isArray(runConfig.objectives)) {
+      for (const obj of runConfig.objectives) {
+        if (!obj?.id) fail('objective', 'id', 'Objective must declare an id');
+        if (!['dataset_read', 'dataset_export', 'asset_privilege'].includes(obj?.kind)) {
+          fail(obj?.id || 'objective', 'kind', `Unsupported objective kind: ${obj?.kind}`);
+        }
+        if (obj?.datasetId && datasetIds.size > 0 && !datasetIds.has(obj.datasetId)) {
+          fail(obj.id, 'datasetId', `Objective ${obj.id} references unknown datasetId ${obj.datasetId}`);
+        }
+        if (obj?.targetAssetId && assetIds.size > 0 && !assetIds.has(obj.targetAssetId)) {
+          fail(obj.id, 'targetAssetId', `Objective ${obj.id} references unknown targetAssetId ${obj.targetAssetId}`);
+        }
+      }
+    }
+    if (runConfig.interventionContracts != null) {
+      if (!Array.isArray(runConfig.interventionContracts)) {
+        fail('runConfig', 'interventionContracts', 'interventionContracts must be an array');
+      } else {
+        for (const ic of runConfig.interventionContracts) {
+          if (!['confirmed_before_action', 'confirmed_after_action', 'not_confirmed', 'ordering_unspecified'].includes(ic?.contract)) {
+            fail(ic?.id || 'interventionContract', 'contract', `Invalid intervention contract: ${ic?.contract}`);
+          }
+        }
+      }
+    }
+    return { valid: errors.length === 0, errors, warnings, details };
   }
 
   function cveTooltip(kev) {
@@ -817,22 +1464,6 @@
    */
   function evaluateDistinctActions(state, sourceAsset, targetAsset, relationship, estate, options = {}) {
     const targetFindings = estate.findings.filter(f => f.assetId === targetAsset.id);
-    // A tabletop step moves only its fictional session along the seeded display route.
-    const exercise = targetFindings.find(f => f.kind === 'exercise' &&
-      f.relationshipId === (relationship?.id ?? null));
-    if (exercise && (sourceAsset
-      ? relationship?.sourceId === sourceAsset.id && relationship.targetId === targetAsset.id &&
-        state.reachedAssets.get(sourceAsset.id)?.capabilities.has('exercise_session')
-      : targetAsset.isExternalEntry)) {
-      return [{
-        eligible: true,
-        actionKind: 'exercise',
-        finding: exercise,
-        technique: exercise.technique,
-        yieldsCapability: targetAsset.layerIdx === 3 ? 'data_read' : 'exercise_session',
-        reason: exercise.description
-      }];
-    }
     const actions = [];
     let lastReason = null;
     const accessProtocol = relationship?.protocol || (targetAsset.interfaces.length === 1 ? targetAsset.interfaces[0] : null);
@@ -1161,12 +1792,6 @@
     const multiplier = attackerProfile?.detectionMultiplier ?? 1;
     const layerMonitored = !defensePosture?.telemetryLayers || defensePosture.telemetryLayers.includes(targetAsset.layerIdx);
 
-    if (action.actionKind === 'exercise') {
-      if (mode === 'patch' && action.finding.patchCovered) {
-        return { addressed: true, badge: 'BLOCKED · VIRTUAL PATCH', reason: 'The exercise assumes a matching edge rule blocks this session.' };
-      }
-      return { addressed: false, reason: action.reason };
-    }
     if (isCanary) {
       if (mode === 'canaries') {
         return {
@@ -1305,6 +1930,24 @@
     }
 
     return { addressed: false, badge: 'EXPLOITED', reason: 'Unmitigated.' };
+  }
+
+  // Dataset classification and objective predicates determine sensitive data impact,
+  // independently of diagram layer or public reachability (Spec Invariant R09, WP1 Exit Gate, F17).
+  function isSensitiveDatasetRead(targetAsset, action, estate, isCanary) {
+    if (!action || action.yieldsCapability !== 'data_read' || isCanary || targetAsset?.isDecoy) {
+      return false;
+    }
+    if (Array.isArray(estate?.datasets) && estate.datasets.length > 0) {
+      const owned = estate.datasets.filter(ds => ds.ownerAssetId === targetAsset.id);
+      if (owned.length > 0) {
+        return owned.some(ds => ds.sensitivity === 'sensitive' && !ds.isDecoy);
+      }
+    }
+    if (targetAsset?.datasetSensitivity) {
+      return targetAsset.datasetSensitivity === 'sensitive';
+    }
+    return targetAsset?.layerIdx === 3 && !targetAsset?.isDecoy;
   }
 
   /**
@@ -1587,8 +2230,9 @@
         // Grant capability and update state
         gainedAccess = true;
         succeededTransitions++;
+        const sensitiveRead = isSensitiveDatasetRead(targetAsset, action, estate, isCanary);
         if (!alreadyReached && !isCanary) layerSuccessCount[targetAsset.layerIdx]++;
-        if (action.yieldsCapability === 'data_read' && !isCanary && targetAsset.layerIdx === 3) dataReached = true;
+        if (sensitiveRead) dataReached = true;
 
         let caps;
         if (currentReach) {
@@ -1639,7 +2283,7 @@
           reachability: action.reachability,
           grantedCapability: action.yieldsCapability,
           ...(action.tool && {tool:action.tool}),
-          isProtectedRead: action.yieldsCapability === 'data_read' && targetAsset.layerIdx === 3 && !isCanary,
+          isProtectedRead: sensitiveRead,
           ...(action.yieldsCapability==='data_read' && targetAsset.dataHandling && {dataFound:targetAsset.dataHandling}),
           ...(action.dataTransfer && {dataTransfer:action.dataTransfer}),
           ...(localFinding && { actionKind: action.actionKind, affectedEndpointIds: action.affectedEndpointIds }),
@@ -1870,6 +2514,175 @@
       [copy[i], copy[j]] = [copy[j], copy[i]];
     }
     return copy;
+  }
+
+  const SCENARIO_TEMPLATES = {
+    'default-walkthrough': {
+      id: 'default-walkthrough',
+      title: 'Authored Multi-Layer Enterprise Walkthrough',
+      archetypeId: 'public-web',
+      generationMode: 'authored_walkthrough',
+      requireCompletePathProbability: 0.85
+    },
+    'walkthrough-enterprise-identity': {
+      id: 'walkthrough-enterprise-identity',
+      title: 'Authored Enterprise Identity & Endpoints Walkthrough',
+      archetypeId: 'enterprise-identity',
+      generationMode: 'authored_walkthrough',
+      preferredIngress: 'forti-vpn',
+      requireCompletePathProbability: 1.0
+    },
+    'walkthrough-public-web': {
+      id: 'walkthrough-public-web',
+      title: 'Authored Public Web & Internal Data Walkthrough',
+      archetypeId: 'public-web',
+      generationMode: 'authored_walkthrough',
+      preferredIngress: 'f5-gateway',
+      requireCompletePathProbability: 1.0
+    },
+    'walkthrough-cloud-saas': {
+      id: 'walkthrough-cloud-saas',
+      title: 'Authored Cloud & SaaS Identity Walkthrough',
+      archetypeId: 'cloud-saas',
+      generationMode: 'authored_walkthrough',
+      preferredIngress: 'ivanti-connect',
+      requireCompletePathProbability: 1.0
+    },
+    'walkthrough-cicd-secrets': {
+      id: 'walkthrough-cicd-secrets',
+      title: 'Authored CI/CD & Operational Secrets Walkthrough',
+      archetypeId: 'cicd-secrets',
+      generationMode: 'authored_walkthrough',
+      preferredIngress: 'f5-gateway',
+      requireCompletePathProbability: 1.0
+    }
+  };
+
+  function validateWalkthrough(estate, routeAssetIds = null) {
+    const chainIds = routeAssetIds || estate.walkthroughRouteAssetIds || [];
+    if (!Array.isArray(chainIds) || chainIds.length === 0) {
+      return { valid: false, errors: ['Authored walkthrough has no declared routeAssetIds'] };
+    }
+    const assetById = new Map((estate.assets || []).map(a => [a.id, a]));
+    const rels = estate.routes || estate.relationships || [];
+    const state = {
+      reachedAssets: new Map(),
+      acquiredCredentials: new Map((estate.credentials || []).filter(c => c.startingAccess).map(c => [c.id, c])),
+      revokedCredentials: new Set()
+    };
+    const errors = [];
+    for (let i = 0; i < chainIds.length; i++) {
+      const target = assetById.get(chainIds[i]);
+      const source = i === 0 ? null : assetById.get(chainIds[i - 1]);
+      if (!target) {
+        errors.push(`Walkthrough stage ${i} references missing asset ${chainIds[i]}`);
+        break;
+      }
+      const rel = i === 0 ? null : rels.find(r => r.sourceId === source?.id && r.targetId === target.id);
+      const actions = evaluateDistinctActions(state, source, target, rel, estate);
+      const eligible = actions.filter(a => a.eligible);
+      if (eligible.length === 0) {
+        errors.push(`Unsatisfied walkthrough condition at stage ${i} (${target.id}): ${actions[0]?.reason || 'No eligible action'}`);
+        break;
+      }
+      const chosen = eligible[0];
+      const caps = new Set([chosen.yieldsCapability]);
+      state.reachedAssets.set(target.id, { layerIdx: target.layerIdx, sourceId: source?.id || null, capabilities: caps });
+      for (const cred of estate.credentials || []) {
+        if (cred.sourceAssetId === target.id && !cred.revoked && caps.has(cred.requiredSourceCapability)) {
+          state.acquiredCredentials.set(cred.id, cred);
+        }
+      }
+    }
+    return { valid: errors.length === 0, errors };
+  }
+
+  /**
+   * Instantiates an authored walkthrough scenario on an estate using real prerequisite-checked
+   * weaknesses and scoped credentials, and validates the intended route through the ordinary
+   * evaluator (Spec Section 7.2, WP2 Exit Gate, Fixture F01).
+   */
+  function instantiateScenario(templateOrId, estateContext, options = {}) {
+    const template = typeof templateOrId === 'string'
+      ? (SCENARIO_TEMPLATES[templateOrId] || SCENARIO_TEMPLATES['default-walkthrough'])
+      : (templateOrId || SCENARIO_TEMPLATES['default-walkthrough']);
+    const assets = estateContext.assets;
+    const relationships = estateContext.routes || estateContext.relationships;
+    const findings = estateContext.weaknesses || estateContext.findings;
+    const credentials = estateContext.credentials;
+    const rng = options.rng || createRng(estateContext.estateSeed ?? estateContext.seed ?? 1);
+    const preferredIngress = options.preferredIngress ?? template.preferredIngress;
+
+    const addCve = options.addCveFindingForAsset || ((asset) => {
+      const info = getTargetDef(asset.groupId);
+      const reviewed = REVIEWED_EXAMPLES[asset.groupId];
+      if (!reviewed) return false;
+      const cveId = info?.def.kevByVariant ? info.def.kevByVariant[asset.variantIdx ?? 0] : reviewed.cve;
+      if (!cveId || cveId !== reviewed.cve) return false;
+      const kev = findKev(asset.layerIdx, cveId);
+      if (!kev) return false;
+      asset.assumedVersion = reviewed.version;
+      asset.conditions = { ...asset.conditions, ...reviewed.conditions };
+      findings.push({
+        id: `finding-${asset.id}-${cveId}`,
+        assetId: asset.id,
+        kind: 'cve',
+        cveId,
+        inKev: !!kev.inKev,
+        provenance: 'authored_fixture',
+        provenanceType: 'authored_fixture',
+        requiredProduct: reviewed.product,
+        affectedVersions: [reviewed.version],
+        requiredConditions: { ...reviewed.conditions },
+        sourceUrl: reviewed.source,
+        sourceReviewed: '2026-11-16',
+        requiredInterface: kev.reqInterface || asset.interfaces[0],
+        requiresAuth: !!kev.requiresAuth,
+        technique: kev.tech || 'T1190',
+        title: kev.title,
+        description: CVE_ATTACK_DESCRIPTIONS[cveId] || kev.title,
+        yieldsCapability: kev.yields || (asset.layerIdx === 3 ? 'data_read' : 'app_exec')
+      });
+      return true;
+    });
+
+    const assignCred = options.assignCredentialOnSource || ((srcAsset, targetAsset, scope = 'read', requiredSourceCapability = 'app_exec') => {
+      const credId = `cred-${srcAsset.id}-to-${targetAsset.id}`;
+      if (credentials.some(c => c.id === credId)) return;
+      const permissions = scope === 'read' ? ['read'] : scope === 'authenticate' ? ['authenticate'] : [scope];
+      credentials.push({
+        id: credId,
+        kind: targetAsset.layerIdx === 3 ? 'db_credential' : 'service_account',
+        label: `${scope} credential for ${targetAsset.groupId}`,
+        scope,
+        permissions,
+        targetGroupIds: [],
+        targetAssetIds: [targetAsset.id],
+        audience: targetAsset.id,
+        revoked: false,
+        expired: false,
+        mfaRequired: false,
+        sourceAssetId: srcAsset.id,
+        requiredSourceCapability
+      });
+    });
+
+    const priority = seedVerifiedPath(assets, relationships, preferredIngress, rng, findings, credentials, addCve, assignCred);
+    if (Array.isArray(estateContext.actionOrder) && priority.length) {
+      estateContext.actionOrder.splice(0, estateContext.actionOrder.length, ...priority, ...estateContext.actionOrder.filter(id => !priority.includes(id)));
+    }
+    estateContext.generationMode = 'authored_walkthrough';
+    estateContext.scenarioId = template.id;
+    estateContext.walkthroughRouteAssetIds = priority;
+
+    if (options.validateImmediately !== false && priority.length > 0) {
+      const activeStages = priority.filter((id, idx) => idx < 3 || findings.some(f => f.assetId === id) || credentials.some(c => c.targetAssetIds?.includes(id)));
+      const check = validateWalkthrough(estateContext, activeStages);
+      if (!check.valid) {
+        throw new Error(`Invalid authored walkthrough (${template.id}): ${check.errors.join('; ')}`);
+      }
+    }
+    return priority;
   }
 
   function seedVerifiedPath(assets, relationships, preferredIngress, rng, findings, credentials, addCveFindingForAsset, assignCredentialOnSource) {
@@ -2190,24 +3003,33 @@
   }
 
   /**
-   * Generates a versioned v3 estate.
-   * - preset === 'mixed' (default): uses demo-design budgets per layer, allows 0 complete paths without resampling.
-   * - preset === 'demo': intentionally constructs a verified 4-layer CVE path (plus an optional stopped branch) and labels it.
-   * - preset === 'logs': intentionally constructs a 4-layer credential-in-logs path (plus a stopped expired/sibling branch) and labels it.
+   * Generates a versioned Schema v4 estate.
+   * Supports 4 coherent archetypes (`enterprise-identity`, `public-web`, `cloud-saas`, `cicd-secrets`),
+   * `generationMode` (`'exploratory' | 'authored_walkthrough'`), and legacy preset options.
    */
   function generateEstate(options = {}) {
-    const seed = Number.isInteger(options.seed) ? (options.seed >>> 0) : Math.floor(Math.random() * 4294967296);
+    const rawSeed = Number.isInteger(options.estateSeed) ? options.estateSeed : options.seed;
+    const seed = Number.isInteger(rawSeed) ? (rawSeed >>> 0) : Math.floor(Math.random() * 4294967296);
     const preset = options.preset === 'demo'
       ? 'demo'
       : (options.preset === 'logs' || options.preset === 'credential-in-logs')
         ? 'logs'
         : 'mixed';
+    const archetypeId = INFRASTRUCTURE_ARCHETYPES[options.archetypeId]
+      ? options.archetypeId
+      : preset === 'logs'
+        ? 'cloud-saas'
+        : 'public-web';
+    const archetype = INFRASTRUCTURE_ARCHETYPES[archetypeId];
+    const isAuthoredWalkthrough = options.generationMode === 'authored_walkthrough' ||
+      (options.generationMode !== 'exploratory' && (preset === 'demo' || preset === 'logs' || !!options.scenarioId || !!options.seedExercise));
+    const generationMode = isAuthoredWalkthrough ? 'authored_walkthrough' : 'exploratory';
     const rng = createRng(seed);
     const rand = (min, max) => rng() * (max - min) + min;
     const randInt = (min, max) => Math.floor(rand(min, max + 1));
     const edgePool = Object.keys(EDGE_APPLIANCES);
     const applianceCount = randInt(5, 7);
-    const preferredIngress = options.preferredIngress;
+    const preferredIngress = options.preferredIngress || (options.archetypeId ? archetype.preferredIngressGroups.find(g => edgePool.includes(g)) : undefined);
     const pinned = preset === 'demo' ? ['f5-gateway']
       : preset === 'mixed' && edgePool.includes(preferredIngress) ? [preferredIngress] : [];
     const selectedAppliances = new Set([
@@ -2723,9 +3545,25 @@
       actionOrder.splice(actionOrder.indexOf(diagnostics.id), 1);
       actionOrder.unshift(diagnostics.id);
     }
-    if (preset === 'mixed' && options.seedExercise) {
-      const priority = seedVerifiedPath(keptAssets, keptRels, preferredIngress, rng, findings, credentials, addCveFindingForAsset, assignCredentialOnSource);
-      actionOrder.splice(0, actionOrder.length, ...priority, ...actionOrder.filter(id => !priority.includes(id)));
+    let walkthroughRouteAssetIds = [];
+    if (preset === 'mixed' && isAuthoredWalkthrough) {
+      const partialContext = {
+        estateSeed: seed,
+        seed,
+        assets: keptAssets,
+        relationships: keptRels,
+        findings,
+        credentials,
+        actionOrder
+      };
+      const scenarioId = options.scenarioId || (options.archetypeId ? archetype.defaultWalkthroughId : 'default-walkthrough') || 'default-walkthrough';
+      walkthroughRouteAssetIds = instantiateScenario(scenarioId, partialContext, {
+        rng,
+        preferredIngress,
+        addCveFindingForAsset,
+        assignCredentialOnSource,
+        validateImmediately: false
+      });
     }
 
     if (preset === 'mixed') {
@@ -2798,23 +3636,177 @@
     }
 
     // Estate-owned datasets and egress assumptions are shared across all actors.
-    for(const asset of keptAssets.filter(a=>!a.isDecoy)) {
+    const datasets = [];
+    for(const asset of keptAssets) {
+      asset.role = asset.isDecoy ? 'decoy' : ['ingress', 'gateway_or_identity', 'service', 'datastore'][asset.layerIdx] || 'service';
+      asset.lifecycle = { status: 'active', decommissioned: false, poc: false };
+      if (asset.isDecoy) {
+        datasets.push({
+          id: `dataset-${asset.id}`,
+          ownerAssetId: asset.id,
+          label: `Decoy lure archive · ${asset.label}`,
+          sensitivity: 'decoy',
+          records: 0,
+          bytes: 0,
+          isDecoy: true,
+          allowedOperations: ['read']
+        });
+        continue;
+      }
       asset.egress={cloudUploadAllowed:hashNode(seed,`cloud-egress:${asset.id}`,0x531f)>0.2,
         responseExportAllowed:hashNode(seed,`response-egress:${asset.id}`,0x531f)>0.1};
       if(asset.layerIdx===3){
         const records=100+Math.floor(hashNode(seed,`records:${asset.id}`,0x531f)*4900);
         asset.dataHandling={label:`Sensitive records · ${asset.label}`,records,bytes:records*1024};
+        asset.datasetSensitivity = 'sensitive';
+        datasets.push({
+          id: `dataset-${asset.id}`,
+          ownerAssetId: asset.id,
+          label: asset.dataHandling.label,
+          sensitivity: 'sensitive',
+          records,
+          bytes: records * 1024,
+          isDecoy: false,
+          allowedOperations: ['read', 'export']
+        });
+      } else if (['public-s3', 'public-blob'].includes(asset.groupId)) {
+        const isLogsObjective = preset === 'logs';
+        asset.datasetSensitivity = isLogsObjective ? 'internal_non_sensitive' : 'public';
+        datasets.push({
+          id: `dataset-${asset.id}`,
+          ownerAssetId: asset.id,
+          label: isLogsObjective ? `Diagnostic build logs · ${asset.label}` : `Public storage objects · ${asset.label}`,
+          sensitivity: asset.datasetSensitivity,
+          records: 25,
+          bytes: 25 * 1024,
+          isDecoy: false,
+          allowedOperations: ['read']
+        });
       }
     }
+
+    // Schema v4 enforcementPoints, patchRules, routes, sensors, identityRelationships, and responseIntegrations
+    const wafAsset = keptAssets.find(a => a.groupId === 'waf-proxy') || keptAssets.find(a => a.layerIdx === 0 && a.interfaces.includes('https'));
+    const portalIds = new Set(['forti-vpn', 'pulse-vpn', 'pan-globalprotect']);
+    const nonHttpGroups = new Set(['aws-vpn', 'az-net', 'az-branch', 'partner-gw', 'zyxel-atp']);
+    const wafCoveredAssetIds = new Set(
+      keptAssets.filter(a => {
+        const isHttp = a.interfaces.some(i => ['https', 'api-https', 'repo-http', 'storage-s3'].includes(i));
+        if (nonHttpGroups.has(a.groupId) || !isHttp) return false;
+        return !portalIds.has(a.groupId) || wafPortalCovered(a.id, seed);
+      }).map(a => a.id)
+    );
+    const wafCoveredRouteIds = keptRels
+      .filter(r => ['https', 'api-https', 'repo-http', 'storage-s3'].includes(r.protocol) && wafCoveredAssetIds.has(r.targetId))
+      .map(r => r.id);
+
+    const patchRules = Object.entries(KEV_MITIGATION_RULES)
+      .filter(([, rule]) => rule.waf?.state === 'modeled' && rule.waf?.mitigates)
+      .map(([cveId, rule]) => ({
+        id: `patch-rule-${cveId}`,
+        cveId,
+        enforcementPointIds: ['ep-edge-waf'],
+        inspectedProtocols: rule.waf.inspectedProtocols || ['https', 'api-https', 'repo-http', 'storage-s3'],
+        inspectedFields: ['uri', 'headers', 'query', 'body'],
+        ruleStrictness: rule.waf.ruleStrictness || 'strict_virtual_patch',
+        coverageState: rule.waf.state,
+        action: 'block',
+        control: rule.waf.control || 'NIST SI-2 / SC-7',
+        reason: rule.waf.reason
+      }));
+
+    const enforcementPoints = [
+      {
+        id: 'ep-edge-waf',
+        assetId: wafAsset ? wafAsset.id : null,
+        routeIds: wafCoveredRouteIds,
+        inspectedProtocols: ['https', 'api-https', 'repo-http', 'storage-s3'],
+        inspectedFields: ['uri', 'headers', 'query', 'body'],
+        ruleIds: patchRules.map(pr => pr.id),
+        enabled: true
+      }
+    ];
+
+    for (const rel of keptRels) {
+      rel.accessibleInterface = rel.protocol;
+      rel.policyPredicates = [rel.requiredSourceCapability || 'unauthenticated'];
+      rel.enforcementPointIds = wafCoveredRouteIds.includes(rel.id) ? ['ep-edge-waf'] : [];
+    }
+
+    for (const f of findings) {
+      if (!f.provenanceType) {
+        f.provenanceType = f.provenance === 'authored_fixture' ? 'authored_fixture'
+          : f.kind === 'cve' ? 'vendor_reference' : 'expert_assumption';
+      }
+    }
+
+    const identityRelationships = credentials.map(c => ({
+      id: `idrel-${c.id}`,
+      subjectId: c.sourceAssetId,
+      issuerId: keptAssets.find(a => a.groupId === 'iam-idp' || a.groupId === 'ad-identity')?.id || c.sourceAssetId,
+      targetScope: c.targetAssetIds?.length ? c.targetAssetIds : c.targetGroupIds || [],
+      allowedOperation: (c.permissions || [c.scope || 'authenticate']).join(','),
+      delegationConditions: { mfaRequired: !!c.mfaRequired, revoked: !!c.revoked, expired: !!c.expired }
+    }));
+
+    const sensors = [0, 1, 2, 3].map(layerIdx => ({
+      id: `sensor-layer-${layerIdx}`,
+      assetId: keptAssets.find(a => a.layerIdx === layerIdx)?.id || null,
+      layerIdx,
+      observableActions: ['cve', 'valid_credential', 'password_spray', 'anonymous_access', 'phishing_attachment', 'remote_service', 'persistence', 'encryption', 'data_exfiltration'],
+      fieldsCollected: ['sourceId', 'targetId', 'protocol', 'principalId', 'sessionId', 'technique'],
+      attributionQuality: telemetryLayers.includes(layerIdx) ? 'session_scoped' : 'unmonitored',
+      availability: telemetryLayers.includes(layerIdx),
+      lossConditions: telemetryLayers.includes(layerIdx) ? [] : ['layer_telemetry_not_deployed']
+    }));
+
+    const responseIntegrations = [
+      {
+        id: 'integration-iam-session-revocation',
+        supportedActions: ['revoke_credential', 'invalidate_session', 'disable_account'],
+        authorizedScopes: keptAssets.filter(a => a.isExternalEntry).map(a => a.id),
+        sessionSemantics: 'terminate_scoped_session',
+        tokenSemantics: 'revoke_token_and_prevent_new_sessions',
+        confirmationMechanism: 'synchronous_policy_ack',
+        available: hashNode(seed, 'soc-authority', 0x9e3779b9) < 0.95
+      },
+      {
+        id: 'integration-host-isolation',
+        supportedActions: ['isolate_host', 'close_public_exposure'],
+        authorizedScopes: keptAssets.map(a => a.id),
+        sessionSemantics: 'block_host_routes',
+        tokenSemantics: 'preserve_unrelated_tokens',
+        confirmationMechanism: 'agent_heartbeat_ack',
+        available: hashNode(seed, 'soc-enforcement-success', 0x9e3779b9) < 0.95
+      }
+    ];
+
+    const legitimateWorkflows = keptRels.slice(0, 3).map((r, idx) => ({
+      id: `workflow-benign-${idx + 1}`,
+      label: `Authorized service traffic (${r.purpose})`,
+      actor: 'service_principal_benign',
+      routeIds: [r.id],
+      expectedOperations: ['authenticate', 'read']
+    }));
+
     const estate = {
       schemaVersion: SCHEMA_VERSION,
+      id: `estate-${archetypeId}-${seed}`,
+      archetypeId,
+      estateSeed: seed,
       seed,
       preset,
+      generationMode,
+      asOfDate: options.asOfDate ?? null,
+      scenarioId: isAuthoredWalkthrough ? (options.scenarioId || archetype.defaultWalkthroughId || 'default-walkthrough') : null,
+      walkthroughRouteAssetIds,
       intentionalPathNote: preset === 'demo'
         ? 'DEMO-READY · INTENTIONAL 4-LAYER PATH'
         : preset === 'logs'
           ? 'CREDENTIAL-IN-LOGS · INTENTIONAL 4-LAYER PATH'
-          : null,
+          : isAuthoredWalkthrough
+            ? `AUTHORED WALKTHROUGH · ${archetype.title.toUpperCase()}`
+            : null,
       defensePosture: {
         telemetryLayers,
         socCoverageSeed: seed,
@@ -2826,9 +3818,20 @@
         decoys
       },
       assets: keptAssets,
+      routes: keptRels,
+      relationships: keptRels,
+      identityRelationships,
+      weaknesses: findings,
       findings,
       credentials,
-      relationships: keptRels,
+      datasets,
+      sensors,
+      enforcementPoints,
+      patchRules,
+      decoys,
+      responseIntegrations,
+      legitimateWorkflows,
+      assumptions: CALIBRATION_REGISTER.simulationAssumptions,
       actionOrder
     };
 
@@ -2837,6 +3840,51 @@
       throw new Error(`Generated invalid estate: ${validation.errors.join('; ')}`);
     }
     return estate;
+  }
+
+  function convertLegacySnapshot(snapshot) {
+    if (!snapshot || typeof snapshot !== 'object') {
+      return { ok: false, legacy: true, reason: 'No snapshot provided.' };
+    }
+    const unsupportedExerciseFindings = Array.isArray(snapshot.findings)
+      ? snapshot.findings.filter(f => f.kind === 'exercise').map(f => f.id || 'exercise')
+      : [];
+    const missingV4Entities = ['datasets', 'sensors', 'enforcementPoints', 'patchRules', 'responseIntegrations', 'assumptions']
+      .filter(key => !Array.isArray(snapshot[key]));
+    return {
+      ok: false,
+      legacy: true,
+      schemaVersion: snapshot.schemaVersion ?? null,
+      equivalentReplay: false,
+      unsupportedExerciseFindings,
+      missingV4Entities,
+      draftScenario: Array.isArray(snapshot.assets) ? {
+        schemaVersion: SCHEMA_VERSION,
+        id: `draft-migrated-${snapshot.seed ?? 'unknown'}`,
+        archetypeId: 'public-web',
+        estateSeed: snapshot.seed ?? 1,
+        seed: snapshot.seed ?? 1,
+        preset: snapshot.preset || 'mixed',
+        generationMode: 'exploratory',
+        incompleteDraft: true,
+        requiresSuppliedAssumptions: missingV4Entities,
+        assets: snapshot.assets,
+        routes: snapshot.relationships || [],
+        relationships: snapshot.relationships || [],
+        weaknesses: (snapshot.findings || []).filter(f => f.kind !== 'exercise'),
+        findings: (snapshot.findings || []).filter(f => f.kind !== 'exercise'),
+        credentials: snapshot.credentials || [],
+        datasets: [],
+        sensors: [],
+        enforcementPoints: [],
+        patchRules: [],
+        decoys: [],
+        responseIntegrations: [],
+        legitimateWorkflows: [],
+        assumptions: []
+      } : null,
+      reason: `Incompatible legacy snapshot (schemaVersion ${snapshot.schemaVersion ?? 'unknown'}): unsupported exercise findings [${unsupportedExerciseFindings.join(', ')}], missing Schema v4 entities [${missingV4Entities.join(', ')}]. Cannot claim equivalent replay.`
+    };
   }
 
   function migrateSnapshot(snapshot) {
@@ -2852,11 +3900,7 @@
       }
       return { ok: true, estate: snapshot };
     }
-    return {
-      ok: false,
-      legacy: true,
-      reason: 'Incompatible infrastructure snapshot replaced with a new estate.'
-    };
+    return convertLegacySnapshot(snapshot);
   }
 
   // Resolve one predeclared service flow for display. Findings and the runner
@@ -3071,15 +4115,45 @@
         }
       ],
       relationships: [
-        { id: 'cmp-r-edge-api', sourceId: 'cmp-edge', targetId: 'cmp-api', protocol: 'api-https', direction: 'outbound', requiredSourceCapability: 'app_exec' },
-        { id: 'cmp-r-edge-gw2', sourceId: 'cmp-edge', targetId: 'cmp-gw2', protocol: 'api-https', direction: 'outbound', requiredSourceCapability: 'app_exec' },
-        { id: 'cmp-r-api-app', sourceId: 'cmp-api', targetId: 'cmp-app', protocol: 'api-https', direction: 'outbound', requiredSourceCapability: 'app_exec' },
-        { id: 'cmp-r-api-svc', sourceId: 'cmp-api', targetId: 'cmp-svc', protocol: 'api-https', direction: 'outbound', requiredSourceCapability: 'app_exec' },
-        { id: 'cmp-r-app-data', sourceId: 'cmp-app', targetId: 'cmp-data', protocol: 'db-pg', direction: 'outbound', requiredSourceCapability: 'app_exec' },
-        { id: 'cmp-r-svc-decoy', sourceId: 'cmp-svc', targetId: 'cmp-decoy', protocol: 'api-https', direction: 'outbound', requiredSourceCapability: 'app_exec' }
+        { id: 'cmp-r-edge-api', sourceId: 'cmp-edge', targetId: 'cmp-api', protocol: 'api-https', accessibleInterface: 'api-https', direction: 'outbound', requiredSourceCapability: 'app_exec', enforcementPointIds: ['cmp-ep-waf'] },
+        { id: 'cmp-r-edge-gw2', sourceId: 'cmp-edge', targetId: 'cmp-gw2', protocol: 'api-https', accessibleInterface: 'api-https', direction: 'outbound', requiredSourceCapability: 'app_exec', enforcementPointIds: ['cmp-ep-waf'] },
+        { id: 'cmp-r-api-app', sourceId: 'cmp-api', targetId: 'cmp-app', protocol: 'api-https', accessibleInterface: 'api-https', direction: 'outbound', requiredSourceCapability: 'app_exec', enforcementPointIds: [] },
+        { id: 'cmp-r-api-svc', sourceId: 'cmp-api', targetId: 'cmp-svc', protocol: 'api-https', accessibleInterface: 'api-https', direction: 'outbound', requiredSourceCapability: 'app_exec', enforcementPointIds: [] },
+        { id: 'cmp-r-app-data', sourceId: 'cmp-app', targetId: 'cmp-data', protocol: 'db-pg', accessibleInterface: 'db-pg', direction: 'outbound', requiredSourceCapability: 'app_exec', enforcementPointIds: [] },
+        { id: 'cmp-r-svc-decoy', sourceId: 'cmp-svc', targetId: 'cmp-decoy', protocol: 'api-https', accessibleInterface: 'api-https', direction: 'outbound', requiredSourceCapability: 'app_exec', enforcementPointIds: [] }
       ],
+      datasets: [
+        { id: 'cmp-ds-data', ownerAssetId: 'cmp-data', label: 'Sensitive Record Store Dataset', sensitivity: 'sensitive', records: 1200, bytes: 1200 * 1024, isDecoy: false, allowedOperations: ['read', 'export'] },
+        { id: 'cmp-ds-decoy', ownerAssetId: 'cmp-decoy', label: 'Canary Decoy Dataset', sensitivity: 'decoy', records: 0, bytes: 0, isDecoy: true, allowedOperations: ['read'] }
+      ],
+      enforcementPoints: [
+        { id: 'cmp-ep-waf', assetId: 'cmp-edge', routeIds: ['cmp-r-edge-api', 'cmp-r-edge-gw2'], inspectedProtocols: ['https', 'api-https'], inspectedFields: ['uri', 'headers', 'body'], ruleIds: ['VP-EDGE-01'], enabled: true }
+      ],
+      patchRules: [
+        { id: 'VP-EDGE-01', cveId: 'CVE-2022-1388', enforcementPointIds: ['cmp-ep-waf'], inspectedProtocols: ['https', 'api-https'], inspectedFields: ['uri', 'headers'], ruleStrictness: 'strict_virtual_patch', coverageState: 'modeled', action: 'block', control: 'NIST SC-7', reason: 'WAF drops hop-by-hop Connection header smuggling to /mgmt/shared/authn' }
+      ],
+      sensors: [0, 1, 2, 3].map(layerIdx => ({
+        id: `cmp-sensor-l${layerIdx}`,
+        assetId: null,
+        layerIdx,
+        observableActions: ['cve', 'valid_credential', 'anonymous_access'],
+        fieldsCollected: ['sourceId', 'targetId', 'sessionId'],
+        attributionQuality: 'session_scoped',
+        availability: true,
+        lossConditions: []
+      })),
+      responseIntegrations: [
+        { id: 'cmp-ri-iam', supportedActions: ['invalidate_session', 'revoke_credential'], authorizedScopes: ['sess-primary'], sessionSemantics: 'terminate_scoped_session', tokenSemantics: 'revoke_token', confirmationMechanism: 'synchronous_ack', available: true }
+      ],
+      assumptions: CALIBRATION_REGISTER.simulationAssumptions,
       actionOrder: ['cmp-edge', 'cmp-api', 'cmp-gw2', 'cmp-app', 'cmp-svc', 'cmp-data', 'cmp-decoy']
     };
+    estate.id = 'estate-comparison-fixed';
+    estate.archetypeId = 'public-web';
+    estate.estateSeed = estate.seed;
+    estate.generationMode = 'authored_walkthrough';
+    estate.routes = estate.relationships;
+    estate.weaknesses = estate.findings;
     estate.assets.forEach(a => {
       const td = getTargetDef(a.groupId);
       a.icon = td?.def?.icon || 'application.png';
@@ -4186,6 +5260,14 @@
 
   return {
     SCHEMA_VERSION,
+    RUN_MANIFEST_VERSION,
+    ENGINE_VERSION,
+    CALIBRATION_REGISTER,
+    INFRASTRUCTURE_ARCHETYPES,
+    SCENARIO_TEMPLATES,
+    SURFACE_COVERAGE_MANIFEST,
+    REVIEWED_EXAMPLES,
+    REVIEWED_VARIANT_CVES,
     MAX_ONWARD_PER_SOURCE,
     MAX_SUCCESS_PER_LAYER,
     LAYER_FINDING_BUDGETS,
@@ -4212,7 +5294,14 @@
     evaluateComparisonMatrix,
     createRng,
     cveTooltip,
+    validateCalibrationRegister,
     validateEstate,
+    validateRunConfig,
+    validateWalkthrough,
+    auditSurfaceCoverage,
+    isSensitiveDatasetRead,
+    instantiateScenario,
+    convertLegacySnapshot,
     evaluateAction,
     evaluateDistinctActions,
     evaluateDefense,

@@ -13,14 +13,27 @@ const read=success(hive).find(event=>event.targetId==='redis-debian-1'&&event.is
 assert(account&&execution&&read);assert(account.timeSec<execution.timeSec);assert.notEqual(account.scope,execution.scope);
 assert(read.startSec>=execution.timeSec);assert.equal(read.scope,execution.scope);
 
-const asset=(id,layerIdx)=>({id,groupId:id,label:id,product:'Fixture',assumedVersion:'1',layerIdx,interfaces:['https'],conditions:{},isExternalEntry:layerIdx===0});
-function sharedTarget(exercise=false){
-  const assets=[asset('left',0),asset('right',0),asset('shared',1)];
-  const relationships=['left','right'].map(sourceId=>({id:`${sourceId}-shared`,sourceId,targetId:'shared',protocol:'https',direction:'outbound',requiredSourceCapability:exercise?'exercise_session':'app_exec'}));
-  const findings=assets.filter(a=>a.layerIdx===0).map(a=>({id:`f-${a.id}`,assetId:a.id,kind:exercise?'exercise':'anonymous_access',
-    ...(exercise&&{relationshipId:null}),technique:'T1190',yieldsCapability:'app_exec'}));
-  if(exercise)for(const relationship of relationships)findings.push({id:`f-${relationship.id}`,assetId:'shared',kind:'exercise',relationshipId:relationship.id,patchCovered:relationship.sourceId==='left',technique:'T1190'});
-  else findings.push({id:'f-shared',assetId:'shared',kind:'anonymous_access',yieldsCapability:'app_exec',technique:'T1190'});
+const asset=(id,layerIdx,interfaces=['https'])=>({id,groupId:id,label:id,product:'Fixture',assumedVersion:'1',layerIdx,interfaces,conditions:{},isExternalEntry:layerIdx===0});
+function sharedTarget(patchedLeft=false){
+  const assets=[asset('left',0),asset('right',0),asset('shared',1,patchedLeft?['https','api-https']:['https'])];
+  const relationships=['left','right'].map(sourceId=>({
+    id:`${sourceId}-shared`,
+    sourceId,
+    targetId:'shared',
+    protocol:patchedLeft&&sourceId==='right'?'api-https':'https',
+    direction:'outbound',
+    requiredSourceCapability:'app_exec'
+  }));
+  const findings=assets.filter(a=>a.layerIdx===0).map(a=>({id:`f-${a.id}`,assetId:a.id,kind:'anonymous_access',
+    technique:'T1190',yieldsCapability:'app_exec'}));
+  if(patchedLeft){
+    findings.push(
+      {id:'f-left-shared',assetId:'shared',kind:'cve',cveId:'CVE-2022-1388',requiredProduct:'Fixture',affectedVersions:['1'],requiredConditions:{},sourceUrl:'https://nvd.nist.gov/vuln/detail/CVE-2022-1388',requiredInterface:'https',technique:'T1190',yieldsCapability:'app_exec'},
+      {id:'f-right-shared',assetId:'shared',kind:'cve',cveId:'CVE-2023-46747',requiredProduct:'Fixture',affectedVersions:['1'],requiredConditions:{},sourceUrl:'https://nvd.nist.gov/vuln/detail/CVE-2023-46747',requiredInterface:'api-https',technique:'T1190',yieldsCapability:'app_exec'}
+    );
+  } else {
+    findings.push({id:'f-shared',assetId:'shared',kind:'anonymous_access',yieldsCapability:'app_exec',technique:'T1190'});
+  }
   return {schemaVersion:e.SCHEMA_VERSION,preset:'comparison',seed:1,assets,relationships,findings,credentials:[],actionOrder:assets.map(a=>a.id),defensePosture:{telemetryLayers:[],decoys:[]}};
 }
 const timing={actionDurations:[0,10,10,10],reentryDurationSec:0};
